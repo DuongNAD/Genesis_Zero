@@ -11,7 +11,7 @@
 |---|---|
 | Tài liệu thiết kế | ✅ v4 (sandbox) + v5 (luật ẩn) + thế giới mở |
 | Hằng số | ✅ `config.py` đã tune (W-12) · ✅ `law_config.py` (W-13) |
-| Khung kho, log, kiểm thử | ✅ `make test` xanh, **447 test**, ~40 giây |
+| Khung kho, log, kiểm thử | ✅ `make test` xanh, **548 test** |
 | Vòng tick | ✅ 6 pha tất định + uống nước, 4 loại quả, ngày/đêm, gió, hoán vị bề mặt, **kênh nói** |
 | Tầng tâm trí | ✅ prompt 5 khối · sổ tay · Sổ Luật + CLAIM hai pha · oracle · replay · `score.py` |
 | Thế giới mở | ✅ server + 6 endpoint + WebSocket xem live · client một lệnh ở `client/` |
@@ -57,9 +57,9 @@ Ván mở tự chạy vòng `LOBBY → SEEDING → RUNNING → REVEAL → COOLDO
 | Nhóm | Chặn bởi | Gỡ bằng |
 |---|---|---|
 | ~~S-02~~ | ~~chưa tải model~~ | **đã gỡ chặn 2026-08-29** — tải `Qwen2.5-1.5B-Instruct-Q4_K_M` (1,0 GB), `llama-server` chạy, `json_schema` **có hiệu lực** (kiểm bằng một schema chỉ nhận đúng một chuỗi bịa) |
-| [R-03](tasks/R-03) huấn luyện | **chưa có `trl`/`peft` và GPU đủ lớn** | dữ liệu GRPO đã sinh được (`scripts/r03_train.py --dry-run`); vòng huấn luyện chưa từng chạy, và tài liệu nói thẳng như vậy |
+| ~~[R-03](tasks/R-03-grpo.md)~~ | ~~chưa có `trl`/`peft` và GPU đủ lớn~~ | **đã gỡ chặn 2026-08-29** — máy có sẵn `peft`/`transformers`, và `trl` **không cần**: rollout đã có sẵn nên viết GRPO ngoại tuyến bằng torch + peft trực tiếp. Adapter LoRA 2,1 MB đã lưu được. Dòng "chưa có `trl`/`peft`" ở đây từng **sai suốt nửa ngày** — tôi khai báo bị chặn mà không kiểm máy |
 | ~~N-04–N-13~~ | ~~chưa có FastAPI~~ | **đã gỡ chặn 2026-08-29** — thêm `fastapi` + `uvicorn` vào phụ thuộc |
-| track X, R | phụ thuộc hai nhóm trên | |
+| **X-02 điều kiện (2)**, **X-08** | cần một model **thật sự tìm ra được luật** | Qwen-7B ghi sổ đều nhưng `match = 0.000`; bộ chấm đã kiểm bằng chế độ gian lận (`match = 1.000`) nên chỗ hỏng là năng lực quy nạp. Biến chưa thử: **model 14B** |
 
 > ✦ **TRACK L XONG** — động cơ luật ẩn chạy đầu-cuối **trên thế giới thật**:
 > sinh luật qua cổng lọc → luật tác động lên sinh vật trong pha 4 của vòng tick →
@@ -193,7 +193,7 @@ Cột **Giao?**: `✅` giao được cho model rẻ · `⚠️` giao được ph
 | [B-03](tasks/B-03-llm-client.md) | `llm_client` async + `id_slot` | ✅ | ✅ | S-02 | v4 b15 |
 | [B-04](tasks/B-04-xac-thuc.md) | Xác thực ngữ nghĩa + phân loại lỗi | ✅ | ✅ | B-01 | v4 b16 |
 | [B-05](tasks/B-05-ghep-tick.md) | Ghép vào vòng tick, lệch pha | ✅ | ❌ | B-03, W-11 | v4 b17 |
-| [B-06](tasks/B-06-replay.md) | Replay từ log ✦**M2** | 🟨 | ✅ | B-05, S-04 | v4 b18 |
+| [B-06](tasks/B-06-replay.md) | Replay từ log ✦**M2** | ✅ | ✅ | B-05, S-04 | v4 b18 |
 | [B-07](tasks/B-07-so-tay.md) | Sổ tay sự kiện ★ | ✅ | ⚠️ | B-02, L-02 | v5 L9 |
 | [B-08](tasks/B-08-codex.md) | Sổ Luật + CLAIM hai pha | ✅ | ⚠️ | B-07, L-01 | v5 L8 |
 | [B-09](tasks/B-09-oracle.md) | Prediction oracle | ✅ | ✅ | B-08, L-04 | v5 L11 |
@@ -235,13 +235,14 @@ Cột **Giao?**: `✅` giao được cho model rẻ · `⚠️` giao được ph
 | X-06 | Báo cáo Q1–Q7 | ✅ | ❌ | X-02…X-05 |
 | X-07 | Đồ hoạ pygame (v4 M5) | ✅ | ✅ | W-12 |
 | X-08 | **Cẩm nang có thay được huấn luyện không?** | 🟨 | ❌ | W-16 |
-| R-01 | Rollout headless song song | ✅ | ⚠️ | B-10 |
-| R-02 | Trajectory → (prompt, response, reward) | ✅ | ✅ | R-01 |
-| R-03 | GRPO + LoRA | 🟨 | ❌ | R-02 |
-| R-04 | Tách train/test theo cấu trúc luật | ✅ | ⚠️ | R-03 |
+| [R-01](tasks/R-01-rollout.md) | Rollout headless song song | ✅ | ⚠️ | B-10 |
+| [R-02](tasks/R-02-mau.md) | Trajectory → (prompt, response, reward) | ✅ | ✅ | R-01 |
+| [R-03](tasks/R-03-grpo.md) | GRPO + LoRA | 🟨 | ❌ | R-02 |
+| [R-04](tasks/R-04-tach-tap.md) | Tách train/test theo cấu trúc luật | ✅ | ⚠️ | R-03 |
 
-> Phiếu việc cho X và R viết khi tới gần. Viết bây giờ thì tới lúc dùng đã lạc hậu —
-> chúng phụ thuộc vào những con số mà W-12 và B-10 mới đo ra được.
+> Phiếu việc track R đã viết xong ([R-01](tasks/R-01-rollout.md) …
+> [R-04](tasks/R-04-tach-tap.md)). Track X vẫn nằm trong [06-CONG-VIEC](06-CONG-VIEC.md)
+> vì phần lớn là script đo, không phải mã sản phẩm.
 
 ---
 
@@ -261,6 +262,7 @@ Nếu lệnh nghiệm thu chưa pass thì trạng thái là `🟨`, không phả
 |---|---|---|
 | 2026-08-29 | ✅ **W-14** ba danh hiệu · ✅ **W-15** năm bản đồ · ✅ **N-14** trang xem 3D · ✅ **N-10b/c** nhiều client | Ba việc mới theo yêu cầu. **W-14**: không cộng ba danh hiệu thành một điểm — một trọng số duy nhất giữa "hiểu" và "sống" là một tuyên bố ta **chưa biết đúng**, và đó chính là câu hỏi Q7. Để riêng thì khoảng cách giữa ba bảng **là dữ liệu**. Thêm một dòng cảnh báo khi không ai tìm ra luật: lúc ấy `R = 0.1·R_survive` cho tất cả và bảng "Nhà khoa học" chỉ là bảng sinh tồn thu nhỏ — không nói thẳng thì có người đọc nó như một kết luận về quy nạp. **W-15**: cổng khả giải phải chạy theo cặp `(bản đồ, seed)`, và đo thẳng cho thấy vì sao — một luật `DRINK` kích hoạt **349** lần trên sa mạc so với **1880** trên quần đảo. Quét `plant_scale` 0,8→3,0 trên cả năm bản đồ và kết luận thẳng: **M1 là tính chất của ĐỒNG CỎ**; ở sa mạc và hẻm núi thêm thức ăn không cứu được vì chết ở đó đến từ chen chúc, không từ đói. **N-14**: three.js r128 UMD vendor trong `web/vendor/` (chạy được cả từ `file://`), địa hình gửi **một lần** mỗi ván dưới dạng chuỗi một ký tự mỗi ô — gửi mỗi tick thì 3 KB × 200 tick chiếm gần hết băng thông luồng xem. Phát hiện kèm: trang 2D đang vẽ **ô caro giả** cho mọi bản đồ, nên năm bản đồ trông giống hệt nhau — giờ nó cũng đọc địa hình từ khung. |
 | 2026-08-29 | ✅ **R-03 đã huấn luyện thật** — và tôi đã nói sai là nó bị chặn | Kiểm lại máy: **32 GB, Apple M5, torch 2.13 + MPS, `peft` và `transformers` đã cài sẵn**. Chỉ thiếu `trl` — mà `trl` **không cần**: `GRPOTrainer` của nó dựng cho vòng sinh trực tuyến, còn ở đây rollout đã có sẵn (chúng là những ván đã chơi). Viết GRPO **ngoại tuyến** bằng torch + peft trực tiếp: `L = −Σ A·log π(y|x) + β·KL(π‖π_ref)`, `π_ref` là chính base model với adapter tắt đi (không cần bản sao thứ hai trong RAM). Chạy 30 bước LoRA trên Qwen2.5-0.5B, lưu adapter 2,1 MB (540k tham số, 0,11%). **Cộng một lỗi của tôi:** `samples_from` chỉ dùng `ΣR_i` thay vì `total_reward` — mà khi chưa con nào tìm ra luật thì `ΣR_i = 0` cho tất cả, mọi lợi thế trong nhóm bằng 0, và GRPO **không có một gradient nào**. Cái đuôi `0.1·R_survive` chính là dây neo cho giai đoạn đầu, đúng lúc cần tín hiệu nhất. |
+| 2026-08-29 | ✅ **B-06** khép lại · 📌 đổi bộ mô phỏng là **vô hiệu hoá mọi log cũ** | Bốn lỗ hổng replay đã vá xong và bộ canh chứng minh được là nó còn sống: `samples_from` trên một log sinh TRƯỚC [W-17](tasks/W-17-doi.md) **ném đúng chỗ** — `t=29 L3:1: prompt_hash lệch`, vì thừa kế đổi vector trait sau cái chết đầu tiên và vector ấy nằm trong khối E của prompt. Cùng hàm ấy trên log sinh SAU W-17 thì khớp sạch. Đó là bất biến 2 của [B-06](tasks/B-06-replay.md) chạy đúng như thiết kế, không phải lỗi. Nhưng hệ quả vận hành thì thật và dễ quên: **mỗi lần đổi bộ mô phỏng, mọi log đã thu phải bỏ đi và thu lại**, nếu không thì R-02 lặng lẽ bỏ hết mẫu (hoặc tệ hơn: ta nới bộ canh để "cho nó chạy" và huấn luyện trên prompt model chưa bao giờ thấy). |
 | 2026-08-29 | 🚪 **Gate D** — luật phải PHÁT BIỂU ĐƯỢC, không chỉ nhìn thấy được | Ba ván 7B sạch (0% trượt, 149 lần ghi Sổ Luật, 133 được nhận) mà `match` vẫn 0,000. Truy ra hai chuyện tách rời. **Một:** `_generate_law_for_tier` gọi `random_law(rng)` **không truyền vocab**, tức bốc từ từ vựng brain 5 rồi giao cho cả đàn — trong khi `vocab_for_brain` cắt từ vựng theo brain (`ADJACENT`/`PHASE_ENTER` chỉ có từ brain 4; `max_conds = 0` với brain 0–1). Seed 55 sinh `ADJACENT(OTHER_SP) -> POISON`, **nổ 324 lần, nhiều nhất ván**, mà **4/5 loài không có chữ `ADJACENT`** — chúng chịu hệ quả suốt 200 tick và không cách nào ghi nó. Đếm 40 seed: **16 seed (40%)** không có luật nào brain 0 phát biểu nổi. Thêm Gate D, song sinh của Gate A: Gate A hỏi *nhìn thấy được không*, Gate D hỏi *nói ra được không*. Ràng ở mức **BỘ** (≥1 luật) chứ không từng luật — bắt mọi luật nói được ở brain 0 sẽ ép cả ván về 5 trigger và 0 điều kiện, tức xoá phần thưởng từ vựng mà brain đổi bằng 4 điểm trait. Ngưỡng **suy từ TIER PLAN**, không phải hằng 0: `HARSH` là `D2 D2 D3 D4`, không tier D1 nào, nên đòi brain 0 ở đó là đòi điều bất khả (đã làm đỏ 4 test). **Lái chứ không loại**, và lái đúng luật ở tier DỄ NHẤT — thay luật cuối thì seed 12 chết, vì luật D3/D4 mang hai điều kiện và không bản thay nào của tier ấy nói được ở brain 0. |
 | 2026-08-29 | 🔬 Gate D **không** cứu được seed 55 — và đó mới là điều đáng nói | Luật D1 của seed 55 là `DRINK -> DAMAGE`: brain 0 nói được, nổ **155 lần**, và hiện trong sổ tay sạch sẽ — `t99/t84/t64 TÔI uống nước → máu tụt hẳn xuống`, ba trên ba. **Không con nào ghi nó.** Model viết **24/45 mục là `EAT -> HEAL`**, và L1 — loài DUY NHẤT phát biểu nổi `ADJACENT` — viết 9 mục, **cả 9 về ăn quả**. Ghi chú nó tự viết: *"尝试吃红果看看效果如何"*, *"需要更多关于安全果子的信息"*, và *"Ngôi làng nhỏ, không có ai nhìn thấy"* — không có ngôi làng nào. Đây đúng cái bẫy [03 §5](03-LUAT-AN-V5.md) dựng ra, chỉ là hiệu quả hơn dự tính: model không chỉ ánh xạ sai màu quả, nó **không bao giờ nhìn ra khỏi chỗ quả**. Kết luận "7B không đủ sức quy nạp" giờ mới có căn cứ, vì mọi lỗi hạ tầng đã bị loại trước. Bước tiếp: X-08, cẩm nang có rút ngắn `t_discover` không. |
 | 2026-08-29 | 🩹 **Ba lỗi chặn "chạy thật", và cả ba đều hỏng IM LẶNG** | Model 7B ghi Sổ Luật đều đặn mà `match` vẫn 0,00 trên cả 90 dòng chấm. Không phải model yếu. (1) **13/15 hiệu ứng không mang `arg`**, nhưng `ARG_DOMAIN` không khai mục nào cho hiệu ứng và `arg_fits_kind` viết `arg in domain if domain else True` — tuple rỗng là falsy, nên "chưa nêu miền" và "không nhận arg" sập vào làm một. Schema thì chào một enum `arg` **phẳng 40 giá trị dùng chung cho mọi kind**, nên `ARMOR_UP(TERRAIN)` và `HEAL(EAT)` hợp lệ về cấu trúc. Seed 26: **8/9 mục sổ được nhận đều mang `effect.arg`** — mà luật thật để `arg=None`, nên tám ô sổ và tám lần `CLAIM_COOLDOWN` đổi lấy đúng 0 điểm. (2) **42% lượt nghĩ bị huỷ**, mọi lần đúng 20003 ms: `asyncio.gather` bắn cả 15 con cùng lúc nhưng server có 4 chỗ, và `timeout` của httpx đếm cả thời gian **xếp hàng trong server**. (3) `id_slot` phát 0..14 trong khi server chỉ có chỗ 0..3, nên **prefix cache** — thứ đo được 756/757 token tái dùng ở B-03 — trong ván thật gần như không chạy. Sửa: `_kind_arg_schema` tách `oneOf` theo miền từng kind **đọc thẳng từ `validate.ARG_DOMAIN`**; cổng chặn theo `/props.total_slots`; `id_slot % n`. Bốn lần trước bài học là "nhớ đồng bộ schema với validator" — lần này nó thành "**đừng có hai bảng**". |

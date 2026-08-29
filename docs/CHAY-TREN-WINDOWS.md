@@ -95,5 +95,5 @@ model_url = "http://localhost:8080"                # llama-server của HỌ
 ```
 
 Số slot chỉ giới hạn sinh vật **bạn tự chạy cục bộ**. Mười máy vào chơi là mười
-GPU khác gánh. Giới hạn người chơi nằm ở [N-11](tasks/N-11-chong-lam-dung.md):
+GPU khác gánh. Giới hạn người chơi nằm ở [N-11](tasks/N-11-phoi-internet.md):
 5 join/giờ mỗi IP, 120 quyết định/phút mỗi token.

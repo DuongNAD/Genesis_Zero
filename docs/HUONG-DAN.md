@@ -120,7 +120,7 @@ gọi model đến từ client. Nên chạy nó cùng máy với client là chuy
 make hostile
 ```
 
-Phải ra `CỬA ĐÃ ĐÓNG`. Đây là thứ [N-11](tasks/N-11-chong-lam-dung.md) bắt chạy
+Phải ra `CỬA ĐÃ ĐÓNG`. Đây là thứ [N-11](tasks/N-11-phoi-internet.md) bắt chạy
 **trước**, không phải sau.
 
 ### Bước 3 — mở đường

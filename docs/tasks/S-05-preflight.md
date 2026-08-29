@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Track** | Sàn · **Phụ thuộc** [S-02](S-02-llama-server.md), [N-11](N-11-chong-lam-dung.md) |
+| **Track** | Sàn · **Phụ thuộc** [S-02](S-02-llama-server.md), [N-11](N-11-phoi-internet.md) |
 | **File** | `scripts/preflight.py` · ~200 dòng |
 | **Giao cho model rẻ?** | ⚠️ khung giao được; **mục "json_schema có ràng buộc không" tự viết** |
 

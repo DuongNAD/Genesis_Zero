@@ -63,7 +63,7 @@ cẩm nang đóng băng ở ván đầu tiên.
 Cẩm nang là **bản không cần huấn luyện** của đúng ý đó: biết đáp án rồi thì viết
 lại **bài học về cách tìm**, rồi đọc nó ở ván sau.
 
-Nếu cẩm nang đủ để rút ngắn `t_discover` thì [R-03](R-03) chỉ còn là *tối ưu
+Nếu cẩm nang đủ để rút ngắn `t_discover` thì [R-03](R-03-grpo.md) chỉ còn là *tối ưu
 hoá*, không phải điều kiện cần — cùng model, cùng trọng số, chỉ khác một đoạn
 văn trong prompt. Đó là một mệnh đề **đo được**, rẻ hơn RL vài bậc độ lớn, và
 đáng hỏi **trước** khi đổ giờ GPU vào.

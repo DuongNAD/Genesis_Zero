@@ -17,6 +17,8 @@ TRACKS = {
     "L": ("Luật",       "Động cơ luật ẩn và bộ chấm"),
     "B": ("Tâm trí",    "Tầng LLM, prompt, Sổ Luật, điểm"),
     "N": ("Thế giới mở","Nhiều máy qua internet"),
+    "R": ("Huấn luyện", "Rollout, GRPO + LoRA, tách train/test"),
+    "X": ("Thí nghiệm", "Đo đạc, gác cổng, báo cáo"),
 }
 
 STATUS = dict(STATUS_RE.findall((DOCS / "01-STATUS.md").read_text(encoding="utf-8")))

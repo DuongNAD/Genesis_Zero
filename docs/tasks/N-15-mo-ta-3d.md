@@ -22,7 +22,7 @@ là một hành động cố ý — không phải tác dụng phụ của việc
 ## 2. Hai bất biến
 
 **Bất biến 1 — quả khoá theo BỀ MẶT, không theo lớp.**
-Bề mặt bị hoán vị mỗi ván ([L-04](L-04-hoan-vi.md)): `FRUIT_A` ván này là
+Bề mặt bị hoán vị mỗi ván ([L-04](L-04-tinh-huong.md)): `FRUIT_A` ván này là
 "quả đỏ tròn", ván sau là "quả tím dẹt". Sinh mesh theo **lớp** thì hình quả đổi
 màu giữa hai ván, và người xem **đọc được luật ẩn qua hình 3D** — một đường rò
 đi vòng qua toàn bộ `_check_no_leak`, vì nó không đi qua prompt. Khoá theo bề

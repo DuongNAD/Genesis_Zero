@@ -91,7 +91,7 @@ kiểm điều đó từ ngoài.
 | | |
 |---|---|
 | Test | **548 mục, xanh** |
-| Phiếu việc | 58, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
+| Phiếu việc | 61, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
 | Model 7B thật | ghi sổ đều, **`match` vẫn 0.000** — xem dưới |

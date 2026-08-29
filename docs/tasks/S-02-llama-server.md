@@ -74,7 +74,7 @@ sẵn, `cache_n` đã cao ngay lần đầu, và tỉ lệ nói về nhiễu.
 
 **Song song không giúp gì trên máy này.** llama.cpp/Metal gần như tuần tự hoá
 phần decode, nên thông lượng bị chặn bởi **tổng số lời gọi**, không bởi số tiến
-trình. Đây là số liệu quan trọng nhất cho [R-01](R-01): tăng worker không tăng
+trình. Đây là số liệu quan trọng nhất cho [R-01](R-01-rollout.md): tăng worker không tăng
 thông lượng; thứ tăng được là **số máy** — mà đó đúng là hình dạng của chế độ mở
 ở [04](../04-THE-GIOI-MO.md).
 
