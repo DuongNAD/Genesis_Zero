@@ -181,6 +181,24 @@ def score_match(log: Path, truth: Path) -> list[dict]:
                             first = t_written   # bị ghi đè bằng luật sai -> mốc lùi lại
                     t_i = first if t_i is None else min(t_i, first)
 
+            # ── CHẨN ĐOÁN, KHÔNG PHẢI ĐIỂM ────────────────────────────────
+            # Đã có LÚC NÀO nói đúng luật này chưa, kể cả rồi xoá đi?
+            #
+            # Không dùng để tính `R_i` và không được dùng: bất biến 2 nói rõ ô
+            # bị xoá thì không tính, và Sổ Luật **là** tờ đáp án. Nhưng hai
+            # chuyện "chưa bao giờ tìm ra" và "tìm ra rồi đánh mất" là hai bài
+            # toán khác hẳn nhau, mà cột `found` gộp chúng làm một.
+            #
+            # Ca thật: Qwen-14B, seed 55, `L5:1` ghi `WHEN DRINK THEN DAMAGE`
+            # vào ô 0 ở tick 99 — **đúng nguyên văn luật thật** — rồi tick 148
+            # ghi đè bằng một giả thuyết về quả. L5 là brain 0, nó có đúng MỘT
+            # ô. `found = False` là đúng; nhưng đọc CSV thì nó trông y hệt một
+            # model chưa bao giờ hiểu gì, và kết luận sẽ sai hoàn toàn.
+            t_ever: int | None = None
+            for t, _sl, lw in timeline:
+                if lw is not None and match(lw, law, sits[i]) >= law_config.MATCH_THETA:
+                    t_ever = t if t_ever is None else min(t_ever, t)
+
             speed = 0.0 if t_i is None else max(0.0, min(1.0, 1.0 - t_i / ticks))
             w_i = law_config.LAW_WEIGHT.get(law.tier(), 1.0)
             floor = law_config.SPEED_FLOOR
@@ -203,6 +221,9 @@ def score_match(log: Path, truth: Path) -> list[dict]:
                 # của `analyze.py` đã đoán bằng một chuỗi heuristic có hằng số
                 # 400 viết cứng. Bên SINH ra dữ liệu là bên biết câu trả lời.
                 "found": t_i is not None,
+                # Chẩn đoán, KHÔNG vào điểm. Xem ghi chú ở trên.
+                "ever_stated": t_ever is not None,
+                "t_ever": ticks + 1 if t_ever is None else t_ever,
                 "speed": round(speed, 4),
                 "R_i": round(r_i, 4),
                 "exploit_lag": _exploit_lag(rows, cid, law, t_i, ticks),
@@ -234,7 +255,8 @@ def total_reward(rows: list[dict]) -> dict[str, float]:
 
 FIELDS = [
     "match_id", "seed", "creature_id", "species_id", "law_idx", "tier", "w",
-    "match", "found", "t_discover", "speed", "R_i", "exploit_lag", "pred_acc",
+    "match", "found", "ever_stated", "t_ever", "t_discover", "speed", "R_i",
+    "exploit_lag", "pred_acc",
     "R_survive",
 ]
 

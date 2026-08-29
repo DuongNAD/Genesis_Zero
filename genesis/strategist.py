@@ -16,6 +16,7 @@ from genesis.codex import Codex
 from genesis.fieldnotes import FieldNotes, Note
 from genesis.lawdsl import Dur, Mag, vocab_for_brain
 from genesis.lineage import forget_on_death
+from genesis.minds import Minds
 from genesis.llm_client import CircuitBreaker, ask
 from genesis.lawdsl import Law, to_json
 from genesis.prompt import PromptCache, _PHASE_VN, _TERRAIN_VN, prompt_hash, user_block
@@ -80,6 +81,63 @@ def _arg_options(kind: str, sm=None) -> list[str] | None:
 
 # Dùng cho test: các kind mà `ARG_DOMAIN` khai miền RỖNG = không nhận arg.
 ARGLESS_KINDS_FOR_TEST = frozenset(k for k, v in ARG_DOMAIN.items() if not v)
+
+
+def _effect_schema(names: list[str], sm=None) -> dict:
+    """Schema khối `effect`, BẮT BUỘC đúng những trường hệ quả ấy thật sự mang.
+
+    Nguồn là `lawdsl.EFFECT_FIELDS` — cùng bảng `random_law` dùng để sinh.
+
+    **Vì sao bắt buộc chứ không để tuỳ.** `verify.agree` nhân điểm trên từng
+    chiều mà luật THẬT có định nghĩa; thiếu một chiều thì chiều ấy ăn **0** và
+    kéo cả tích về 0. Nên một mục đúng trigger, đúng điều kiện, đúng loại hệ
+    quả mà quên `dur` vẫn ăn đúng **0 điểm**.
+
+    Đo trên toàn bộ 235 mục Sổ Luật ghi được trong ngày: **chỉ 23% nêu cả `mag`
+    lẫn `dur`**. 77% dữ liệu **không thể ăn điểm về mặt cấu trúc** — kể cả mục
+    `WHEN DRINK THEN DAMAGE` mà Qwen-14B viết ở tick 99, **đúng nguyên văn luật
+    thật**, nhưng thiếu `dur` nên `match = 0.000`.
+
+    Đây là lần thứ sáu cùng một bài học của [B-01]: **cái gì bộ chấm hay bộ xác
+    thực bắt bẻ thì schema phải đòi trước.** Để model tự đoán là bắt nó khám phá
+    lại luật chơi bằng chính lượt nghĩ dành để khám phá thế giới.
+
+    Không nới `agree` để "cho điểm phần đúng": một luật không nêu `mag`/`dur`
+    khớp với MỌI cường độ, và trả điểm cho nó là trả điểm cho sự mơ hồ.
+    """
+    from genesis.lawdsl import EFFECT_FIELDS
+
+    field_schema = {
+        "mag": {"type": "string", "enum": [m.value for m in Mag]},
+        "dur": {"type": "string", "enum": [d.value for d in Dur]},
+        "r": {"type": "integer", "minimum": 1, "maximum": 3},
+    }
+    # Gộp các hệ quả CÙNG bộ trường vào một nhánh: 9 hệ quả mag+dur còn 1 nhánh.
+    by_fields: dict[tuple[str, ...], list[str]] = {}
+    for n in names:
+        by_fields.setdefault(EFFECT_FIELDS.get(n, ()), []).append(n)
+
+    branches: list[dict] = []
+    for fields, kinds in by_fields.items():
+        props: dict[str, Any] = {"kind": {"type": "string", "enum": kinds}}
+        req = ["kind"]
+        for f in fields:
+            if f == "arg":
+                opts = _arg_options(kinds[0], sm)
+                if opts is None:
+                    if sm is None:
+                        continue        # không có bề mặt -> đừng đòi thứ không nêu được
+                    opts = sorted(sm.cls_to_surface.values()) + ["CORPSE"]
+                props["arg"] = {"type": "string", "enum": opts}
+            else:
+                props[f] = field_schema[f]
+            req.append(f)
+        branches.append({"type": "object", "properties": props,
+                         "required": req, "additionalProperties": False})
+    if not branches:
+        return {"type": "object", "properties": {"kind": {"type": "string"}},
+                "required": ["kind"]}
+    return branches[0] if len(branches) == 1 else {"oneOf": branches}
 
 
 def _kind_arg_schema(names: list[str], sm, extra: dict) -> dict:
@@ -221,11 +279,7 @@ def schema_for(traits: Traits, kind: str, targets: list[str] | None = None,
         cond_schema = _kind_arg_schema(
             [c.value for c in vocab.conds], sm,
             {"k": int_, "op": {"type": "string", "enum": [">=", "<="]}, "n": int_, "r": int_})
-        effect_schema = _kind_arg_schema(
-            [e.value for e in vocab.effects], sm,
-            {"mag": {"type": "string", "enum": [m.value for m in Mag]},
-             "dur": {"type": "string", "enum": [d.value for d in Dur]},
-             "r": int_})
+        effect_schema = _effect_schema([e.value for e in vocab.effects], sm)
         return {
             "type": "object",
             "properties": {
@@ -576,16 +630,17 @@ class LlmStrategist:
         self.transport = transport
         self.cache = PromptCache()
         self.breaker = CircuitBreaker()
-        self.notes: dict[str, FieldNotes] = {}
-        self.codices: dict[str, Codex] = {}
-        self.heard: dict[str, list[str]] = {}
-        self.notepad: dict[str, str] = {}
+        # Trí nhớ và tầng xã hội nằm ở `Minds` — MỘT bản, chế độ mở dùng chung.
+        # Xem `genesis/minds.py` về vì sao: năm lần đường mạng thiếu thứ đường
+        # cục bộ có, và bản nào ít người nhìn hơn thì bản ấy mục.
+        self.minds = Minds()
+        self.notepad: dict[str, str] = self.minds.notepad
         self._pending: dict[str, ActiveGoal] = {}
         # CLAIM hai pha (B-08 bất biến 2): `want_codex` là 1–2 token trong quyết
         # định thường, con nào cũng gánh được; lượt ghi sổ là một lời gọi RIÊNG ở
         # tick sau, có ngân sách riêng. Nhồi cả hai vào một schema thì L5 với 32
         # token không bao giờ tham gia được vào phần được chấm.
-        self._want_codex: set[str] = set()
+        self._want_codex: set[str] = self.minds.want_codex
         # B-13: con nào đã tích đủ điểm thích nghi thì lượt nghĩ kế tiếp dùng để
         # CHỌN HƯỚNG DỊCH. Gọi riêng, không nhét vào schema quyết định thường —
         # cùng lý do với CLAIM hai pha: nhồi vào một schema thì con 32 token
@@ -603,38 +658,38 @@ class LlmStrategist:
         self._shift_asked: dict[str, int] = {}
         # Cẩm nang theo LOÀI, sống qua nhiều ván (W-16). Rỗng thì `system_block`
         # không thêm gì — mọi ván cũ chạy y hệt.
-        self.handbooks: dict[str, str] = {}
+        self.handbooks: dict[str, str] = self.minds.handbooks
         self._pending_say: dict[str, speech.Say] = {}
-        self.reputation: dict[str, speech.Reputation] = {}
-        self.ledger = Ledger()
-        self.offers: dict[str, list[tuple[str, Law, bool]]] = {}   # cid -> [(ai, luật, đủ)]
-        self.teach_events: list = []
+        self.reputation: dict[str, speech.Reputation] = self.minds.reputation
+        self.ledger = self.minds.ledger
+        self.offers: dict[str, list[tuple[str, Law, bool]]] = self.minds.offers
+        self.teach_events: list = self.minds.teach_events
         self.stats: dict[str, int] = {
             "call": 0, "miss": 0, "semantic_fail": 0, "skipped_open": 0,
             "codex_ok": 0, "codex_bad": 0,
         }
 
     # ── bộ nhớ mỗi cá thể ────────────────────────────────────────────────
+    # Uỷ quyền sang `Minds`. Giữ nguyên tên cũ để không phải sửa 550 bài test —
+    # và quan trọng hơn: để không có BẢN SAO nào, chỉ có một chỗ giữ sự thật.
+    @property
+    def notes(self) -> dict[str, "FieldNotes"]:
+        return self.minds.notes
+
+    @property
+    def codices(self) -> dict[str, Codex]:
+        return self.minds.codices
+
+    @property
+    def heard(self) -> dict[str, list[str]]:
+        return self.minds.heard
+
     def notes_of(self, c: Creature) -> FieldNotes:
-        n = self.notes.get(c.id)
-        if n is None:
-            n = FieldNotes(cap=law_config.EVENTS_BY_BRAIN[c.traits.brain])
-            self.notes[c.id] = n
-        return n
+        return self.minds.notes_of(c)
 
     def codex_of(self, c: Creature) -> Codex:
-        cx = self.codices.get(c.id)
-        size = law_config.CODEX_SIZE_BY_BRAIN[c.traits.brain]
-        if cx is None:
-            cx = Codex(size=size)
-            self.codices[c.id] = cx
-        elif cx.size != size:
-            # brain dịch giữa ván -> sổ nới ra hoặc co lại, nhưng resize KHÔNG
-            # bao giờ được cắt mất mục đã ghi (B-08).
-            cx.resize(size)
-        return cx
+        return self.minds.codex_of(c)
 
-    # ── nhịp gọi ─────────────────────────────────────────────────────────
     @staticmethod
     def offset_of(c: Creature) -> int:
         """Rải đều trong loài: con thứ n lệch pha n bước.
@@ -665,6 +720,18 @@ class LlmStrategist:
         return system, user
 
     # ── nhịp 1: bắn cả đàn ───────────────────────────────────────────────
+    async def _ensure_slots_for(self, base_url: str, transport) -> int:
+        """`_ensure_slots` nhưng tự mở client — cho đường gọi ngoài `think`.
+
+        `oracle_run` là đường thứ tư gọi model và nó từng bỏ cả ba bài học của
+        `think` (chỗ hợp lệ, cổng chặn, hạn chờ theo đo). Cho nó mượn đúng cơ
+        chế thay vì để nó viết bản thứ hai.
+        """
+        if self._n_slots is not None:
+            return self._n_slots
+        async with httpx.AsyncClient(timeout=30.0, transport=transport) as c:
+            return await self._ensure_slots(c)
+
     async def _ensure_slots(self, client: httpx.AsyncClient) -> int:
         """Số chỗ song song của server, dò một lần rồi nhớ.
 
@@ -862,11 +929,7 @@ class LlmStrategist:
             self._pending_say[c.id] = say
 
     def rep_of(self, cid: str) -> speech.Reputation:
-        rep = self.reputation.get(cid)
-        if rep is None:
-            rep = speech.Reputation()
-            self.reputation[cid] = rep
-        return rep
+        return self.minds.rep_of(cid)
 
     def take_says(self) -> dict[str, speech.Say]:
         """Lấy VÀ xoá hàng chờ nói. Vòng tick gọi đúng một lần mỗi tick.
@@ -952,48 +1015,7 @@ class LlmStrategist:
         return choose_goal(c, world, seen, rng)
 
     def _absorb_speech(self, tick_no, world, by_id, speak_events) -> None:
-        """Lời nói vào hàng chờ của người nghe, và vào trí nhớ về kẻ nói.
-
-        Người nghe **không tự động tin** (B-12 bất biến 2): luật nghe được nằm ở
-        khối "NGHE ĐƯỢC" kèm ai nói và độ tin quá khứ của kẻ đó, chứ không vào
-        Sổ Luật. Muốn vào sổ thì chính agent phải `SET` — tốn một ô, tốn energy.
-        Chép mù thì hết ô để chứa thứ mình tự tìm ra.
-        """
-        from genesis.teach import apply_teach, hide_effect, render_offer
-
-        for ev in speak_events:
-            speaker = by_id.get(ev["creature_id"])
-            if speaker is None:
-                continue
-            say = speech.Say(ev["signal"], ev["text"], ev["teach"])
-            full = [by_id[i] for i in ev["hear_full"] if i in by_id]
-            sig = [by_id[i] for i in ev["hear_signal"] if i in by_id]
-
-            for who, is_full in [(h, True) for h in full] + [(h, False) for h in sig]:
-                self.rep_of(who.id).record_speech(speaker.id, say.signal, tick_no)
-                self.heard.setdefault(who.id, []).append(
-                    speech.render_heard(speaker.id, say, full=is_full)
-                )
-                del self.heard[who.id][:-law_config.HEARD_MAX]
-
-            if say.teach is None:
-                continue
-            entries = self.codex_of(speaker).entries()
-            if not (0 <= say.teach < len(entries)) or entries[say.teach] is None:
-                continue
-            law = entries[say.teach].law
-            self.teach_events.extend(
-                apply_teach(speaker, law, full, sig, tick_no, self.ledger)
-            )
-            for who, is_full in [(h, True) for h in full] + [(h, False) for h in sig]:
-                offered = law if is_full else hide_effect(law)
-                self.offers.setdefault(who.id, []).append((speaker.id, offered, is_full))
-                del self.offers[who.id][:-law_config.HEARD_MAX]
-                self.heard.setdefault(who.id, []).append(render_offer(
-                    speaker.id, offered, world.surface_map,
-                    self.rep_of(who.id).trust(speaker.id), is_full,
-                ))
-                del self.heard[who.id][:-law_config.HEARD_MAX]
+        self.minds.absorb_speech(tick_no, world, by_id, speak_events)
 
     def _absorb_shift(self, c, tick_no, phash, r, elapsed_ms) -> None:
         """Hướng dịch trait do chính LLM của con đó chọn (B-13).

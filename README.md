@@ -90,33 +90,37 @@ kiểm điều đó từ ngoài.
 
 | | |
 |---|---|
-| Test | **548 mục, xanh** |
-| Phiếu việc | 61, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
+| Test | **554 mục, xanh** |
+| Phiếu việc | 62, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
 | Model 7B thật | ghi sổ đều, **`match` vẫn 0.000** — xem dưới |
 
 ### Kết quả trung thực nhất tới giờ
 
-Qwen2.5-7B, ba ván 200 lượt: **149 lần ghi Sổ Luật, 133 được nhận, 0% lượt nghĩ
-bị trượt — và `match = 0.000` cả ba.**
+Chưa model nào ăn được điểm. Nhưng câu chuyện đằng sau con số 0 đã đổi hai lần.
 
-Không phải lỗi đường ống. Chế độ gian lận (server giả biết trước đáp án) cho
-`match = 1.000`, nên bộ chấm bắt được lời giải đúng.
-
-Chỗ hỏng là **sự chú ý của model**:
+**Qwen2.5-14B, seed 55, tick 99** — một sinh vật ghi vào Sổ Luật:
 
 ```
-LÀM GÌ trong ván        VIẾT VỀ GÌ trong Sổ Luật
-  EAT     309  48,4%         32   72,7%
-  DRINK   168  26,3%          0    0,0%   ←
+WHEN DRINK() THEN DAMAGE
 ```
 
-Sinh vật **uống nước 168 lần**, luật `DRINK → DAMAGE` nổ **155 lần**, và sổ tay
-ghi rành rành `t99/t84/t64: TÔI uống nước → máu tụt hẳn xuống`. Không con nào
-ghi nó. Chúng viết `EAT → HEAL` 24 lần.
+Đó là **đúng nguyên văn luật thật**. Điểm vẫn `0.000`, và lý do không phải model:
+nó ghi `mag=MED`, **quên `dur`**. Bộ chấm **nhân** điểm trên từng chiều luật thật
+có định nghĩa — `mag` kề nhau ăn 0,85, `dur` thiếu ăn 0, tích về 0. Mà schema
+lúc ấy **không đòi** `mag`/`dur`.
 
-Nó làm đúng thí nghiệm rồi không nhìn kết quả. Đó là bài toán còn lại.
+Đếm lại toàn bộ 235 mục Sổ Luật thu được: **chỉ 23% nêu đủ hai trường bộ chấm
+cần.** 77% dữ liệu không thể ăn điểm về mặt cấu trúc. Đã vá (`lawdsl.EFFECT_FIELDS`,
+một bảng cho cả bộ sinh luật lẫn schema); tỉ lệ giờ là **100%**.
+
+Đây là lần thứ **sáu** cùng một bài học: *cái gì bộ chấm bắt bẻ thì schema phải
+đòi trước.* Mỗi lần đều làm dữ liệu chết trong im lặng, và mỗi lần đều suýt
+thành một kết luận sai về model.
+
+Ván đầu tiên chạy trên nền đã sửa mới có **5 mục sổ** — quá nhỏ để kết luận gì.
+Việc tiếp theo là mẫu đủ lớn, không phải một ván đẹp hơn.
 
 ---
 
@@ -139,7 +143,7 @@ bất biến, cách nghiệm thu, và — quan trọng nhất — **những lỗ
 
 ```bash
 make preflight    # máy này chạy được một ván thật chưa?
-make test         # 548 test
+make test         # 554 test
 make serve        # server ván, cổng 8000
 make hostile      # kiểm cửa chống lạm dụng — chạy TRƯỚC khi phơi ra internet
 make expose       # mở tunnel ngrok

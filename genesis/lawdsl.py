@@ -305,6 +305,31 @@ def vocab_for_brain(brain: int) -> Vocab:
 
 # ─── 5. random_law ───────────────────────────────────────────────────────────
 
+# Trường mà MỖI hệ quả thật sự mang. `random_law` ở dưới sinh đúng theo bảng
+# này; `strategist._effect_schema` đọc đúng bảng này để BẮT BUỘC model nêu chúng.
+#
+# Vì sao phải bắt buộc: `verify.agree` nhân điểm trên từng chiều mà luật THẬT có
+# định nghĩa, và thiếu một chiều thì chiều ấy ăn **0**, kéo cả tích về 0. Nên
+# một luật đúng trigger, đúng điều kiện, đúng loại hệ quả, mà quên `dur` thì
+# vẫn ăn đúng 0 điểm.
+#
+# Đo trên toàn bộ mục Sổ Luật ghi trong ngày: **235 mục, chỉ 23% nêu cả `mag`
+# lẫn `dur`**. Tức 77% dữ liệu thu được **không thể ăn điểm về mặt cấu trúc** —
+# kể cả mục `WHEN DRINK THEN DAMAGE` của Qwen-14B, đúng nguyên văn luật thật.
+EFFECT_FIELDS: dict[str, tuple[str, ...]] = {
+    "DAMAGE": ("mag", "dur"), "HEAL": ("mag", "dur"),
+    "ENERGY_GAIN": ("mag", "dur"), "ENERGY_DRAIN": ("mag", "dur"),
+    "POISON": ("mag", "dur"),
+    "SPEED_UP": ("mag", "dur"), "SPEED_DOWN": ("mag", "dur"),
+    "ARMOR_UP": ("mag", "dur"), "ARMOR_DOWN": ("mag", "dur"),
+    "STUN": ("dur",), "BLIND": ("dur",),
+    "REVEAL": ("r", "dur"),
+    "TELEPORT": ("r",),
+    "SPAWN": ("arg", "r"),
+    "SPREAD": ("arg",),
+}
+
+
 def random_law(rng: random.Random, vocab: Vocab | None = None) -> Law:
     if vocab is None:
         vocab = vocab_for_brain(5)

@@ -11,7 +11,7 @@
 |---|---|
 | Tài liệu thiết kế | ✅ v4 (sandbox) + v5 (luật ẩn) + thế giới mở |
 | Hằng số | ✅ `config.py` đã tune (W-12) · ✅ `law_config.py` (W-13) |
-| Khung kho, log, kiểm thử | ✅ `make test` xanh, **548 test** |
+| Khung kho, log, kiểm thử | ✅ `make test` xanh, **554 test** |
 | Vòng tick | ✅ 6 pha tất định + uống nước, 4 loại quả, ngày/đêm, gió, hoán vị bề mặt, **kênh nói** |
 | Tầng tâm trí | ✅ prompt 5 khối · sổ tay · Sổ Luật + CLAIM hai pha · oracle · replay · `score.py` |
 | Thế giới mở | ✅ server + 6 endpoint + WebSocket xem live · client một lệnh ở `client/` |
@@ -51,6 +51,40 @@ uvicorn net.server:app --port 8000
 ```
 Ván mở tự chạy vòng `LOBBY → SEEDING → RUNNING → REVEAL → COOLDOWN`, tự ghi
 `runs/open/<match_id>.jsonl` và `.truth.json`, chấm được bằng đúng `genesis.score`.
+
+### ▶ Mai bắt đầu từ đây
+
+Sáu lỗi vá hôm nay đều thuộc một họ: **cái gì bộ chấm hay bộ xác thực bắt bẻ thì
+schema phải đòi trước.** Nền giờ sạch nhất từ trước tới nay, nhưng chưa có phép
+đo nào đứng trên nền ấy.
+
+**Việc 1 — chạy mẫu đủ lớn, bằng model NHANH.**
+```bash
+SLOTS=8 bash scripts/serve_L2.sh        # Qwen-7B, ~14 tok/s
+bash scripts/final_run.sh models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf 55 26 32 9 3
+```
+7B là lựa chọn đúng ở đây **không phải vì nó giỏi hơn** mà vì nó nhanh gấp 2,5
+lần: cần **mẫu**, không cần một ván đẹp. Mọi lỗi schema từng bóp chết dữ liệu 7B
+hôm qua đã vá.
+
+**Việc 2 — nếu vẫn 0, kiểm bộ chấm TRƯỚC khi đổi model.**
+```bash
+python scripts/fake_model_server.py --port 8099 --cheat-seed 55 &
+python -m genesis.run --seed 55 --ticks 200 --llm all --llm-url http://127.0.0.1:8099 \
+  --out runs/cheat.jsonl --truth runs/cheat.truth.json
+python -m genesis.score runs/cheat.jsonl runs/cheat.truth.json
+```
+Phải ra `match = 1.000`. Nếu không, lỗi ở bộ chấm chứ không ở model.
+
+**Việc 3 — đọc cột `ever_stated` trước cột `found`.** Chúng trả lời hai câu khác
+nhau: "chưa bao giờ tìm ra" và "tìm ra rồi đánh mất". `L5:1` hôm nay thuộc loại
+thứ hai — brain 0 có đúng **một ô sổ**, nó tìm ra ở tick 99 rồi phải xoá ở tick
+148 để ghi thứ khác.
+
+**Còn nợ, không gấp:** [N-16](tasks/N-16-ngang-bang-mang.md) còn 3/5 (dạy nhau +
+sổ ghi công, dịch trait, cẩm nang chưa chạy ở chế độ mở) · [N-02 §5](tasks/N-02-seam-registry.md)
+`genesis/registry.py` là mã chết trùng với `net.match.Registration`, hoặc gộp
+hoặc xoá · cơ chế **Linh cảm** đã thiết kế xong, chưa viết.
 
 ### Đang bị chặn vì thiếu tài nguyên ngoài
 
@@ -263,6 +297,8 @@ Nếu lệnh nghiệm thu chưa pass thì trạng thái là `🟨`, không phả
 |---|---|---|
 | 2026-08-29 | ✅ **W-14** ba danh hiệu · ✅ **W-15** năm bản đồ · ✅ **N-14** trang xem 3D · ✅ **N-10b/c** nhiều client | Ba việc mới theo yêu cầu. **W-14**: không cộng ba danh hiệu thành một điểm — một trọng số duy nhất giữa "hiểu" và "sống" là một tuyên bố ta **chưa biết đúng**, và đó chính là câu hỏi Q7. Để riêng thì khoảng cách giữa ba bảng **là dữ liệu**. Thêm một dòng cảnh báo khi không ai tìm ra luật: lúc ấy `R = 0.1·R_survive` cho tất cả và bảng "Nhà khoa học" chỉ là bảng sinh tồn thu nhỏ — không nói thẳng thì có người đọc nó như một kết luận về quy nạp. **W-15**: cổng khả giải phải chạy theo cặp `(bản đồ, seed)`, và đo thẳng cho thấy vì sao — một luật `DRINK` kích hoạt **349** lần trên sa mạc so với **1880** trên quần đảo. Quét `plant_scale` 0,8→3,0 trên cả năm bản đồ và kết luận thẳng: **M1 là tính chất của ĐỒNG CỎ**; ở sa mạc và hẻm núi thêm thức ăn không cứu được vì chết ở đó đến từ chen chúc, không từ đói. **N-14**: three.js r128 UMD vendor trong `web/vendor/` (chạy được cả từ `file://`), địa hình gửi **một lần** mỗi ván dưới dạng chuỗi một ký tự mỗi ô — gửi mỗi tick thì 3 KB × 200 tick chiếm gần hết băng thông luồng xem. Phát hiện kèm: trang 2D đang vẽ **ô caro giả** cho mọi bản đồ, nên năm bản đồ trông giống hệt nhau — giờ nó cũng đọc địa hình từ khung. |
 | 2026-08-29 | ✅ **R-03 đã huấn luyện thật** — và tôi đã nói sai là nó bị chặn | Kiểm lại máy: **32 GB, Apple M5, torch 2.13 + MPS, `peft` và `transformers` đã cài sẵn**. Chỉ thiếu `trl` — mà `trl` **không cần**: `GRPOTrainer` của nó dựng cho vòng sinh trực tuyến, còn ở đây rollout đã có sẵn (chúng là những ván đã chơi). Viết GRPO **ngoại tuyến** bằng torch + peft trực tiếp: `L = −Σ A·log π(y|x) + β·KL(π‖π_ref)`, `π_ref` là chính base model với adapter tắt đi (không cần bản sao thứ hai trong RAM). Chạy 30 bước LoRA trên Qwen2.5-0.5B, lưu adapter 2,1 MB (540k tham số, 0,11%). **Cộng một lỗi của tôi:** `samples_from` chỉ dùng `ΣR_i` thay vì `total_reward` — mà khi chưa con nào tìm ra luật thì `ΣR_i = 0` cho tất cả, mọi lợi thế trong nhóm bằng 0, và GRPO **không có một gradient nào**. Cái đuôi `0.1·R_survive` chính là dây neo cho giai đoạn đầu, đúng lúc cần tín hiệu nhất. |
+| 2026-08-30 | 🔴 **Lỗi thứ sáu, và nó đã bóp chết 77% dữ liệu cả ngày trong im lặng** | Qwen-14B, seed 55, tick 99: `L5:1` ghi `WHEN DRINK THEN DAMAGE` — **đúng nguyên văn luật thật L0**. `match = 0.000`. Không phải lỗi chấm: nó ghi `mag=MED` và **không ghi `dur`**, mà `verify.agree` **nhân** điểm trên từng chiều luật thật có định nghĩa — `mag` kề nhau ăn 0,85, `dur` thiếu ăn **0**, tích về 0. Đúng trigger, đúng điều kiện, đúng loại hệ quả, vẫn 0 điểm. Và schema **không đòi** `mag`/`dur` (`required: ["kind"]`). Đếm toàn bộ **235 mục Sổ Luật hợp lệ ghi trong ngày**, mọi model, mọi ván: có `dur` 77%, có `mag` 30%, **có cả hai — điều kiện CẦN để ăn điểm — chỉ 23%**. Tức 77% dữ liệu thu được **không thể ăn điểm về mặt cấu trúc**, và mọi kết luận tôi rút ra hôm qua về năng lực quy nạp của model đều đứng trên nền hỏng. Sửa: `lawdsl.EFFECT_FIELDS` — MỘT bảng, `random_law` sinh theo nó, `_effect_schema` đòi theo nó, và một test fuzz 400 luật khoá hai bên không cho lệch. **Không nới `agree`**: một luật không nêu cường độ thì khớp với MỌI cường độ, trả điểm cho nó là trả điểm cho sự mơ hồ. Đo lại: mục sổ nêu đủ `mag`+`dur` **23% → 100%**. Đây là lần thứ **sáu** cùng bài học B-01 (`target` không enum · `target` không bắt buộc · `arg` không enum · `slot` không trần · `arg` sai miền theo kind · giờ là `mag`/`dur` không bắt buộc). |
+| 2026-08-30 | 📊 Ván đầu tiên với schema đúng — và nó là mẫu QUÁ NHỎ để kết luận | 14B, seed 55, 120 tick, schema đã sửa: `match = 0.000`, `ever_stated = 0`, **5 mục sổ** (ván 200 tick hôm qua có 18). Nêu đủ trường 5/5. Nhưng số mục giảm chính vì bản vá: đòi thêm `mag`/`dur` làm mỗi câu trả lời `codex` dài ra, mà 14B sinh 5–6 tok/s. **Đây không phải bằng chứng model kém — đây là một mẫu 5 điểm.** Năm giả thuyết nó viết: 3 về ăn quả, 2 về giẫm lên địa hình; luật thật nằm ở `DRINK`, `ADJACENT`, `PHASE_ENTER`. Việc đúng tiếp theo là chạy nhiều seed với model **nhanh hơn** (7B, giờ đã hết lỗi schema) để có mẫu đủ lớn, chứ không phải chạy thêm một ván 14B nữa. |
 | 2026-08-29 | 🧹 Ba lần cùng một họ lỗi: **hai đường chạy, một đường bị bỏ quên** | Vá xong lần thứ ba nên ghi lại thành một mẫu. (1) `schema_for` dựng ở hai chỗ — đường mạng thiếu `targets` lẫn `sm`, nên luật ăn quả **bất khả về cấu trúc** với mọi client qua mạng. (2) `founder_traits` chỉ biết `config.FOUNDERS`, nên người chơi chọn brain 5 **tụt về brain 2** sau cái chết đầu tiên, im lặng, 64 lượt chết một ván. (3) quên-khi-chết của [W-17](tasks/W-17-doi.md) chỉ có ở `strategist.observe`, mà chế độ mở dùng `RemoteClientStrategist` không có `observe` — sinh vật qua mạng **giữ nguyên sổ tay thô qua mọi đời**. Cả ba đều **chỉ tồn tại ở chế độ mở**, tức không bao giờ hiện ra cho tới đúng lúc mở tunnel cho người khác vào. Cách sửa cả ba lần đều là **gom về một chỗ** chứ không phải đồng bộ hai chỗ: `lineage.forget_on_death` giờ là một hàm, hai đường gọi vào. Và còn một cái bẫy nữa chưa nổ, đã ghi vào [N-02 §5](tasks/N-02-seam-registry.md): `genesis/registry.py` (100 dòng, có test) **không file sản phẩm nào import** — chế độ mở dùng `net.match.Registration` thay thế. Hoặc gộp, hoặc xoá; đừng để nguyên. |
 | 2026-08-29 | ✅ **B-06** khép lại · 📌 đổi bộ mô phỏng là **vô hiệu hoá mọi log cũ** | Bốn lỗ hổng replay đã vá xong và bộ canh chứng minh được là nó còn sống: `samples_from` trên một log sinh TRƯỚC [W-17](tasks/W-17-doi.md) **ném đúng chỗ** — `t=29 L3:1: prompt_hash lệch`, vì thừa kế đổi vector trait sau cái chết đầu tiên và vector ấy nằm trong khối E của prompt. Cùng hàm ấy trên log sinh SAU W-17 thì khớp sạch. Đó là bất biến 2 của [B-06](tasks/B-06-replay.md) chạy đúng như thiết kế, không phải lỗi. Nhưng hệ quả vận hành thì thật và dễ quên: **mỗi lần đổi bộ mô phỏng, mọi log đã thu phải bỏ đi và thu lại**, nếu không thì R-02 lặng lẽ bỏ hết mẫu (hoặc tệ hơn: ta nới bộ canh để "cho nó chạy" và huấn luyện trên prompt model chưa bao giờ thấy). |
 | 2026-08-29 | 🚪 **Gate D** — luật phải PHÁT BIỂU ĐƯỢC, không chỉ nhìn thấy được | Ba ván 7B sạch (0% trượt, 149 lần ghi Sổ Luật, 133 được nhận) mà `match` vẫn 0,000. Truy ra hai chuyện tách rời. **Một:** `_generate_law_for_tier` gọi `random_law(rng)` **không truyền vocab**, tức bốc từ từ vựng brain 5 rồi giao cho cả đàn — trong khi `vocab_for_brain` cắt từ vựng theo brain (`ADJACENT`/`PHASE_ENTER` chỉ có từ brain 4; `max_conds = 0` với brain 0–1). Seed 55 sinh `ADJACENT(OTHER_SP) -> POISON`, **nổ 324 lần, nhiều nhất ván**, mà **4/5 loài không có chữ `ADJACENT`** — chúng chịu hệ quả suốt 200 tick và không cách nào ghi nó. Đếm 40 seed: **16 seed (40%)** không có luật nào brain 0 phát biểu nổi. Thêm Gate D, song sinh của Gate A: Gate A hỏi *nhìn thấy được không*, Gate D hỏi *nói ra được không*. Ràng ở mức **BỘ** (≥1 luật) chứ không từng luật — bắt mọi luật nói được ở brain 0 sẽ ép cả ván về 5 trigger và 0 điều kiện, tức xoá phần thưởng từ vựng mà brain đổi bằng 4 điểm trait. Ngưỡng **suy từ TIER PLAN**, không phải hằng 0: `HARSH` là `D2 D2 D3 D4`, không tier D1 nào, nên đòi brain 0 ở đó là đòi điều bất khả (đã làm đỏ 4 test). **Lái chứ không loại**, và lái đúng luật ở tier DỄ NHẤT — thay luật cuối thì seed 12 chết, vì luật D3/D4 mang hai điều kiện và không bản thay nào của tier ấy nói được ở brain 0. |

@@ -88,14 +88,35 @@ async def run_oracle(
     if not jobs:
         return {}
 
+    # Đường thứ TƯ gọi model, và nó từng bỏ cả ba thứ mà `strategist.think` học
+    # được sau ba lần hỏng:
+    #
+    #   1. `id_slot` thô 0..14 trong khi server chỉ có 8 chỗ -> mọi lời gọi từ
+    #      chỗ 8 trở lên **hỏng** ("lỗi mạng ... slot 12/13/14"), và prefix cache
+    #      của những con ấy không bao giờ chạy.
+    #   2. không có cổng chặn -> cả đàn bay cùng lúc, phần thừa xếp hàng TRONG
+    #      server và hạn chờ đếm cả lúc chờ.
+    #   3. hạn chờ cứng -> đúng cái đã làm 20/41 lời gọi của Qwen-14B trượt.
+    #
+    # Dùng lại đúng cơ chế của `think`, không viết bản thứ hai.
+    n = await strategist._ensure_slots_for(strategist.base_url, strategist.transport)
+    waves = max(1, -(-len(jobs) // max(1, n)))
+    timeout = max(strategist.timeout,
+                  3.0 * (getattr(strategist, "_call_ms", None) or 0.0) / 1000.0) * waves
+    gate = asyncio.Semaphore(n)
+
     async with httpx.AsyncClient(
-        timeout=strategist.timeout, transport=strategist.transport
+        timeout=timeout, transport=strategist.transport
     ) as client:
+        async def _one(c, system, body):
+            async with gate:
+                return await ask(
+                    strategist.base_url, strategist.slots[c.id] % n, system, body,
+                    law_config.CLAIM_BUDGET_BY_BRAIN[c.traits.brain] * 2,
+                    schema_for(c.traits, "oracle", sm=world.surface_map), client=client)
+
         results = await asyncio.gather(*[
-            ask(strategist.base_url, strategist.slots[c.id], system, body,
-                law_config.CLAIM_BUDGET_BY_BRAIN[c.traits.brain] * 2,
-                schema_for(c.traits, "oracle"), client=client)
-            for c, _i, _law, _sits, system, body in jobs
+            _one(c, system, body) for c, _i, _law, _sits, system, body in jobs
         ])
 
     per_creature: dict[str, list[float]] = {}

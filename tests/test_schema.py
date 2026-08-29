@@ -231,3 +231,48 @@ def test_moi_rang_buoc_cua_bo_xac_thuc_deu_co_trong_schema():
         sh = schema_for(t, "shift")
         for f in ("from", "to"):
             assert set(sh["properties"][f]["enum"]) == set(config.TRAIT_NAMES)
+
+
+def test_schema_doi_dung_truong_ma_bo_cham_can():
+    """`verify.agree` nhân điểm trên từng chiều luật THẬT có; thiếu chiều nào
+    thì chiều ấy ăn **0** và kéo cả tích về 0.
+
+    Nên một mục đúng trigger, đúng điều kiện, đúng loại hệ quả mà quên `dur`
+    vẫn ăn đúng **0 điểm**. Đo trên 235 mục Sổ Luật ghi được trong một ngày:
+    **chỉ 23% nêu cả `mag` lẫn `dur`** — 77% dữ liệu không thể ăn điểm về mặt
+    cấu trúc, kể cả mục `WHEN DRINK THEN DAMAGE` của Qwen-14B, đúng nguyên văn
+    luật thật.
+
+    Lần thứ sáu cùng bài học B-01: cái gì bộ chấm bắt bẻ thì schema phải đòi.
+    """
+    from genesis.lawdsl import EFFECT_FIELDS
+    from genesis.tick import build_match
+
+    world, _, _, _ = build_match(55)
+    s = schema_for(founder_traits("L1"), "codex", sm=world.surface_map)
+    eff = s["properties"]["law"]["properties"]["effect"]
+    for b in eff.get("oneOf", [eff]):
+        for kind in b["properties"]["kind"]["enum"]:
+            for f in EFFECT_FIELDS[kind]:
+                assert f in b["required"], f"{kind} mang {f} mà schema không đòi"
+        # và không đòi thứ hệ quả ấy KHÔNG mang
+        thua = set(b["required"]) - {"kind"} - set(EFFECT_FIELDS[b["properties"]["kind"]["enum"][0]])
+        assert not thua, f"đòi thừa {thua}"
+
+
+def test_bang_EFFECT_FIELDS_khop_voi_bo_sinh_luat():
+    """Bảng và bộ sinh luật KHÔNG được lệch nhau.
+
+    Lệch thì schema đòi một trường luật thật không có (model không nêu nổi),
+    hoặc bỏ qua một trường luật thật có (mọi mục ăn 0 trong im lặng).
+    """
+    import random
+
+    from genesis.lawdsl import EFFECT_FIELDS, random_law, to_json, vocab_for_brain
+
+    v = vocab_for_brain(5)
+    for seed in range(400):
+        d = to_json(random_law(random.Random(seed), v))["effect"]
+        want = set(EFFECT_FIELDS[d["kind"]])
+        got = {f for f in ("mag", "dur", "r", "arg") if d.get(f) is not None}
+        assert got == want, f"{d['kind']}: bảng nói {want}, bộ sinh cho {got}"
