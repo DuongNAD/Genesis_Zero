@@ -63,3 +63,47 @@ def test_routes_work_truyen_ca_hai():
     goi = src[i:i + 200]
     assert "targets=" in goi, "đường mạng quên targets"
     assert "sm=" in goi, "đường mạng quên sm"
+
+
+def test_nguoi_choi_qua_mang_NGHE_DUOC():
+    """`heard` phải có thật ở đường mạng, không phải tuple rỗng cứng.
+
+    Trước đó `routes_work` truyền thẳng `heard=()`: **người chơi qua mạng không
+    bao giờ nghe thấy ai**. Cả tầng xã hội (B-11 nói, B-12 dạy) không tồn tại ở
+    chế độ mở — mà chế độ mở chính là chỗ câu hỏi Q2 của dự án ("giao tiếp đáng
+    giá bao nhiêu?") phải được đo.
+    """
+    from genesis import speech
+    from net import routes_work
+    from net.match import MatchRunner
+
+    r = MatchRunner(seed=1, ticks=5, tick_ms=1, log_dir=None)
+    mid = r.match_id
+    try:
+        r._absorb_speech_for_clients([{
+            "kind": "SPEAK", "creature_id": "L1:0",
+            "signal": "ALARM", "text": "coi chừng nước", "teach": None,
+            "hear_full": ["L2:0"], "hear_signal": ["L3:0"],
+        }])
+        assert routes_work._heard[(mid, "L2:0")], "người nghe gần phải nghe ĐỦ CÂU"
+        assert routes_work._heard[(mid, "L3:0")], "người nghe xa phải nghe ÍT NHẤT tín hiệu"
+        # người ở xa nghe được ÍT hơn người ở gần
+        assert len(routes_work._heard[(mid, "L3:0")][0]) < \
+               len(routes_work._heard[(mid, "L2:0")][0])
+        assert (mid, "L1:0") not in routes_work._heard, "người nói không tự nghe mình"
+    finally:
+        routes_work.clear_work_state()
+
+
+def test_van_mo_ghi_prompt_hash():
+    """Không có `prompt_hash` thì log ván MỞ không dựng lại được mẫu huấn luyện.
+
+    `rollout.samples_from` đối chiếu `prompt_hash` và **bỏ mọi mẫu không khớp**
+    — mà ván mở chính là chỗ dữ liệu thật sẽ đến từ đó. Thiếu trường này nghĩa
+    là toàn bộ dữ liệu quý nhất của dự án không dùng để huấn luyện được.
+    """
+    from net.routes_work import WorkRecord
+    import dataclasses
+
+    names = {f.name for f in dataclasses.fields(WorkRecord)}
+    assert "prompt_hash" in names

@@ -370,9 +370,38 @@ class MatchRunner:
             self.world, self.creatures, self.tick_no, self.rng, self.state,
             laws=self._laws, strategist=self.strategist, log=frame_log,
         )
+        self._absorb_speech_for_clients(frame_log.events)
         self._forget_for_dead(frame_log.events)
         self._publish(self.tick_no, frame_log.events)
         self.tick_no += 1
+
+    def _absorb_speech_for_clients(self, events: list[dict]) -> None:
+        """Đổ lời nghe được vào hàng của từng cá thể (B-11).
+
+        Vòng tick đã tính sẵn AI nghe được gì (`hear_full` / `hear_signal`) —
+        đây chỉ là đổ sang chỗ `routes_work` đọc. Trước đó đường mạng truyền
+        thẳng `heard=()`, tức **người chơi qua mạng không bao giờ nghe thấy
+        ai**: cả tầng xã hội không tồn tại ở chế độ mở, và câu hỏi Q2 của dự án
+        ("giao tiếp đáng giá bao nhiêu?") không đo được ở đúng chế độ sinh ra
+        để hỏi nó.
+
+        CHƯA có phần dạy nhau (`teach`) và sổ ghi công — xem
+        `docs/tasks/N-16-ngang-bang-mang.md`.
+        """
+        from genesis import law_config, speech
+        from net import routes_work
+
+        mid = self.match_id
+        for ev in events:
+            if ev.get("kind") != "SPEAK":
+                continue
+            say = speech.Say(ev.get("signal"), ev.get("text"), ev.get("teach"))
+            for ids, full in ((ev.get("hear_full") or (), True),
+                              (ev.get("hear_signal") or (), False)):
+                for hid in ids:
+                    q = routes_work._heard.setdefault((mid, hid), [])
+                    q.append(speech.render_heard(ev["creature_id"], say, full=full))
+                    del q[:-law_config.HEARD_MAX]
 
     def _forget_for_dead(self, events: list[dict]) -> None:
         """Sang đời mới thì sổ tay chết theo, Sổ Luật bớt chắc chắn (W-17).

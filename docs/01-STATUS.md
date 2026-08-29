@@ -220,6 +220,7 @@ Cột **Giao?**: `✅` giao được cho model rẻ · `⚠️` giao được ph
 | [N-12](tasks/N-12-xem-live.md) | Trang xem live + bảng xếp hạng mùa | ✅ | ✅ | N-08, L-07 |
 | [N-13](tasks/N-13-mesh-3d.md) | Hình 3D sinh bằng MeshyAI | ✅ | ⚠️ | N-05, N-12 |
 | [N-15](tasks/N-15-mo-ta-3d.md) | **Mô tả 3D** cho sinh vật, địa hình, quả, bản đồ | ✅ | ⚠️ | N-13, W-15 |
+| [N-16](tasks/N-16-ngang-bang-mang.md) | **Ngang bằng cục bộ / chế độ mở** | 🟨 | ❌ | N-06, N-07 |
 | [S-05](tasks/S-05-preflight.md) | **`make preflight`** — kiểm trước khi chạy thật | ✅ | ⚠️ | S-02, N-11 |
 | [N-14](tasks/N-14-map-3d.md) | **Trang xem 3D** (three.js trong repo) | ✅ | ⚠️ | N-12, W-15, N-13 |
 

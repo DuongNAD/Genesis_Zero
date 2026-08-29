@@ -14,7 +14,7 @@ from genesis import config, law_config
 from genesis.codex import Codex
 from genesis.creature import Creature, creature_sort_key
 from genesis.fieldnotes import FieldNotes
-from genesis.prompt import PromptCache, user_block
+from genesis.prompt import PromptCache, prompt_hash, user_block
 from genesis.strategist import schema_for
 from genesis.traits import founder_traits
 from genesis.world import visible
@@ -40,6 +40,11 @@ class WorkRecord:
     applied_at_tick: int | None = None
     latency_ticks: int | None = None
     cached_response: dict[str, Any] | None = None
+    # Băm của (SYSTEM + USER) đúng như client sẽ thấy. Không có nó thì log ván
+    # mở **không dựng lại được mẫu huấn luyện**: `rollout.samples_from` đối
+    # chiếu `prompt_hash` và bỏ mọi mẫu không khớp — mà ván mở chính là chỗ dữ
+    # liệu thật sẽ đến từ đó.
+    prompt_hash: str | None = None
 
 
 # Shared module state
@@ -49,6 +54,11 @@ _notes: dict[tuple[str, str], FieldNotes] = {}
 _codices: dict[tuple[str, str], Codex] = {}
 _notepads: dict[tuple[str, str], str] = {}
 _want_codex: set[tuple[str, str]] = set()
+# Lời mỗi cá thể NGHE ĐƯỢC ở tick vừa rồi. `MatchRunner` đổ vào; `user_block`
+# đọc ra. Trước đó đường mạng truyền thẳng `heard=()` — tức **người chơi qua
+# mạng không bao giờ nghe thấy ai**, và cả tầng xã hội (B-11 nói, B-12 dạy)
+# đơn giản là không tồn tại ở chế độ mở.
+_heard: dict[tuple[str, str], list[str]] = {}
 _fetched_work_keys: set[tuple[str, int, str]] = set()
 
 
@@ -59,6 +69,7 @@ def clear_work_state() -> None:
     _codices.clear()
     _notepads.clear()
     _want_codex.clear()
+    _heard.clear()
     _fetched_work_keys.clear()
 
 
@@ -171,7 +182,7 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
             issued_tick,
             notes,
             cx,
-            heard=(),
+            heard=tuple(_heard.get((match_id, c.id), ())),
             notepad=notepad,
             seen=seen,
         )
@@ -200,6 +211,13 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
             sm=state.runner.world.surface_map,
         )
 
+        # Cùng `prompt_cache` mà `/match/brief` dùng, nên băm ở đây đúng bằng
+        # băm của prompt client thật sự thấy — không phải một bản dựng lại gần
+        # đúng.
+        sys_prompt = prompt_cache.get(
+            c, reg.persona, state.runner.world.surface_map, tick_no=issued_tick
+        )
+        phash = prompt_hash(sys_prompt, ub)
         record = WorkRecord(
             work_id=work_id,
             kind=kind,
@@ -207,6 +225,7 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
             client_id=reg.client_id,
             issued_tick=issued_tick,
             deadline_tick=deadline_tick,
+            prompt_hash=phash,
         )
         _issued_works[work_id] = record
         _fetched_work_keys.add(fetch_key)
