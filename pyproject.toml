@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genesis-zero"
+version = "0.1.0"
+description = "Sandbox 2D nơi mỗi sinh vật là một tâm trí LLM và vật lý thế giới được bốc thăm mỗi ván"
+requires-python = ">=3.11"
+# `pydantic` khai TƯỜNG MINH dù `fastapi` đã kéo nó về: `net/routes_join.py` và
+# `net/routes_health.py` `import pydantic` trực tiếp. Dựa vào phụ thuộc bắc cầu
+# nghĩa là một ngày fastapi đổi backend thì server gãy, và lỗi hiện ra ở chỗ
+# không liên quan gì tới fastapi.
+dependencies = [
+    "rich>=13", "httpx>=0.27", "fastapi>=0.115", "uvicorn>=0.27", "pydantic>=2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "jsonschema>=4"]
+# Biểu đồ X-05 và kiểm định trung gian X-02.
+analysis = ["numpy>=1.26", "matplotlib>=3.8"]
+# Huấn luyện R-03. Nặng và chỉ cần khi thật sự train.
+train = ["torch>=2.2", "peft>=0.7", "transformers>=4.40"]
+# Cửa sổ xem ván (X-07). Không có nó thì vẫn chạy, chỉ không xem được.
+viz = ["pygame>=2.5"]
+
+[project.scripts]
+genesis = "genesis.run:cli"
+
+[tool.setuptools]
+# `net` và `client` cũng phải vào gói: thiếu chúng thì `pip install .` cho ra
+# bộ mô phỏng mà KHÔNG có server lẫn client — tức không có chế độ mở, thứ cả dự
+# án sinh ra để làm.
+packages = ["genesis", "net", "client"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+asyncio_mode = "auto"
+markers = ["slow: bài nạp model thật, chỉ chạy khi GENESIS_SLOW_TESTS=1"]
+filterwarnings = [
+    # starlette.testclient cảnh báo về httpx ở MỌI lần import. Nó không nói gì về
+    # code của ta và nó che mất phần đuôi của báo cáo test.
+    "ignore::starlette.exceptions.StarletteDeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]

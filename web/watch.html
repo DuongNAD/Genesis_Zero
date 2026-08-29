@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genesis Zero — Live Spectate</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0f172a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background-color: #1e293b;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #334155;
+    }
+    header h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #38bdf8;
+    }
+    .status-bar {
+      display: flex;
+      gap: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-item span.val {
+      color: #f8fafc;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .badge-phase {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background-color: #64748b;
+      color: #ffffff;
+    }
+    .badge-phase.RUNNING { background-color: #10b981; }
+    .badge-phase.REVEAL { background-color: #f59e0b; }
+    .badge-phase.LOBBY { background-color: #64748b; }
+    .badge-phase.SEEDING { background-color: #8b5cf6; }
+    .badge-phase.COOLDOWN { background-color: #64748b; }
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    .canvas-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      background-color: #020617;
+      position: relative;
+    }
+    canvas {
+      background-color: #1a2e1a;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .sidebar {
+      width: 360px;
+      background-color: #1e293b;
+      border-left: 1px solid #334155;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-section {
+      padding: 14px 18px;
+      border-bottom: 1px solid #334155;
+    }
+    .sidebar-section h2 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .event-log {
+      flex: 1;
+      padding: 14px 18px;
+      overflow-y: auto;
+      font-size: 0.75rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 6px;
+    }
+    .event-entry {
+      padding: 6px 8px;
+      border-radius: 4px;
+      background-color: #0f172a;
+      border-left: 3px solid #64748b;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .event-entry.SPEAK { border-left-color: #38bdf8; }
+    .event-entry.LAW_FIRED { border-left-color: #f59e0b; background-color: #291b00; }
+    .event-entry.EAT { border-left-color: #22c55e; }
+    .event-entry.DEATH { border-left-color: #ef4444; }
+    .event-entry.ATTACK { border-left-color: #f97316; }
+    .legend-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GENESIS ZERO &middot; SPECTATE</h1>
+    <div class="status-bar">
+      <div class="status-item">Pha: <span id="phase-badge" class="badge-phase LOBBY">LOBBY</span></div>
+      <div class="status-item">Tick: <span id="tick-val" class="val">0</span></div>
+      <div class="status-item">Sống: <span id="alive-val" class="val">0/0</span></div>
+      <div class="status-item">Quả: <span id="plants-val" class="val">0</span></div>
+      <div class="status-item">Xác: <span id="corpses-val" class="val">0</span></div>
+    </div>
+  </header>
+  <main>
+    <div class="canvas-container">
+      <canvas id="sim-canvas" width="720" height="720"></canvas>
+    </div>
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <h2>Chú giải</h2>
+        <div class="legend-grid">
+          <div class="legend-item"><div class="legend-swatch" style="background:#2d4a22;"></div> Đất trống</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#1e3a5f;"></div> Nước</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#16381e;"></div> Bụi rậm</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#4b5563;"></div> Đá</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#22c55e; border-radius:50%;"></div> Quả</div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#991b1b;"></div> Xác</div>
+          <div class="legend-item"><div class="legend-swatch" style="border:1px dashed #f59e0b;"></div> Hoang dã</div>
+          <div class="legend-item"><div class="legend-swatch" style="opacity:0.3; background:#888;"></div> Con chết</div>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <h2>Đồ thị giao tiếp</h2>
+        <p style="font-size:0.75rem; color:#94a3b8; line-height:1.4;">
+          Đường mảnh nối các con trong tầm nghe. Nhấp nháy 300ms khi phát tín hiệu SPEAK.
+        </p>
+      </div>
+      <div class="event-log" id="event-log"></div>
+    </div>
+  </main>
+  <script src="watch.js"></script>
+</body>
+</html>

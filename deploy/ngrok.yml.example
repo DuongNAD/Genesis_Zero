@@ -1,0 +1,22 @@
+# Genesis Zero — cấu hình ngrok (N-11 giai đoạn 1).
+#
+#   cp deploy/ngrok.yml.example ~/Library/Application\ Support/ngrok/ngrok.yml
+#   # rồi TỰ TAY thêm authtoken (đừng dán nó vào kho):
+#   ngrok config add-authtoken <token-của-bạn>
+#   ngrok start genesis
+#
+# `authtoken` KHÔNG có trong file này và đừng thêm vào — đây là file trong kho,
+# và bất biến 2 của N-11 là **không có secret trong kho**. `ngrok config
+# add-authtoken` ghi nó vào file config trong thư mục riêng của bạn.
+
+version: "3"
+
+endpoints:
+  - name: genesis
+    # Cổng server Genesis. Nếu bạn chạy `uvicorn ... --port` khác thì sửa ở đây.
+    upstream:
+      url: 8000
+    # Tên miền tĩnh miễn phí của ngrok. URL này KHÔNG đổi giữa các lần chạy —
+    # đó là khác biệt đáng kể so với `cloudflared --url`, vì người chơi lưu link
+    # một lần rồi dùng mãi thay vì phải hỏi lại mỗi ván.
+    url: https://<tên-miền-của-bạn>.ngrok-free.dev

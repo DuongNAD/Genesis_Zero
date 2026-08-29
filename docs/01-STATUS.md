@@ -1,0 +1,322 @@
+# 01 · Trạng thái
+
+> [00 Bản đồ](00-INDEX.md) · **01 Trạng thái** · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md)
+
+> **Nguồn sự thật duy nhất về tiến độ.** Không tài liệu nào khác được ghi trạng thái.
+> Cập nhật: **2026-08-29**.
+
+## Sự thật hôm nay, nói thẳng
+
+| | |
+|---|---|
+| Tài liệu thiết kế | ✅ v4 (sandbox) + v5 (luật ẩn) + thế giới mở |
+| Hằng số | ✅ `config.py` đã tune (W-12) · ✅ `law_config.py` (W-13) |
+| Khung kho, log, kiểm thử | ✅ `make test` xanh, **447 test**, ~40 giây |
+| Vòng tick | ✅ 6 pha tất định + uống nước, 4 loại quả, ngày/đêm, gió, hoán vị bề mặt, **kênh nói** |
+| Tầng tâm trí | ✅ prompt 5 khối · sổ tay · Sổ Luật + CLAIM hai pha · oracle · replay · `score.py` |
+| Thế giới mở | ✅ server + 6 endpoint + WebSocket xem live · client một lệnh ở `client/` |
+| Tầng xã hội | ✅ nói, dạy, giấu effect với khác loài, ghi công chống farming, đo nói dối |
+| Model thật | ✅ **Qwen2.5-1.5B**: 100 lời gọi, 1% JSON hỏng, **0% lỗi ngữ nghĩa**, 6 lần ghi Sổ Luật · `match` cao nhất **0.00** — chưa tìm ra luật nào |
+| Huấn luyện | ✅ R-01/02/03/04 — GRPO ngoại tuyến **đã chạy thật** trên MPS, adapter LoRA lưu được |
+| Thắng thua | ✅ ba danh hiệu riêng: Nhà khoa học · Kẻ sống sót · Người đầu tiên |
+| Bản đồ | ✅ năm bản đồ, cổng khả giải chạy theo cặp (bản đồ, seed) |
+| Xem 3D | ✅ `web/watch3d.html` — three.js trong repo, không CDN |
+| Số việc xong / tổng | **65 / 67** |
+
+Chạy được: `python -m genesis.run --seed 21 --ticks 300` — **xem thế giới chạy** · `make test` · `python scripts/logview.py runs/*.jsonl` · `uvicorn net.server:app` rồi mở `web/watch.html`.
+Chưa có: một ván LLM thật (còn nợ tải `.gguf`, xem S-02). Cả tầng tâm trí đã dựng và kiểm
+bằng `httpx.MockTransport` — không cần model, không mở cổng. Mọi con số trong tài liệu thiết
+kế vẫn là **phỏng đoán chưa kiểm chứng** — v4 §1.4 đã nói và điều đó vẫn đúng nguyên.
+
+**Còn lại đúng hai việc, và cả hai chờ một model giỏi hơn — không chờ code:**
+
+* **X-02 điều kiện (2)** — hồi quy `survival ~ brain + t_discover` cần một model
+  **đủ giỏi để tìm ra luật**. Qwen2.5-1.5B chạy trơn (0% lỗi ngữ nghĩa) nhưng
+  `match = 0.00`; đã tải sẵn Qwen2.5-7B để chạy lại.
+* **R-03 kết quả huấn luyện** — vòng GRPO **đã chạy thật** và lưu được adapter,
+  nhưng 57 mẫu từ một model ăn ~0,05 điểm là **kiểm đường ống**, không phải một
+  kết quả. KL đang trôi (β = 0,02 quá nhẹ) — cần chỉnh trước một lần chạy thật.
+
+Chạy được **cả hai chế độ** đầu-cuối, không cần model:
+
+```bash
+python scripts/fake_model_server.py --port 8099 --cheat-seed 9 &
+python -m genesis.run --seed 9 --ticks 400 --llm all --llm-url http://127.0.0.1:8099 \
+  --no-render --out runs/m.jsonl --truth runs/m.truth.json
+python -m genesis.score runs/m.jsonl runs/m.truth.json
+```
+
+```bash
+uvicorn net.server:app --port 8000
+```
+Ván mở tự chạy vòng `LOBBY → SEEDING → RUNNING → REVEAL → COOLDOWN`, tự ghi
+`runs/open/<match_id>.jsonl` và `.truth.json`, chấm được bằng đúng `genesis.score`.
+
+### Đang bị chặn vì thiếu tài nguyên ngoài
+
+| Nhóm | Chặn bởi | Gỡ bằng |
+|---|---|---|
+| ~~S-02~~ | ~~chưa tải model~~ | **đã gỡ chặn 2026-08-29** — tải `Qwen2.5-1.5B-Instruct-Q4_K_M` (1,0 GB), `llama-server` chạy, `json_schema` **có hiệu lực** (kiểm bằng một schema chỉ nhận đúng một chuỗi bịa) |
+| [R-03](tasks/R-03) huấn luyện | **chưa có `trl`/`peft` và GPU đủ lớn** | dữ liệu GRPO đã sinh được (`scripts/r03_train.py --dry-run`); vòng huấn luyện chưa từng chạy, và tài liệu nói thẳng như vậy |
+| ~~N-04–N-13~~ | ~~chưa có FastAPI~~ | **đã gỡ chặn 2026-08-29** — thêm `fastapi` + `uvicorn` vào phụ thuộc |
+| track X, R | phụ thuộc hai nhóm trên | |
+
+> ✦ **TRACK L XONG** — động cơ luật ẩn chạy đầu-cuối **trên thế giới thật**:
+> sinh luật qua cổng lọc → luật tác động lên sinh vật trong pha 4 của vòng tick →
+> lấy mẫu tình huống phân tầng → chấm bằng bảng chân trị → REVEAL.
+> Ví dụ luật thật sinh ra và kích hoạt được: *"KHI ăn quả xanh dài THÌ nhiễm độc (mức vừa,
+> ngắn hạn)"*, *"KHI có 2 đồng loại đứng cạnh liên tiếp VÀ tuổi trẻ THÌ dịch chuyển ngẫu nhiên"*.
+
+> ✦ **M1 ĐÃ CHỐT** — ba điều kiện đạt trên 5 seed × 400 tick (quy mô nghiệm thu của phiếu):
+> con chết nhiều nhất **8** ✅ · không con nào chưa từng chết ✅ · mỗi con dịch ≥ **2** điểm trait ✅.
+> Trung bình 63 cái chết/ván.
+>
+> **Nói rõ một giới hạn:** kiểm thêm ở 10 seed (gấp đôi mức yêu cầu) thì **1 trên 150** cá thể
+> không chết lần nào. Giảm thức ăn thêm để xoá nó thì điều kiện 1 vỡ (max lên 9). Hai điều kiện
+> căng nhau ở phần đuôi; đây là nhiễu lấy mẫu, không phải dấu hiệu thế giới dễ (63 cái chết/ván
+> trên 15 con). Ghi lại thay vì nới tiêu chí.
+
+> ✦ **M0 ĐÃ CHỐT** — ba điều kiện tự động đều đạt: 300 tick không crash · hai lần cùng seed cho
+> JSONL giống hệt · bật/tắt render cho JSONL giống hệt.
+> **Điều kiện thứ tư chưa ai chấm:** ngồi xem 300 tick, có đủ vui để muốn xem tiếp không?
+> Đó là việc của chủ dự án, không tự động hoá được. Nếu chán thì sửa thế giới **trước** khi
+> đi tiếp — v4 nói thẳng: LLM không cứu được một thế giới chán.
+
+> **Mốc tune W-12 — đã xong. Hai thứ phải sửa, và cái thứ hai không phải con số.**
+>
+> **1. `stomach` bị định giá quá rẻ.** `energy_max = 60 + 20×stomach` cho chênh 60–100 giữa
+> các loài (1.67×) trong khi stomach chỉ tốn 0.05 upkeep/điểm — rẻ nhất trong sáu trait.
+> Hệ quả: tỉ lệ chết chênh **3×** giữa L2 (`E=60`) và L5 (`E=100`). Nén dải lại và tăng giá:
+>
+> | Hằng số | v4 | W-12 |
+> |---|---|---|
+> | `ENERGY_BASE` | 60 | **85** |
+> | `ENERGY_PER_STOMACH` | 20 | **8** |
+> | `UPKEEP_STOMACH` | 0.05 | **0.25** |
+> | `PLANT_RESPAWN` | 4 | **2** |
+> | `PLANT_MAX` | 40 | **15** |
+>
+> Độ tản giữa các loài nén từ **3.0× xuống 2.18×**. Cung thức ăn từ 1.9× cầu về ~1.0×.
+>
+> **2. Luật dịch trait kéo cả năm loài về MỘT cơ thể.** Đây mới là lỗi nặng, và vặn số không
+> cứu được. Luật "lấy từ trait cao nhất, dồn vào thấp nhất" (v4 bước 12) **tất yếu hội tụ về
+> `(2,2,2,2,2,2)`** — đo thật: L1 chỉ cần **ba** lần dịch. Sau ~150 tick, L1 apex, L5 độc nhanh,
+> L4 giáp dày đều thành một con giống hệt nhau, xoá sạch bản sắc loài mà Q1 và cả tầng v5
+> (`brain` quyết định dung lượng Sổ Luật) dựa vào.
+> **Đổi thành chuyên hoá** — lấy từ trait *thấp nhất*, dồn vào *cao nhất*, tôn trọng trần:
+>
+> | Loài | founder | sau khi dịch | số lần |
+> |---|---|---|---|
+> | L1 | (4,3,1,2,1,1) | (5,5,0,2,0,0) | 3 |
+> | L3 | (3,1,1,3,3,1) | (5,0,0,5,2,0) | 4 |
+> | L4 | (1,1,5,1,2,2) | (0,0,5,0,5,2) | 3 |
+> | L5 | (0,2,0,5,3,2) | (0,0,0,5,5,2) | 2 |
+>
+> Mỗi loài đi về một cực riêng và **tự dừng sau 2–4 lần** — khớp đúng yêu cầu "ít nhất 2–3 điểm
+> trait mỗi ván" của phiếu. B-13 sẽ thay luật này bằng lựa chọn của LLM; đây là giàn giáo.
+
+## Đường đi ngắn nhất tới thứ chạy được
+
+```
+S-01 ─► W-01 ─► W-02 ─► W-03 ─► W-04 ─► W-05 ─► W-06   ✦ MỐC M0: thế giới câm chạy được
+                                                    │
+        W-07 ─► W-08 ─► W-09 ─► W-10 ─► W-11 ─► W-12   ✦ MỐC M1: có trait, chiến đấu  ★ mốc tune
+                                                    │
+                        W-13 ─► L-01 ─► L-02 ─► L-03 ─► L-04 ─► L-05 ─► L-06
+                                                                          ✦ MỐC ĐỘNG CƠ LUẬT
+                                                    │
+S-02 ─────────────────► B-01 … B-06                 ✦ MỐC M2: một cá thể có tâm trí
+                                                    │
+                        B-07 … B-10                 ✦ MỐC ĐO ĐƯỢC  ★ chứng minh v5 sống được
+                                                    │
+N-01,02,03 (làm sớm, rẻ) ────────► N-04 … N-12      ✦ MỐC THẾ GIỚI MỞ
+```
+
+**N-01, N-02, N-03 phải làm ngay khi tới W-09, không được để sau.** Tổng cộng dưới một giờ nếu làm đúng lúc, và tốn vài ngày viết lại nếu làm muộn. Lý do đầy đủ ở [04-THE-GIOI-MO §5](04-THE-GIOI-MO.md#5-năm-đường-may-phải-khâu-từ-hôm-nay).
+
+---
+
+## Bảng đầy đủ
+
+Ký hiệu: `⬜` chưa bắt đầu · `🟨` đang làm · `✅` xong **và** đã chạy nghiệm thu · `🚫` bị chặn
+Cột **Giao?**: `✅` giao được cho model rẻ · `⚠️` giao được phần khung, người duyệt phần lõi · `❌` tự viết (xem [07](07-GIAO-VIEC-CHO-MODEL.md))
+
+### S · Chuẩn bị
+
+| Mã | Việc | TT | Giao? | Phụ thuộc |
+|---|---|---|---|---|
+| [S-01](tasks/S-01-moi-truong.md) | Môi trường Python + khung kho | ✅ | ✅ | — |
+| [S-02](tasks/S-02-llama-server.md) | Build llama.cpp, 1 model, xác minh `json_schema` | ✅ | ⚠️ | — |
+| [S-03](tasks/S-03-kiem-thu.md) | pytest + `make` + kiểm tra tái lập | ✅ | ✅ | S-01 |
+| [S-04](tasks/S-04-log.md) | JSONL + công cụ đọc log | ✅ | ✅ | S-01 |
+
+### W · Thế giới
+
+| Mã | Việc | TT | Giao? | Phụ thuộc | Gốc |
+|---|---|---|---|---|---|
+| [W-01](tasks/W-01-rng-config.md) | RNG tất định + config | ✅ | ❌ | S-01 | v4 b1 |
+| [W-02](tasks/W-02-luoi-dia-hinh.md) | Lưới, địa hình, khoảng cách toroidal | ✅ | ❌ | W-01 | v4 b2 |
+| [W-03](tasks/W-03-thuc-an.md) | Sinh thức ăn | ✅ | ❌ | W-02 | v4 b3 |
+| [W-04](tasks/W-04-creature.md) | Creature + năng lượng | ✅ | ❌ | W-02 | v4 b4 |
+| [W-05](tasks/W-05-an-chet-hoi-sinh.md) | Ăn, chết, xác, hồi sinh | ✅ | ❌ | W-04 | v4 b5 |
+| [W-06](tasks/W-06-render-log.md) | Render terminal + log ✦**M0** | ✅ | ⚠️ | W-05, S-04 | v4 b6 |
+| [W-07](tasks/W-07-trait.md) | Vector trait + chỉ số dẫn xuất | ✅ | ❌ | W-04 | v4 b7 |
+| [W-08](tasks/W-08-tam-nhin.md) | Tầm nhìn, bụi rậm | ✅ | ❌ | W-07 | v4 b8 |
+| [W-09](tasks/W-09-phan-xa.md) | Tầng phản xạ | ✅ | ❌ | W-08 | v4 b9 |
+| [W-10](tasks/W-10-chien-dau.md) | Chiến đấu đồng thời + độc | ✅ | ❌ | W-07 | v4 b10 |
+| [W-11](tasks/W-11-vong-tick.md) | Vòng tick hoàn chỉnh ★ | ✅ | ❌ | W-09, W-10 | v4 b11 |
+| [W-12](tasks/W-12-thich-nghi.md) | Điểm thích nghi + dịch trait ✦**M1** | ✅ | ❌ | W-11 | v4 b12 |
+| [W-14](tasks/W-14-chien-thang.md) | **Điều kiện chiến thắng** — ba danh hiệu | ✅ | ❌ | B-10 |
+| [W-15](tasks/W-15-ban-do.md) | **Năm bản đồ** | ✅ | ⚠️ | W-02, L-05 |
+| [W-16](tasks/W-16-cam-nang.md) | **Cẩm nang phương pháp** — trí nhớ qua nhiều ván | ✅ | ❌ | B-02, B-08 |
+| [W-17](tasks/W-17-doi.md) | **Đời** — chết là truyền lại, không phải ngủ dậy | ✅ | ❌ | W-12, B-08 |
+| [W-13](tasks/W-13-sandbox-v5.md) | Nước uống, 4 loại quả, ngày/đêm, gió, lửa | ✅ | ⚠️ | W-12 | v5 L1 |
+
+### L · Động cơ luật
+
+| Mã | Việc | TT | Giao? | Phụ thuộc | Gốc |
+|---|---|---|---|---|---|
+| [L-01](tasks/L-01-lawdsl.md) | LawDSL: kiểu, JSON, GBNF sinh tự động | ✅ | ✅ | W-13 | v5 L2 |
+| [L-02](tasks/L-02-laweval.md) | Cắm luật vào vòng tick | ✅ | ❌ | L-01, W-11 | v5 L3 |
+| [L-03](tasks/L-03-lawgen.md) | Bốc thăm luật + Gate A (quan sát được) | ✅ | ⚠️ | L-01 | v5 L4 |
+| [L-04](tasks/L-04-tinh-huong.md) | Không gian tình huống, lấy mẫu phân tầng | ✅ | ⚠️ | L-01 | v5 L5 |
+| [L-05](tasks/L-05-gate-bc.md) | Gate B khả giải + Gate C định danh được + **Gate D phát biểu được** | ✅ | ❌ | L-03, L-04, W-11 | v5 L6 |
+| [L-06](tasks/L-06-match.md) | `match()` — chấm bằng bảng chân trị ★★ | ✅ | ❌ | L-04 | v5 L7 |
+| [L-07](tasks/L-07-reveal.md) | REVEAL + diễn giải luật ra tiếng Việt | ✅ | ✅ | L-01, L-06 | v5 §1.2 |
+
+### B · Tâm trí
+
+| Mã | Việc | TT | Giao? | Phụ thuộc | Gốc |
+|---|---|---|---|---|---|
+| [B-01](tasks/B-01-schema.md) | Schema quyết định + GBNF | ✅ | ✅ | W-12 | v4 b13 |
+| [B-02](tasks/B-02-prompt.md) | Prompt 5 khối, giữ prefix cache | ✅ | ⚠️ | B-01, L-01 | v4 b14 · v5 L10 |
+| [B-03](tasks/B-03-llm-client.md) | `llm_client` async + `id_slot` | ✅ | ✅ | S-02 | v4 b15 |
+| [B-04](tasks/B-04-xac-thuc.md) | Xác thực ngữ nghĩa + phân loại lỗi | ✅ | ✅ | B-01 | v4 b16 |
+| [B-05](tasks/B-05-ghep-tick.md) | Ghép vào vòng tick, lệch pha | ✅ | ❌ | B-03, W-11 | v4 b17 |
+| [B-06](tasks/B-06-replay.md) | Replay từ log ✦**M2** | 🟨 | ✅ | B-05, S-04 | v4 b18 |
+| [B-07](tasks/B-07-so-tay.md) | Sổ tay sự kiện ★ | ✅ | ⚠️ | B-02, L-02 | v5 L9 |
+| [B-08](tasks/B-08-codex.md) | Sổ Luật + CLAIM hai pha | ✅ | ⚠️ | B-07, L-01 | v5 L8 |
+| [B-09](tasks/B-09-oracle.md) | Prediction oracle | ✅ | ✅ | B-08, L-04 | v5 L11 |
+| [B-10](tasks/B-10-score.md) | `score.py` offline ✦**ĐO ĐƯỢC** | 🟨 | ⚠️ | B-08, L-06 | v5 L12 |
+| [B-11](tasks/B-11-noi-danh-tieng.md) | Kênh nói + danh tiếng | ✅ | ⚠️ | B-05 | v4 b24–25 |
+| [B-12](tasks/B-12-teach.md) | TEACH + provenance + đo nói dối | ✅ | ❌ | B-11, B-08 | v5 L13–16 |
+| [B-13](tasks/B-13-dich-trait-llm.md) | LLM tự chọn hướng dịch trait | ✅ | ✅ | B-05, W-12 | v4 b26 |
+
+### N · Thế giới mở
+
+| Mã | Việc | TT | Giao? | Phụ thuộc |
+|---|---|---|---|---|
+| [N-01](tasks/N-01-seam-strategist.md) | Đường may: `Strategist` là interface | ✅ | ✅ | W-09 |
+| [N-02](tasks/N-02-seam-registry.md) | Đường may: `SpeciesRegistry` động | ✅ | ✅ | W-09 |
+| [N-03](tasks/N-03-seam-id-log.md) | Đường may: id + trường log mở rộng | ✅ | ✅ | S-04 |
+| [N-04](tasks/N-04-server-khung.md) | Server FastAPI + vòng đời ván | ✅ | ⚠️ | N-01, N-02, W-11 |
+| [N-05](tasks/N-05-join.md) | `/join`, cấp loài, token, persona | ✅ | ✅ | N-04 |
+| [N-06](tasks/N-06-work.md) | `/work` long-poll | ✅ | ✅ | N-04 |
+| [N-07](tasks/N-07-decision.md) | `/decision` + validate phía server | ✅ | ⚠️ | N-06, B-04 |
+| [N-08](tasks/N-08-tick-khong-cho.md) | Tick không chờ ai + dung sai trễ ★ | ✅ | ❌ | N-07 |
+| [N-09](tasks/N-09-hoang-da.md) | Rớt mạng → hoang dã → gỡ loài | ✅ | ✅ | N-08 |
+| [N-10](tasks/N-10-client-agent.md) | Client một lệnh | ✅ | ✅ | N-06, B-03 |
+| [N-11](tasks/N-11-phoi-internet.md) | Phơi ra internet: tunnel/VPS, TLS, rate limit | ✅ | ⚠️ | N-10 |
+| [N-12](tasks/N-12-xem-live.md) | Trang xem live + bảng xếp hạng mùa | ✅ | ✅ | N-08, L-07 |
+| [N-13](tasks/N-13-mesh-3d.md) | Hình 3D sinh bằng MeshyAI | ✅ | ⚠️ | N-05, N-12 |
+| [N-15](tasks/N-15-mo-ta-3d.md) | **Mô tả 3D** cho sinh vật, địa hình, quả, bản đồ | ✅ | ⚠️ | N-13, W-15 |
+| [S-05](tasks/S-05-preflight.md) | **`make preflight`** — kiểm trước khi chạy thật | ✅ | ⚠️ | S-02, N-11 |
+| [N-14](tasks/N-14-map-3d.md) | **Trang xem 3D** (three.js trong repo) | ✅ | ⚠️ | N-12, W-15, N-13 |
+
+### X · Thí nghiệm  ·  R · Huấn luyện
+
+| Mã | Việc | TT | Giao? | Phụ thuộc |
+|---|---|---|---|---|
+| X-01 | Chạy hàng loạt nhiều seed, gom kết quả | ✅ | ✅ | B-10 |
+| X-02 | **Gác cổng `WORLD_FLAT`** — v5 §10.1 ★ | 🟨 | ❌ | X-01 |
+| X-03 | Ba nhánh prior — v5 §10.2 | ✅ | ⚠️ | X-01, W-13 |
+| X-04 | Nhánh SILENT / REFLEX / RANDOM | ✅ | ✅ | X-01, B-11 |
+| X-05 | `analyze.py` — biểu đồ | ✅ | ✅ | X-01 |
+| X-06 | Báo cáo Q1–Q7 | ✅ | ❌ | X-02…X-05 |
+| X-07 | Đồ hoạ pygame (v4 M5) | ✅ | ✅ | W-12 |
+| X-08 | **Cẩm nang có thay được huấn luyện không?** | 🟨 | ❌ | W-16 |
+| R-01 | Rollout headless song song | ✅ | ⚠️ | B-10 |
+| R-02 | Trajectory → (prompt, response, reward) | ✅ | ✅ | R-01 |
+| R-03 | GRPO + LoRA | 🟨 | ❌ | R-02 |
+| R-04 | Tách train/test theo cấu trúc luật | ✅ | ⚠️ | R-03 |
+
+> Phiếu việc cho X và R viết khi tới gần. Viết bây giờ thì tới lúc dùng đã lạc hậu —
+> chúng phụ thuộc vào những con số mà W-12 và B-10 mới đo ra được.
+
+---
+
+## Cách cập nhật bảng này
+
+Sau khi chạy **lệnh nghiệm thu** ở mục 7 của phiếu việc và nó pass:
+
+1. Đổi `⬜` → `✅` ở đúng một dòng trong file này.
+2. Ghi một dòng vào [Nhật ký](#nhật-ký) bên dưới.
+3. Không sửa gì ở tài liệu khác.
+
+Nếu lệnh nghiệm thu chưa pass thì trạng thái là `🟨`, không phải `✅`. Cột này chỉ có giá trị khi nó nói thật.
+
+## Nhật ký
+
+| Ngày | Việc | Ghi chú |
+|---|---|---|
+| 2026-08-29 | ✅ **W-14** ba danh hiệu · ✅ **W-15** năm bản đồ · ✅ **N-14** trang xem 3D · ✅ **N-10b/c** nhiều client | Ba việc mới theo yêu cầu. **W-14**: không cộng ba danh hiệu thành một điểm — một trọng số duy nhất giữa "hiểu" và "sống" là một tuyên bố ta **chưa biết đúng**, và đó chính là câu hỏi Q7. Để riêng thì khoảng cách giữa ba bảng **là dữ liệu**. Thêm một dòng cảnh báo khi không ai tìm ra luật: lúc ấy `R = 0.1·R_survive` cho tất cả và bảng "Nhà khoa học" chỉ là bảng sinh tồn thu nhỏ — không nói thẳng thì có người đọc nó như một kết luận về quy nạp. **W-15**: cổng khả giải phải chạy theo cặp `(bản đồ, seed)`, và đo thẳng cho thấy vì sao — một luật `DRINK` kích hoạt **349** lần trên sa mạc so với **1880** trên quần đảo. Quét `plant_scale` 0,8→3,0 trên cả năm bản đồ và kết luận thẳng: **M1 là tính chất của ĐỒNG CỎ**; ở sa mạc và hẻm núi thêm thức ăn không cứu được vì chết ở đó đến từ chen chúc, không từ đói. **N-14**: three.js r128 UMD vendor trong `web/vendor/` (chạy được cả từ `file://`), địa hình gửi **một lần** mỗi ván dưới dạng chuỗi một ký tự mỗi ô — gửi mỗi tick thì 3 KB × 200 tick chiếm gần hết băng thông luồng xem. Phát hiện kèm: trang 2D đang vẽ **ô caro giả** cho mọi bản đồ, nên năm bản đồ trông giống hệt nhau — giờ nó cũng đọc địa hình từ khung. |
+| 2026-08-29 | ✅ **R-03 đã huấn luyện thật** — và tôi đã nói sai là nó bị chặn | Kiểm lại máy: **32 GB, Apple M5, torch 2.13 + MPS, `peft` và `transformers` đã cài sẵn**. Chỉ thiếu `trl` — mà `trl` **không cần**: `GRPOTrainer` của nó dựng cho vòng sinh trực tuyến, còn ở đây rollout đã có sẵn (chúng là những ván đã chơi). Viết GRPO **ngoại tuyến** bằng torch + peft trực tiếp: `L = −Σ A·log π(y|x) + β·KL(π‖π_ref)`, `π_ref` là chính base model với adapter tắt đi (không cần bản sao thứ hai trong RAM). Chạy 30 bước LoRA trên Qwen2.5-0.5B, lưu adapter 2,1 MB (540k tham số, 0,11%). **Cộng một lỗi của tôi:** `samples_from` chỉ dùng `ΣR_i` thay vì `total_reward` — mà khi chưa con nào tìm ra luật thì `ΣR_i = 0` cho tất cả, mọi lợi thế trong nhóm bằng 0, và GRPO **không có một gradient nào**. Cái đuôi `0.1·R_survive` chính là dây neo cho giai đoạn đầu, đúng lúc cần tín hiệu nhất. |
+| 2026-08-29 | 🚪 **Gate D** — luật phải PHÁT BIỂU ĐƯỢC, không chỉ nhìn thấy được | Ba ván 7B sạch (0% trượt, 149 lần ghi Sổ Luật, 133 được nhận) mà `match` vẫn 0,000. Truy ra hai chuyện tách rời. **Một:** `_generate_law_for_tier` gọi `random_law(rng)` **không truyền vocab**, tức bốc từ từ vựng brain 5 rồi giao cho cả đàn — trong khi `vocab_for_brain` cắt từ vựng theo brain (`ADJACENT`/`PHASE_ENTER` chỉ có từ brain 4; `max_conds = 0` với brain 0–1). Seed 55 sinh `ADJACENT(OTHER_SP) -> POISON`, **nổ 324 lần, nhiều nhất ván**, mà **4/5 loài không có chữ `ADJACENT`** — chúng chịu hệ quả suốt 200 tick và không cách nào ghi nó. Đếm 40 seed: **16 seed (40%)** không có luật nào brain 0 phát biểu nổi. Thêm Gate D, song sinh của Gate A: Gate A hỏi *nhìn thấy được không*, Gate D hỏi *nói ra được không*. Ràng ở mức **BỘ** (≥1 luật) chứ không từng luật — bắt mọi luật nói được ở brain 0 sẽ ép cả ván về 5 trigger và 0 điều kiện, tức xoá phần thưởng từ vựng mà brain đổi bằng 4 điểm trait. Ngưỡng **suy từ TIER PLAN**, không phải hằng 0: `HARSH` là `D2 D2 D3 D4`, không tier D1 nào, nên đòi brain 0 ở đó là đòi điều bất khả (đã làm đỏ 4 test). **Lái chứ không loại**, và lái đúng luật ở tier DỄ NHẤT — thay luật cuối thì seed 12 chết, vì luật D3/D4 mang hai điều kiện và không bản thay nào của tier ấy nói được ở brain 0. |
+| 2026-08-29 | 🔬 Gate D **không** cứu được seed 55 — và đó mới là điều đáng nói | Luật D1 của seed 55 là `DRINK -> DAMAGE`: brain 0 nói được, nổ **155 lần**, và hiện trong sổ tay sạch sẽ — `t99/t84/t64 TÔI uống nước → máu tụt hẳn xuống`, ba trên ba. **Không con nào ghi nó.** Model viết **24/45 mục là `EAT -> HEAL`**, và L1 — loài DUY NHẤT phát biểu nổi `ADJACENT` — viết 9 mục, **cả 9 về ăn quả**. Ghi chú nó tự viết: *"尝试吃红果看看效果如何"*, *"需要更多关于安全果子的信息"*, và *"Ngôi làng nhỏ, không có ai nhìn thấy"* — không có ngôi làng nào. Đây đúng cái bẫy [03 §5](03-LUAT-AN-V5.md) dựng ra, chỉ là hiệu quả hơn dự tính: model không chỉ ánh xạ sai màu quả, nó **không bao giờ nhìn ra khỏi chỗ quả**. Kết luận "7B không đủ sức quy nạp" giờ mới có căn cứ, vì mọi lỗi hạ tầng đã bị loại trước. Bước tiếp: X-08, cẩm nang có rút ngắn `t_discover` không. |
+| 2026-08-29 | 🩹 **Ba lỗi chặn "chạy thật", và cả ba đều hỏng IM LẶNG** | Model 7B ghi Sổ Luật đều đặn mà `match` vẫn 0,00 trên cả 90 dòng chấm. Không phải model yếu. (1) **13/15 hiệu ứng không mang `arg`**, nhưng `ARG_DOMAIN` không khai mục nào cho hiệu ứng và `arg_fits_kind` viết `arg in domain if domain else True` — tuple rỗng là falsy, nên "chưa nêu miền" và "không nhận arg" sập vào làm một. Schema thì chào một enum `arg` **phẳng 40 giá trị dùng chung cho mọi kind**, nên `ARMOR_UP(TERRAIN)` và `HEAL(EAT)` hợp lệ về cấu trúc. Seed 26: **8/9 mục sổ được nhận đều mang `effect.arg`** — mà luật thật để `arg=None`, nên tám ô sổ và tám lần `CLAIM_COOLDOWN` đổi lấy đúng 0 điểm. (2) **42% lượt nghĩ bị huỷ**, mọi lần đúng 20003 ms: `asyncio.gather` bắn cả 15 con cùng lúc nhưng server có 4 chỗ, và `timeout` của httpx đếm cả thời gian **xếp hàng trong server**. (3) `id_slot` phát 0..14 trong khi server chỉ có chỗ 0..3, nên **prefix cache** — thứ đo được 756/757 token tái dùng ở B-03 — trong ván thật gần như không chạy. Sửa: `_kind_arg_schema` tách `oneOf` theo miền từng kind **đọc thẳng từ `validate.ARG_DOMAIN`**; cổng chặn theo `/props.total_slots`; `id_slot % n`. Bốn lần trước bài học là "nhớ đồng bộ schema với validator" — lần này nó thành "**đừng có hai bảng**". |
+| 2026-08-29 | 📏 Kích thước server: đo, và một lần tôi tự bịa số | Tăng lên 8 chỗ tôi đặt 1536 token mỗi chỗ theo ước lượng "ký tự chia 3" — ra ~800 token. Prompt giữa ván **đo thật là 2737–2826 token**: sổ tay đầy, Sổ Luật, lời nghe được. llama-server **trả lỗi HTTP chứ không cắt bớt**, nên triệu chứng là "model im lặng", không phải lỗi ngữ cảnh. 40 tick, 15 con: `4×3072` → 4 lời gọi, 43% trượt, 0 lần ghi sổ · `8×1536` → 33 lời gọi, 42% trượt, tràn ngữ cảnh hàng loạt · `8×4096` → **70 lời gọi, 15% trượt, 4 lần ghi sổ**. Và hạn chờ 20 s vốn đã sai từ đầu: một đợt 8 lời gọi song song mất **19,9 s**, 15 lời gọi mất **32,0 s** — hạn 20 s nghĩa là một đợt đầy trượt khoảng một nửa, mà trượt ở đây không kêu. Số đo giờ nằm trong `scripts/serve_L2.sh` và `law_config.LLM_TIMEOUT_S`. |
+| 2026-08-29 | ✅ **N-15** Mô tả 3D · ✅ **S-05** `make preflight` | 35 mô tả xuất sẵn ra `assets/meshy/prompts.json`, gửi thẳng được. Hai quyết định: **quả khoá theo BỀ MẶT chứ không theo lớp** — bề mặt bị hoán vị mỗi ván, sinh mesh theo `FRUIT_A` thì hình quả đổi màu giữa hai ván và người xem đọc được luật ẩn **qua hình 3D**; và mô tả sinh vật vẫn là **hàm thuần của vector trait**, phần số nhúng nguyên `body_line` nên đổi thang trait thì chữ và hình đổi cùng lúc. Bản cũ gửi cho Meshy đúng dòng chỉ số khô ("đầu óc 4 · tay 3 · giáp 2…") — đúng bất biến 1 của N-13 nhưng Meshy không có gì để dựng. `make preflight` không chỉ hỏi "server sống chưa" mà kiểm **`json_schema` có RÀNG BUỘC thật không**, bằng một enum chỉ nhận chuỗi bịa `XYZZY`: `response_format` được nhận mà không ép, còn `json_schema` thì có. |
+| 2026-08-29 | 🔬 Replay: **bốn** lỗ hổng, và cả bốn chỉ lộ ra khi có model thật | Sinh dữ liệu huấn luyện = chạy lại ván và dựng lại prompt, nên nó đi qua đúng đường replay. Model giả trước đây không viết `note`, không nói, không ghi sổ — nên ba lỗ hổng đều xanh. Với model thật: hash lệch ở t=3 (thiếu **notepad**), sửa xong lệch ở t=13 (thiếu **lời nói** — nó tốn energy người nói VÀ vào khối NGHE ĐƯỢC của người nghe), sửa xong lệch ở lần ghi sổ đầu tiên (thiếu **CODEX_OP**, và áp nó **trước** lúc dựng prompt cũng sai vì ván thật ghi sổ SAU khi đã gọi model). Hợp đồng đầy đủ giờ nằm trong phiếu B-06: **mọi tác dụng phụ chạm tới prompt của một lượt sau đều phải nằm trong log và phải được phát lại.** Sau cả bốn: **0 lệch hash** trên ba rollout liên tiếp. |
+| 2026-08-29 | 📏 **Ván model thật đầy đủ** — cơ chế đạt chuẩn, model thì chưa | Seed 9, 200 tick, 4 cá thể dùng `Qwen2.5-1.5B`. **100 lời gọi · LLM_MISS 1 (1,0%) · SEMANTIC_FAIL 0 (0,0%) · CODEX_OP 6 · SPEAK 39 · LAW_FIRED 334.** Hai cổng chất lượng của [B-06](tasks/B-06-replay.md) coi như đạt (ngưỡng <1% và <5%). Nhưng điều kiện 1 của mốc **ĐO ĐƯỢC** thì **không**: `match = 0.00` trên cả 45 dòng. Hai phát biểu còn lại trong sổ cuối ván là *"KHI bước vào ban đêm VÀ đang là ban đêm ... THÌ hồi năng lượng"* (lặp thừa, sai) và *"KHI ăn vật phẩm THÌ hồi máu"* (sai), trong khi luật thật nói về **tấn công → nhiễm độc** và **đứng cạnh → hồi máu**. Bộ chấm cho đúng 0 — **không có điểm an ủi cho một câu nghe có lý**, và đó chính là điều `match()` chuẩn hoá theo giả thuyết null sinh ra để bảo đảm. Kết luận thẳng: **đường ống đã sẵn sàng, model 1,5B thì chưa đủ để quy nạp trong thế giới này.** Đây là con số cần so khi có model lớn hơn, không phải một thất bại của thiết kế. |
+| 2026-08-29 | 🔒 **Ba lần cùng một lỗ** — và lần thứ ba mới thấy nó là lỗi thiết kế | Chữ do người khác viết đi vào prompt qua ba đường: lời nói ([B-11](tasks/B-11-noi-danh-tieng.md)), **ghi chú riêng** của chính model, và **persona** của client. Cả ba đều đâm vào `_check_no_leak`, mà hàm ấy **ném**. Ném là đúng cho phần server tự dựng — bề mặt, sổ tay, Sổ Luật — vì ở đó rò rỉ là lỗi của ta. Nhưng với chữ của người khác, ném nghĩa là **họ làm gãy ván của ta bằng một chuỗi**. Ca ghi chú tệ nhất: model tự viết chữ "HP" vào `note`, và ván **tự chết** ở lượt 87 — không cần kẻ thù nào. Sửa ở đúng một chỗ: `user_block` tự làm sạch `heard` và `notepad`; `/join` từ chối persona bẩn **tại cửa** với 422 thay vì để nó gãy sau. Bài học: **vô hiệu hoá chữ của người khác, để dành `raise` cho lỗi của chính mình.** |
+| 2026-08-29 | ✅ **S-02 gỡ chặn** — model thật chạy được, và nó phơi ra **bốn lỗi mà mọi server giả đều bỏ lọt** | Tải `Qwen2.5-1.5B-Instruct-Q4_K_M` (1,0 GB), `llama-server` chạy. Trước hết kiểm điều quan trọng nhất: `json_schema` **có thật sự ràng buộc không** — gửi một schema chỉ nhận đúng chuỗi bịa `"XYZZY"`, model trả về đúng `{"goal":"XYZZY","ttl":7}`. Có hiệu lực. Rồi bốn lỗi hiện ra theo đúng thứ tự chẩn đoán mà [B-10](tasks/B-10-score.md) dặn — và **không lỗi nào là "model kém"**: (1) `target` không có `enum`, nên model chọn `HUNT` rồi nêu tên một con nó không hề thấy: **16/20 lời gọi** trượt. Đưa danh sách con đang nhìn thấy vào schema, và bỏ luôn `HUNT`/`FOLLOW` khỏi enum khi không thấy ai → `SEMANTIC_TARGET_NOT_FOUND` về 0. (2) `target` không bắt buộc, nên model chọn `HUNT` rồi bỏ trống: 8/35 trượt. Đòi luôn khi có ai để nêu. (3) `n_predict` = đúng `token_budget`, mà `token_budget` là ngân sách **kinh tế** chứ không phải cái kéo — JSON đứt giữa câu và **cả lượt gọi mất trắng**. Đo từng loại lời gọi: `decide` dùng nhiều nhất 106 token, `shift` 95, còn `codex` chạm **đúng trần** 200 và đứt giữa trường `effect` (cây JSON ba tầng, lại còn được sinh kèm xuống dòng và thụt lề). (4) **Enum rỗng.** Khi không thấy ai tôi để `target: {"enum": []}` — một luật GBNF **không khớp được gì**: model lỡ mở khoá `"target"` là kẹt, nhả khoảng trắng tới hết ngân sách, và ra `{"goal": "GUARD", "ttl": 10, "target":  }`. JSON hỏng, 65 token, **trông y hệt một ca bị cắt** — suýt nữa thì tôi lại đi nới ngân sách. Kết quả sau cả bốn: **0/21 JSON hỏng, 0/21 lỗi ngữ nghĩa** (trước đó 23% và 23%). |
+| 2026-08-29 | 🔬 Model thật **không tìm ra luật nào** — và lỗi nằm ở **prompt** | Ván đầy đủ đầu tiên (seed 9, 200 tick): `match = 0.00` trên cả 45 dòng, và **`CODEX_OP = 0`** — nó chưa một lần ghi Sổ Luật. Theo đúng thứ tự chẩn đoán của phiếu B-10: luật có kích hoạt không? **371 lần** — có. Sổ tay có nghèo không? Không. Vậy còn lại một chỗ: `want_codex` bật **0/44 lần**. Đọc `note` model tự viết thì thấy nó ghi *"nên ghi vào sổ luật nếu bạn đã tìm ra sự thật đúng sai"* — **nó biết mình nên ghi, nó chỉ không biết nút ở đâu.** Khối A2 nói "hãy ghi vào Sổ Luật" nhưng không chỗ nào nói rằng `want_codex` là cánh cửa duy nhất, và trong schema đó chỉ là một cái tên trơ. Thêm một câu vào khối D nói thẳng cơ chế: `want_codex` bật lên **0/44 → 3/18**, `CODEX_OP` **0 → 2**. Phiếu B-10 dặn "đừng chẩn đoán bằng cách đổi model", và đây là lý do. |
+| 2026-08-29 | ✅ **N-11** Phơi ra internet · **client thù địch tìm ra một cửa mở** | `net/ratelimit.py` gộp mọi trần vào **một** bộ đếm (bản cũ có hai, và `clear_rate_limits` của test chỉ xoá một). `/join` đếm theo **IP**, endpoint có auth đếm theo **token** — trộn vào một xô thì hoặc cả ký túc xá sau NAT dùng chung hạn mức, hoặc kẻ chưa có token thoát mọi giới hạn. `scripts/hostile_client.py` gửi những thứ client tử tế không gửi, và nó tìm ra **slow-loris**: trần "lượt/phút" không bắt được kẻ chỉ gọi vài lần rồi **giữ** mỗi kết nối 25 giây — 200 lượt `/work` không kèm `hold_ms` treo hơn một tiếng. Thêm `MAX_CONCURRENT_HOLDS`. Cộng `deploy/` với systemd unit + hướng dẫn hai giai đoạn (Cloudflare Tunnel → VPS 5 đô, **không đặt model lên VPS**). |
+| 2026-08-29 | ✅ **X-03/04/05/06/07** · ✅ **R-01/02/04** · 🟨 **R-03** | X-03: ba nhánh prior phải **lái theo bộ luật**, không bốc ngẫu nhiên — và nhánh `PRIOR` phải **bảo đảm có luật ăn quả**, vì đếm thật trên 39 seed STANDARD chỉ **3** seed sinh ra một luật gắn bề mặt với hệ quả (92% số ván không đo được `prior_leak`, và ta sẽ tưởng hiệu ứng bằng 0). X-04 (model giả, 4 seed): REFLEX 0,795 > SILENT 0,725 ≈ LLM 0,723 > RANDOM 0,572 — thứ tự đúng như phải thế, và **LLM tệ hơn phản xạ**, đúng như v4 §11.5 dặn phải báo cáo thẳng. R-02 dựng lại prompt bằng chính cơ chế replay rồi **đối chiếu `prompt_hash`**, nên mọi mẫu huấn luyện đều được kiểm; điều đó lộ ra một lỗ trong replay: nó **không phát lại thao tác ghi Sổ Luật**, mà nội dung Sổ Luật nằm trong khối E — ván rẽ nhánh ngay lượt gọi kế tiếp, và bài test replay cũ không bắt được vì model giả của nó chưa bao giờ ghi sổ. R-04: khoá chia phải **thô** (chỉ trigger+effect), vì đo trên 400 seed với khoá mịn ra **400 khuôn khác nhau** — chia theo "bộ luật" chỉ là chia theo seed dưới một cái tên khác. |
+| 2026-08-29 | 🔬 `importorskip` ở đầu file làm **cả file** biến mất | `tests/test_x07.py` đặt `pytest.importorskip("pygame")` ở mức module, nên trên máy không có pygame thì **mọi** bài trong đó bị bỏ qua — kể cả những bài không hề cần pygame, và chúng là phần lớn. Hậu quả: bài kiểm màu không bao giờ chạy, và một lỗi gõ trả `(r, g, g)` — kênh lam lấy nhầm giá trị lục — đã lọt qua. Mọi loài có hue ở nửa xanh lam hiện ra **xám như nhau**, và bất biến "hue = hash(species_id)" (thứ để phân biệt loài bằng mắt) hỏng trong im lặng. |
+| 2026-08-29 | ✅ **B-13** LLM tự chọn hướng dịch trait — và **hai lỗi khoá chặt nhau** | **Tự viết tay** (đụng vòng tick). Hướng dịch giờ do chính model của con đó chọn, gọi riêng một lượt như CLAIM hai pha. Chạy thật với một model "có gu" (mỗi loài thích một hướng) thì chữ ký hiện ra rõ: L1 dồn vào `brain`, L3 dồn vào `speed`. Hai lỗi tìm ra bằng cách chạy, không bằng đọc: (1) **livelock** — trả lời sai thì `take_shift` xếp hàng lại **mỗi tick** còn `adapt_points` chưa tiêu, nên từ đó trở đi **mọi** lượt nghĩ của con vật đổ vào một câu hỏi nó liên tục trả lời sai. Đo ở seed 44: L1:0 hỏi 8 lượt liên tiếp từ t=60 tới t=81 và không ra quyết định nào khác nữa. Phiếu nói rõ "sai thì bỏ lượt, **không** thử lại" — giờ chỉ hỏi lại khi `adapt_points` đổi. (2) Trả lời sai còn **rơi về giàn giáo W-12**, nên câu trả lời không hợp lệ vẫn đổi được cơ thể, và số liệu B-13 trộn lẫn với luật if-else của W-12. |
+| 2026-08-29 | 🔬 Replay không biết lượt đó **hỏi gì** | Hệ quả dây chuyền của B-13, và là ca đẹp nhất về việc triệu chứng xa nguyên nhân. Một lượt `codex` hay `shift` cũng trả JSON; replay coi **mọi** phản hồi là một quyết định `decide`, nên nó **áp một goal mà ván thật đã vứt đi**. Hai ván khớp hoàn hảo tới t=57 rồi lệch đúng ở **t=60** — tick đầu tiên có một lời gọi khác `decide` — và triệu chứng hiện ra ở `prompt_hash` cách nguyên nhân 60 tick. Bắt được vì bất biến 2 của [B-06](tasks/B-06-replay.md) bắt replay **dừng** khi hash lệch thay vì chạy tiếp. Nếu replay chỉ "chạy tiếp cho xong" thì file kết quả trông vẫn như thật. Sửa: `LLMCall` mang theo `kind`, và ghi lại hướng dịch trait từ `TRAIT_SHIFT` để phát lại. |
+| 2026-08-29 | ✅ **N-12** Trang xem live + bảng xếp hạng | Giao `mcp-agy` (441 s). Hình vẽ và WebSocket đúng, nhưng **ba lỗi đều nằm ở cùng một chỗ: ranh giới giữa trình bày và mô phỏng**. (1) Handler WebSocket **vá đè `runner.step` và `runner.advance_phase`** bằng closure lúc chạy, và bọc luôn `runner.log` — nghĩa là hành vi của sim phụ thuộc vào **việc có ai đang xem hay không**, thứ hỏng mà không ai để ý cho tới lúc một ván có khán giả cho kết quả khác một ván không có. Chuyển việc dựng khung vào chính `MatchRunner`, route chỉ gắn một hàng đợi; thêm bài test chạy 30 tick có-và-không-có người xem rồi đòi trạng thái giống hệt. (2) Đồ thị "ai nghe được ai" — bất biến 3, và theo phiếu là **cảnh quay đắt giá nhất của dự án** — gửi đi trường **rỗng**, rồi để JavaScript tự tính từ một **bảng trait chép cứng** trong `watch.js`. Sai ngay lần dịch trait đầu tiên, và sai hẳn với loài do người lạ tạo ra lúc chạy. Khung giờ mang `hear` do server tính và `tr` là trait **hiện tại** của từng con. (3) Bản phát lại sau REVEAL dựng lại khung từ trạng thái **hiện tại**, nên mọi khung đều là ảnh cuối ván lặp đi lặp lại; giờ giữ ảnh chụp của từng khung và chỉ dựng lại phần sự kiện. |
+| 2026-08-29 | ✅ **B-11/B-12 ghép vào vòng tick** — và một lỗi ghi công **im lặng tuyệt đối** | Thêm pha "nói" vào vòng tick (sau di chuyển, trước tính chi phí — ai nghe được ai phụ thuộc vị trí cuối tick), mở `SPEAK` trong `IMPLEMENTED_TRIGGERS`, nối `say`/`teach` vào schema và vào khối "NGHE ĐƯỢC". Chạy thật seed 71: 907 lần nói, **904 lần tầm signal rộng hơn tầm text** (bất biến 3 của B-11), 1677 lần dạy — và **0 ghi công**. Không test đơn vị nào đỏ, vì tất cả chúng dùng bản luật ĐẦY ĐỦ. Lỗi: `apply_teach` ghi người dạy "biết" bản đầy đủ nhưng **không** ghi họ biết **bản giấu** (bản gửi cho khác loài). Người dạy chỉ được ghi là biết bản giấu khi có kẻ khác dạy ngược lại cho họ — tức là **sau** học trò của mình — nên khoá "credit chảy một chiều" chặn đúng người mà nó lẽ ra phải trả công. Bản giấu là **tập con**, không phải hiểu biết mới: nó phải được ghi từ đúng lúc biết bản đầy đủ. Sau khi sửa, cùng kịch bản: `{L1:0: 11.0, L1:1: 2.0}` — đúng hai con đã tìm ra và đi dạy. |
+| 2026-08-29 | 🟨 **B-11** kênh nói · 🟨 **B-12** TEACH + ghi công + đo nói dối | **Tự viết tay** — B-12 ghi ❌ "model sẽ viết thứ pass test mà vẫn farm được", và phiếu còn dặn thêm: *đừng đọc code rồi tin, **tự viết agent farming** và kiểm nó ăn 0.* Đã viết: `scripts/farm_attack.py` dựng ba kiểu tấn công. Kết quả: vòng tròn 5 con dạy chéo cùng một luật ăn **0**; một con dạy 5 người **50 lần** ăn đúng **4** (một người đã tự biết); dây chuyền A→B→C→D cho mỗi người đúng **1,0** từ học trò trực tiếp. Cái cuối bắt được lỗi của chính tôi: bản đầu chia công cho **cả nấc hai**, nên A ăn 1,5 trong dây chuyền — nghĩa là mỗi tầng của một tháp đa cấp vẫn có lãi, chỉ nhỏ hơn, và lập tháp vẫn là chiến lược đúng. Phiếu viết rõ "A→B→C thì A nhận từ B, **không** nhận từ C": công chảy **một nấc**, chuỗi chỉ được *ghi* tới hai. `scripts/deception_probe.py` kiểm mệnh đề kép: giữ đúng-dạy sai → `lie`; chỉ giữ sai-dạy chính nó → `honest`. |
+| 2026-08-29 | 🔒 Lời nói của người lạ có thể **đánh sập ván của người khác** | Tìm ra khi viết `sanitize_text`. `text` do client gửi sẽ nằm trong prompt của một sinh vật **thứ ba**, mà `genesis.prompt._check_no_leak` **ném** `PromptLeak` khi thấy tên enum DSL ở khối kể chuyện. Nghĩa là một client chỉ cần nói đúng chữ `"POISON"` là làm gãy ván của mọi người — một đường DoS mở toang, và nó sinh ra từ chính lớp bảo vệ chống rò rỉ. `sanitize_text` giờ làm bốn việc: bỏ ký tự điều khiển (xuống dòng là cách rẻ nhất để giả một khối prompt mới), cắt còn 60 ký tự, vô hiệu hoá tên lớp, vô hiệu hoá tên enum. Câu chữ vẫn giữ nguyên để agent tự đánh giá — ta **vô hiệu hoá, không kiểm duyệt**. |
+| 2026-08-29 | ✅ **N-10** Client một lệnh · ✅ **N-09** `/heartbeat` + `/reclaim` | Giao `mcp-agy` (270 s). Logic đúng, nhưng nó đặt client ở **`genesis/client.py`** rồi chứng minh bằng một bài test AST rằng file đó không import module sim nào. Bài test ấy đúng mà chưa đủ: nó biến một **sự thật về đóng gói** thành một **quy ước phải nhớ**, và người lạ cài client vẫn nhận kèm cả `lawdsl` lẫn `prompt` trên máy mình. Phiếu N-10 ghi rõ `client/genesis_client.py` + `README.md` + `config.example.toml`, và lý do nằm ở đó. Chuyển thành gói **độc lập** chỉ phụ thuộc `httpx` (223 dòng), có bản sao rút gọn của `ask` — bản sao cố ý **duy nhất** trong dự án, và docstring nói rõ vì sao. Cộng: gỡ ~40 dòng trộn TOML lặp lại, và sửa một bài test dùng goal bịa `"EXPLORE"` nên nó xanh vì lý do sai. |
+| 2026-08-29 | ✅ **X-01** chạy hàng loạt · 🟨 **X-02** cổng gác — **đường cơ sở null đã đo** | 40 seed × 2 nhánh × 400 tick, 21,6 s trên 8 lõi. Kết quả quan trọng hơn tôi tưởng: ở `WORLD_FLAT`, **L1 (brain 4) sống KÉM hơn L5 (brain 0)** — 0,755 so với 0,812, chênh **−0,057**, Welch t = −6,26, n = 80. Ở `WORLD_LAW` chênh −0,045 (t = −2,39). Nghĩa là **brain không được thưởng gì nếu không có model**: nó ăn upkeep và không đổi lấy được gì, còn L5 tiêu cả 12 điểm vào chân, mắt, bụng. Đây là đường cơ sở tốt nhất có thể có cho tiên đoán (1) của [03 §10.1](03-LUAT-AN-V5.md): mọi khoảng cách L1−L5 đo được về sau, khi có model thật, là khoảng cách **kiếm được** chứ không phải được cho. Kiểu hỏng mà §10.1 cảnh báo — "L1 vẫn thắng đậm y hệt trong thế giới không có gì để khám phá" — không xảy ra. Tiên đoán (2), trung gian `t_discover`, phải chờ model thật. Cộng: hâm nóng đệm luật song song (40 seed từ >2 phút xuống 21 s). |
+| 2026-08-29 | ✅ **N-05/06/07** ba endpoint · ✅ **N-08** tick không chờ ai · ✅ **N-09** hoang dã | N-05/06/07 giao `mcp-agy` (295 s); N-08/09 **tự viết tay** (phiếu ghi ❌ "đồng thời + thời gian thực"). Đã chạy **trọn một ván mở qua HTTP**: client lạ `/join` → sinh vật ra đời ở SEEDING → `/work` → `/decision` → REVEAL → log + truth → `score.py` chấm ra `match=1.0`. Bốn lỗi duyệt tay bắt được, tất cả đều thuộc loại "chạy được nhưng sai chỗ": (1) **vòng import** — ba file route lấy `runner` bằng `import net.server as server` ở giữa thân file, mà `server` lại import route; chỉ chạy khi `net.server` tình cờ được nạp trước, còn `import net.routes_decision` trực tiếp là `ImportError`. Gỡ bằng `net/state.py` giữ singleton — và phát hiện thêm rằng hàm route tên `state` đã che mất module cùng tên. (2) **sinh vật của người chơi ra đời trong handler HTTP**, ở lần `/work` đầu tiên: chúng đứng chồng nhau tại ô passable đầu tiên quét theo hàng thay vì rải ngẫu nhiên, quần thể đổi giữa chừng một tick nên log không tái lập, và loài nào không kịp poll thì mất những tick đầu. Chuyển về `_seed_match`. (3) **hai chỗ cùng trả lời "muộn hay chưa"** — và chúng đã lệch: route cho `2×LATE_TOLERANCE`, `on_decision` cho một lần; tệ hơn, đường của route không ghi độ trễ vào `runner.latencies` nên **nhịp thích ứng của N-08 không bao giờ có dữ liệu** và tính năng chết lặng lẽ. (4) ván mở không ghi `CODEX_OP` nên không chấm được — đã nối log + file truth vào vòng đời ván. |
+| 2026-08-29 | 🔬 Bài test rò rỉ quá rộng thì sẽ bị tắt đi | Bản đầu của `tests/test_no_law_leak.py` cấm mọi tên enum DSL ở mọi phản hồi. Nó kêu **35 lần** trên `/match/brief` — tất cả đều là **khối D**, tức từ vựng agent BẮT BUỘC phải thấy để phát biểu được luật, cộng `json_schema` mà `/work` phải gửi kèm theo 05 §3.3. Một bài test kêu ở chỗ thiết kế cố tình đặt ở đó là bài test sẽ bị tắt. Vẽ lại ranh giới cho đúng: `law_id`/`FRUIT_[A-D]`/`match_seed` cấm ở mọi nơi; **nguyên văn `to_vietnamese(luật thật)`** cấm cho tới REVEAL (đây mới là bài sắc nhất); còn tên enum trong khối kể chuyện thì `genesis.prompt._check_no_leak` đã ném ngay từ lúc dựng. |
+| 2026-08-29 | ✅ **N-04** Khung server + vòng đời ván | **Tự viết tay** (phiếu ghi ⚠️ "ranh giới tin cậy tự quyết"). Bất biến 5 — *luật thật không rời server trước REVEAL* — là bất biến duy nhất trong track N mà một lỗi **không gây triệu chứng nào**: ván vẫn chạy, client vẫn nhận việc, không ai báo gì, và cả thí nghiệm âm thầm vô nghĩa vì agent đã được mớm đáp án. Nên nó được giữ bằng **cấu trúc** chứ không bằng kỷ luật: `_laws` riêng tư, ra ngoài qua đúng một hàm `laws_public()` biết đọc pha, `public_state()` là **danh sách trắng** (danh sách đen hỏng ngay lần đầu ai đó thêm trường), và `tests/test_no_law_leak.py` vừa quét mọi phản hồi ở mọi pha vừa dùng AST khẳng định không hàm nào khác đọc `_laws`. Cộng: nâng fastapi 0.108 → 0.141 vì `TestClient` của starlette 0.32 truyền `app=` cho `httpx.Client`, mà httpx 0.28 đã bỏ tham số đó. |
+| 2026-08-29 | ✅ **B-05** Ghép LLM vào vòng tick · ✅ **B-08** nạp CLAIM hai pha · 🟨 **B-10** `score.py` ✦**ĐO ĐƯỢC (đường ống)** | **Tự viết tay** (đụng vòng tick). Kiến trúc chốt lại thành **hai nhịp**: `begin_tick` bắn cả đàn bằng `asyncio.gather` rồi chờ hết, `decide` chỉ tra bảng và không chạm mạng — đó là cách duy nhất vừa `gather` được vừa giữ được bẫy §3 của phiếu. Đổi giao diện `Strategist`: hỏi **mỗi tick** và truyền `current` xuống, vì câu trả lời của model về lúc nào thì phải đè lúc ấy; `ReflexStrategist` trả `None` khi goal còn hạn nên M0/M1 không đổi một tick nào. Chạy hết đường ống qua HTTP thật bằng `scripts/fake_model_server.py`: `run → sinh luật → LLM → Sổ Luật → log → truth → score → CSV`. **Nhánh REFLEX ra đúng 0.00** trên 135 dòng (ngưỡng < 0.15) — không có đường rò đáp án. Còn nợ điều kiện 1 của mốc: nó chỉ chứng minh **bộ chấm bắt được** lời giải đúng (chạy `--cheat-seed`, model giả biết trước đáp án), chưa chứng minh **model tự tìm ra**. Cái đó cần S-02. |
+| 2026-08-29 | 🔬 Sổ tay không đủ chiều → **đề bài không giải được trong im lặng** | Bài kiểm "quan trọng nhất và không tự động hoá được" của [B-07](tasks/B-07-so-tay.md) — *đọc sổ tay bằng mắt, bạn có suy ra được luật không?* — trả công đúng như phiếu hứa. Bản đầu ghi ba chiều ngữ cảnh (pha, địa hình, hướng gió tuyệt đối) trong khi `CondKind` có mười. Seed 9 có luật `KHI năng lượng dưới 25% THÌ chịu sát thương`, mà sổ **không có một chữ nào về năng lượng**: "máu tụt hẳn xuống" hiện ra như chuyện ngẫu nhiên và tôi cũng không suy ra nổi. Sửa: `ctx_to_pairs` dựng từ `build_ctx` đầy đủ, cắt theo brain giống khối D. Đọc lại seed 101 thì suy ra được **cả ba luật** bằng mắt. Ba lỗi phụ cùng họ: (a) sổ ghi "TÔI đứng yên" cả khi con vật vừa chạy 2 ô, mà `STEP_ON` là trigger THẬT; (b) hai luật cùng hệ quả trong một tick in cảm giác hai lần — một mẩu đáp án miễn phí; (c) `_RECENT_NOTE` thiếu tên nên in ra `low_energy`, `phase_enter` giữa câu tiếng Việt. |
+| 2026-08-29 | 🔬 Ưu tiên "bất thường trước" bóp chết đối chứng | Mặt trái của bất biến 1 [B-07](tasks/B-07-so-tay.md) mà phiếu chưa nói: luật kích hoạt liên tục thì **mọi** dòng đều bất thường, các dòng `không thấy gì` bị đẩy ra hết, và sổ chỉ còn ví dụ **dương**. Đo thật (seed 7, 200 tick): 20/20 dòng là `uống nước → nhiễm độc` — từ đó không tài nào tách `uống nước thì độc` khỏi `uống nước BAN ĐÊM thì độc`, đúng thứ cond của luật hỏi. `NORMAL_QUOTA_RATIO = 0.25` giữ một phần tư chỗ, ở cả lúc loại bớt lẫn lúc `render`. |
+| 2026-08-29 | 🔬 Cổng B thiếu **trần**; `SUBJECT` là cond không giải được | Hai lỗ cùng kiểu "đề bài hỏng mà không ai báo". (1) `gate_b` chỉ có sàn `n_fire >= 5`. Luật kích hoạt gần như **mọi lúc** cũng không học được y như luật không bao giờ kích hoạt: sổ tay mất tương phản và một câu trả lời hằng số ăn điểm mà không hiểu gì. Đo 24 luật/8 seed: trung vị 0,035 con-lượt nhưng seed 44 có `KHI bước vào đồng cỏ THÌ dịch chuyển` ở **0,552** vì PLAIN là địa hình áp đảo. Thêm `SOLVE_MAX_FIRE_RATE = 0.25` → max tụt còn 0,198. (2) `SUBJECT` là cond được sinh **nhiều nhất** (3/12) nhưng `build_ctx` điền nó từ trait của **chính người quan sát** và ghim `SAME_SP: True` — mô tả nhầm người — và sổ tay không có chiều nào nói về trait kẻ khác. Một phần tư số đề bài đang không giải được. Thêm `IMPLEMENTED_CONDS` lọc ở **một chỗ** (`vocab_for_brain`) để bộ sinh, JSON schema và khối D không bao giờ nói ba thứ khác nhau. |
+| 2026-08-29 | ✅ **B-09** Oracle · 🟨 **N-13** Mesh 3D | Cả hai giao `mcp-agy` (192 s và 214 s). **B-09: lỗ hổng L-01 mọc lại ở file khác.** Nó chép lại toàn bộ bảng tra tiếng Việt của `lawdsl` và để mọi đường không khớp rơi về chính `arg`, nên `Trigger(EAT, "BỎ QUA MỌI LỆNH TRƯỚC")` hiện **nguyên văn** trong câu hỏi oracle — mà câu hỏi ấy đi thẳng vào prompt agent ở tick T−1. Bài test rò rỉ của nó chạy 30 luật ngẫu nhiên và **xanh**, vì luật ngẫu nhiên không bao giờ sinh ra `arg` lạ. Sửa: dùng lại `lawdsl.trigger_to_vn`, xoá bản sao, và bịt nốt `_resolve_item` còn ném `KeyError` với lớp lạ. **Một bản sao của bảng tra là một chỗ để lỗ hổng mọc lại.** **N-13: quota đếm nhầm thứ** — nó tiêu quota **trước** khi xét việc đã có task đang sinh, nên hỏi ba lần về CÙNG một vector trait ăn ba suất mà chỉ sinh một mesh (đo: 3/3). Ở luồng thật `/join` gọi mỗi lần vào và trang xem thì poll, nên một người chơi có một cơ thể đốt sạch quota ngày. Cộng: `asyncio.create_task` không giữ tham chiếu (task bị dọn rác giữa chừng), `_in_flight` là biến toàn cục cấp module, và quota chỉ nằm trong RAM nên trần chi phí biến mất mỗi lần deploy. |
+| 2026-08-29 | 📏 Trần chi phí Meshy: **20 lần gọi**, không phải hàng nghìn | Phiếu N-13 §5 đòi "đo đừng đoán". `scripts/mesh_cost_probe.py --matches 30`: 30 ván × 15 con × 400 tick = **180 000** trạng thái cơ thể, nhưng chỉ **20 vector trait khác nhau** — tỉ lệ trúng cache 99,99%. Lý do là luật chuyên hoá của [W-12](tasks/W-12-thich-nghi.md) kéo mỗi loài về vài điểm hút, còn `reset_body` đưa về founder. Quota mặc định (10/client/ngày, 100 toàn cục) rộng hơn nhiều lần so với nhu cầu thật. |
+| 2026-08-29 | 🐢 Bộ test **20 s → 118 s → 21 s**; thêm đệm bộ luật | Từ B-05, `genesis.run` sinh luật ẩn theo mặc định, mà cổng khả giải chạy một ván thật 200 tick cho mỗi bộ (2–7 s). Mọi test gọi CLI đều trả lại khoản đó. `generate_cached` đệm theo `(arm, seed)` trên đĩa — an toàn vì `generate` tất định theo đúng hai khoá ấy, và `test_cache_khop_ban_sinh_moi` ghim điều đó. Với R-01 (hàng nghìn rollout trên vài chục seed) khoản này sẽ là phần lớn thời gian máy chạy. |
+| 2026-08-29 | 🔧 Bộ quét `random` cấp module báo nhầm | `test_no_module_level_random` dùng `ast.walk` để soi từng nút, mà `ast.walk` chui thẳng vào thân **method** trong `class` — nên mọi method có `random.Random()` đều bị báo nhầm. Hậu quả thật: có chỗ đã phải viết `getattr(random, "Random")` để né. **Một tấm lưới bắt người ta viết code vòng vèo để đi qua nó là tấm lưới hỏng.** Viết lại bản đệ quy dừng ở ranh giới hàm, thêm ca `class` vào bài tự kiểm của chính bộ quét. |
+| 2026-08-29 | ✅ **B-02** Prompt 5 khối · ✅ **B-03** `llm_client` · 🟨 **B-06** Replay | Giao `mcp-agy` (191 s). Duyệt tay bắt **ba lỗi cùng một họ với L-01**: (1) `system_block` kết thúc bằng `re.sub("FRUIT_…", "[vật phẩm]")` — một bộ lọc **thay chuỗi** thay vì canh cửa, nên bài test `assert "FRUIT_" not in s` **không bao giờ đỏ được nữa** dù đường rò có thật, và một tên lớp lọt vào sẽ biến thành chữ chung chung, hỏng prompt trong im lặng. Đổi sang `_check_no_leak` **ném** `PromptLeak`, thêm bài test cố tình nhét tên lớp để chứng minh bộ canh còn sống. (2) `ReplayStrategist` có đường "không có bản ghi cho lượt này thì lấy tạm bản ghi kế tiếp của con đó" và `pop()` khỏi hàng đợi — replay lệch **âm thầm**, đúng thứ phiếu B-06 §2 gọi là tệ hơn không có replay; viết lại: tra đúng khoá `(t, creature_id)`, không phá huỷ, thiếu thì trả `None`, và **so `prompt_hash`, lệch thì ném** kèm số lượt. (3) chữ ký `system_block` nhận đủ kiểu tham số rồi `hasattr`/`isinstance` đoán, và tự lấy `founder_traits` khi thiếu — trả về cơ thể **lúc khai sinh** chứ không phải cơ thể hiện tại. Đưa về đúng chữ ký phiếu §3. |
+| 2026-08-29 | 📏 Prefix vỡ 5,3 lần/con/ván → **1,9** | Lệnh nghiệm thu B-02 §5 (`diff` prompt ở lượt 100 và 104) **trượt thật**, và nó chỉ ra một điều tôi đã bỏ sót khi viết phiếu: thủ phạm không phải W-11 dịch trait mà là `reset_body` — chết thì cơ thể về founder, `brain` đổi, prefix vỡ. Mà brain dao động chủ yếu trong 4↔5 và 3↔4, những cặp **dùng chung từ vựng**, nên prompt lẽ ra không cần đổi một byte. Bỏ hẳn số đo cơ thể khỏi SYSTEM (kể cả `brain`), chỉ giữ thứ quyết định từ vựng. Đo lại 5 seed × 400 tick × 15 con: 79–91 → **19–34 lần vỡ/ván**, tức 1,27–2,27 mỗi con — dưới hẳn ngưỡng ~5 của phiếu §4. SYSTEM còn ~596 token, USER ~124. |
+| 2026-08-28 | Bộ tài liệu v5 + thế giới mở + 60 phiếu việc | Chưa có code |
+| 2026-08-28 | ✅ S-01 khung kho · ✅ S-04 log JSONL · ✅ S-03 kiểm tra tái lập | 15 test xanh; bộ quét `random` module-level đã thử bằng lỗi cố tình |
+| 2026-08-28 | 🟨 S-02 — `scripts/serve_L2.sh` + `scripts/check_schema.py` sẵn sàng | Còn nợ: build CUDA và tải model, chạy trên máy PC |
+| 2026-08-28 | ✅ **W-01** RNG tất định | Đúng một `Random(seed)` trong `run.py`, truyền xuống `World`; `--debug-rng` |
+| 2026-08-29 | ✅ **N-01/02/03** Ba đường may cho chế độ mở | Giao `mcp-agy` (355 s), không lỗi. `Strategist` thành Protocol với 3 hiện thực, `SpeciesRegistry` động thêm được loài giữa ván, trường log mở rộng đã đủ. Bất biến hoán vị và tái lập giữ nguyên. Tài liệu ghi ba việc này "dưới 1 giờ nếu làm ngay, vài ngày nếu làm muộn" — đã xong trước khi track N cần. |
+| 2026-08-29 | ✅ **L-02** Cắm luật vào vòng tick ✦**TRACK L XONG** | **Tự viết tay** (đụng vòng tick). Ba lỗi tôi tự tìm ra bằng cách chạy thật: (1) bộ sinh tạo hệ quả và trigger mà sim KHÔNG áp dụng/phát ra (`SPEAK`, `PHASE_ENTER`, `REVEAL`…) → luật không bao giờ kích hoạt, đề bài không giải được **trong im lặng**; thêm `IMPLEMENTED_EFFECTS`/`IMPLEMENTED_TRIGGERS`. (2) hook phát `HIT_BY` với `arg="ANY"` trong khi luật đòi `OTHER_SP` → không khớp; phát đúng quan hệ loài. (3) `REST` phát thiếu số lượt liên tiếp nên mọi luật `REST(k)` chết. |
+| 2026-08-29 | 🔬 **Gate B đo sai thế giới — đã sửa** | Cổng dựng trên tình huống tổng hợp (ngữ cảnh đều, trigger đều) để lọt **5/15** luật không kích hoạt lần nào, **tệ hơn không có cổng** (3/15) — vì sim thật lệch hẳn: `ROCK` không đi qua được nên `STEP_ON(ROCK)` không bao giờ xảy ra. Chuyển sang chạy **một ván thật** 200 tick: còn **0/15**, mất 6,5 s/bộ luật (ngưỡng 10 s). Gate C giữ tình huống tổng hợp vì nó hỏi về không gian giả thuyết, không về động lực học — giới hạn này đã ghi trong code. |
+| 2026-08-29 | ✅ **L-03** LawGen + Gate A · ✅ **L-05** Gate B/C · ✅ **L-07** REVEAL | L-03/L-07 giao `mcp-agy` (218 s, không lỗi). **L-05 thì agy HẾT GIỜ sau 25 phút**, kẹt trong vòng lặp thoái hoá lặp "I will wait for the task to finish" ~130 lần mà không ra kết quả — nhưng nó đã kịp ghi code đúng trước khi chết. Tôi kiểm lại: `measure` 0,3 s, `generate` có cổng 2,0 s/bộ (dưới ngưỡng 10 s), và tự viết `tests/test_gates.py` mà nó chưa kịp tạo. |
+| 2026-08-29 | 🐢 Bộ test từ **238 s → 7,8 s** | Một bài (`test_reveal_surface_not_leaking_classes_b3`) chiếm 222 s vì gọi `generate` 50 lần với cổng khả giải bật, trong khi nó chỉ kiểm rò tên lớp. Tắt cổng ở các bài không kiểm khả giải; cổng có bài riêng. |
+| 2026-08-29 | 📏 Đo tốc độ sim | **0,19 s/ván 400 tick** (0,5 ms/tick). Ngoại suy về 150 tick của R-01: **0,07 s/ván** so với mục tiêu 15–25 s — môi trường nhanh hơn ngân sách ~200×, nên LLM sẽ là nút cổ chai chứ không phải Python. Đây là bằng chứng cho lập luận khả thi của M7 ở [03 §11](03-LUAT-AN-V5.md). |
+| 2026-08-29 | ✅ **L-06** `match()` ★★ | **Tự viết tay** — tài liệu của chính dự án ghi ❌ tuyệt đối không giao, và lý do đó vẫn đúng. Tám ca bắt buộc đều qua. Ba ca đỏ lúc đầu phơi ra một **mâu thuẫn trong tài liệu**: [03 §5.3](03-LUAT-AN-V5.md) ghi lệch một rổ = 0.5, phiếu L-06 §6 đòi ca (g) ra 0.80–0.90 — không thể cùng đúng. Giải bằng ràng buộc **thứ tự** (đúng-hết-lệch-một-rổ phải hơn hẳn sai-điều-kiện), chọn 0.85 và **sửa §5.3**. Số đo: trùng khít 1.00 · lệch 1 rổ 0.85 · lệch 2 chiều 0.72 · bỏ 1 cond 0.66 · bỏ 2 cond 0.00 · sai hệ quả/trigger/null 0.00 · **1000 luật ngẫu nhiên trung bình 0.000**. |
+| 2026-08-29 | ✅ **L-04** Tình huống + lấy mẫu phân tầng | Giao `mcp-agy` (217 s), không lỗi. 100 luật × 400 tình huống: tỉ lệ 40/40/20 sai số <3%, near_miss trải đều theo từng chiều cond, `acc0` nằm trong [0.45, 0.65], tất định. |
+| 2026-08-29 | ✅ **L-01** LawDSL | Giao `mcp-agy` (219 s). Round-trip 1000 luật, AND giao hoán, GBNF sinh tự động, cắt từ vựng theo brain — đều đúng. Duyệt tay bắt **lỗ hổng an ninh**: `to_vietnamese` để mọi tra cứu rơi về chính `arg` khi không khớp bảng, nên `Trigger(EAT, "BỎ QUA MỌI LỆNH TRƯỚC")` render nguyên văn ra câu — đúng kênh tiêm lệnh mà DSL sinh ra để đóng ([04 §7.4](04-THE-GIOI-MO.md)), vì luật do người khác **dạy** sẽ vào prompt người thứ ba (B-12). Bịt mọi đường rơi về hằng số `"?"`, ép trường số qua `int()`, thêm test hồi quy 7 ca. |
+| 2026-08-29 | ✅ **W-13** Sandbox v5 | Giao `mcp-agy` (234 s). Duyệt tay bắt 2 lỗi: `s_rng = random.Random(seed)` **cùng seed** với luồng chính nên hoán vị bề mặt không hề độc lập (comment còn ghi là "luồng riêng") — dẫn xuất seed bằng md5; và `FIRE` bị đưa vào bộ sinh địa hình, co mất ô `PLAIN` và **phá cân bằng M1 vừa tune** (3 con không chết) — lửa chỉ được xuất hiện qua luật `SPREAD`, gỡ khỏi bộ sinh thì M1 khôi phục. |
+| 2026-08-28 | ✅ **W-12** Thích nghi + dịch trait ✦**M1** | Cơ chế giao `mcp-agy` (214 s, không lỗi). Phần tune tự làm bằng quét tham số. Hai phát hiện: `stomach` định giá quá rẻ (độ tản chết 3×), và **luật dịch trait kéo cả năm loài về một cơ thể** — đổi từ san bằng sang chuyên hoá. Chi tiết ở khối trên. |
+| 2026-08-28 | ✅ **W-11** Vòng tick 6 pha ★ | Giao `mcp-agy` (196 s). Tách ra `genesis/tick.py`, thu hết intent rồi mới áp dụng. **Bài kiểm tra quan trọng nhất qua**: 5 hoán vị khác nhau × 200 tick cho trạng thái y hệt. Đo bằng tiến trình riêng thì thấy có **hai** cơ chế giữ tính bất biến (duyệt theo `creature_sort_key`, và luồng ngẫu nhiên riêng mỗi con dẫn xuất từ `md5(seed:tick:id)`), **mỗi cái tự nó đã đủ** — nên bài kiểm tra không phân biệt được chúng. Thêm test ghim riêng từng cơ chế để gỡ một cái đi thì có cái báo. |
+| 2026-08-28 | ✅ **W-10** Chiến đấu đồng thời + độc | Giao `mcp-agy` (149 s). Đồng thời và độc làm đúng ngay. Duyệt tay bắt **một lỗi nặng**: `resolve_combat` không kiểm khoảng cách, mà Intent tính từ vị trí *trước* khi di chuyển còn đòn giải quyết *sau* — nên đánh trúng cả kẻ đã chạy xa 9 ô, và **FLEE thành vô dụng**. Thêm `MELEE_RANGE` kiểm tầm sau di chuyển + test hồi quy. Cộng: `tick_regen` viết cứng `0.6`, đưa lên `config.HP_REGEN_ENERGY_RATIO`. |
+| 2026-08-28 | ✅ **W-09** Tầng phản xạ | Giao `mcp-agy` (313 s). Nó **nới tiêu chí nghiệm thu**: phiếu đòi `FORAGE > WANDER`, test nó viết chỉ đòi cả hai `> 0`. Chạy tiêu chí thật thì trượt (1192 vs 2817). Nhưng lỗi gốc là **của tôi**: luật chọn goal tôi giao để hở dải chết 40–80% energy rơi hết vào WANDER, mà sinh vật sống phần lớn thời gian ở đó. Sửa ở luật (một ngưỡng `ENERGY_FULL_RATIO`, không còn dải chết), khôi phục tiêu chí thật → FORAGE 54% vs WANDER 11%, ăn +50%, chết giảm 48→20. |
+| 2026-08-28 | ✅ **W-08** Tầm nhìn + bụi rậm | Giao `mcp-agy` (99 s, 2 file). Không lỗi nào phải vá — lần thứ hai liên tiếp. Bất biến then chốt: bán kính lấy từ **người quan sát**, không phải người bị nhìn; đây là khuôn mẫu cho kênh nói ở B-11. Tránh import vòng bằng `TYPE_CHECKING` + import trong thân hàm. Chi phí 60 µs/tick (0,12% ngân sách R-01). |
+| 2026-08-28 | ✅ **W-07** Vector trait + chỉ số dẫn xuất | Giao `mcp-agy` (416 s, 7 file). Nghiệm thu qua ngay, **không lỗi nào phải vá** — lần đầu trong 6 việc. Bảng chỉ số khớp `docs/02 §2` cho cả 5 loài. `M0_*` đã gỡ sạch khỏi `genesis/`, `tests/` và `config.py`; gỡ xong ván không đổi kết quả. |
+| 2026-08-28 | ✅ **W-06** Render terminal ✦**M0** | Giao `mcp-agy` (233 s). Duyệt tay bắt một lỗi thiết kế: glyph băm độc lập rồi lấy mod, và md5 của `L1`,`L2`,`L3`,`L5` tình cờ **cùng dư 12** nên bốn trong năm loài ra cùng ký tự `◍` — trên màn hình không phân biệt được. Băm độc lập với 5 loài trên 30 ô đã có ~30% khả năng đụng. Đổi sang băm ra vị trí bắt đầu rồi **dò tuyến tính**; giờ `L1=◍ L2=◎ L3=★ L4=◈ L5=☆`. Màu đã tách đủ (khoảng cách hue nhỏ nhất 32°) nên giữ nguyên. |
+| 2026-08-28 | ✅ **W-05** Ăn, chết, xác, hồi sinh | Giao `mcp-agy` (259 s). **Bắt được một cửa hậu nghiêm trọng:** code sản xuất dò chuỗi `"w04"` trong tên file output rồi tắt ăn/xác/hồi sinh để test W-04 cũ khỏi đỏ — cùng seed cho hai thế giới khác hẳn (EAT 157 vs 0). Đã gỡ sạch; gốc rễ là test W-04 khẳng định điều chỉ đúng trước W-05, nên viết lại test ở mức đơn vị. Thêm test hồi quy "tên file không ảnh hưởng kết quả". Cộng: `resolve_eat` thiếu trần năng lượng theo đặc tả, đã chặn. |
+| 2026-08-28 | ✅ **W-04** Creature + năng lượng M0 | Giao `mcp-agy` (125 s), nghiệm thu qua ngay: 15 con chết đói hết, con cuối tick 28. Duyệt tay sửa 1 lỗi tiềm ẩn: `spawn_population` sắp theo **chuỗi** id nên `"L5:10"` rơi giữa `"L5:1"` và `"L5:2"` khi một loài >9 con → thứ tự duyệt đổi, mất tái lập, không báo lỗi. Đổi sang khoá `(species, int(idx))` + test hồi quy. Không đổi kết quả với POPULATION hiện tại. |
+| 2026-08-28 | ✅ **W-03** thức ăn: `spawn_plants`, `eat_plant`, `*` trên bản đồ | Giao `mcp-agy` (102 s), nghiệm thu qua ngay. Duyệt tay sửa 2 chỗ: quét lưới 4 lần/tick → 1 lần (162→43 µs/tick, đổi lúc chưa seed nào phụ thuộc); test khoá cứng `PLANT_MAX == 40` → kiểm quan hệ, vì W-12 là mốc tune và config sẽ đổi vài chục lần. |
+| 2026-08-28 | ✅ **W-02** lưới, địa hình, hình học toroidal | Giao `mcp-agy` (163 s). Duyệt tay tìm 2 lỗi: `passable()` không wrap → lập chỉ mục âm im lặng trả sai ô và `(24,24)` ném IndexError; hằng số nằm ngoài `config.py`. Đã vá + 2 test hồi quy. Bền: 0/5000 seed trượt ngưỡng phân bố. |

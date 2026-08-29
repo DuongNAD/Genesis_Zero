@@ -1,0 +1,33 @@
+# Genesis Zero — server ván (N-11 giai đoạn 2).
+#
+#   sudo cp deploy/systemd/genesis.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now genesis
+#
+# KHÔNG đặt model lên VPS. Máy này chỉ chạy server Python; model chạy ở máy của
+# từng người chơi. Băng thông cần < 30 KB/s cho 15 người chơi + 50 người xem
+# (docs/04 §6), nên một VPS 2 nhân / 2 GB là đủ.
+
+[Unit]
+Description=Genesis Zero match server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=genesis
+WorkingDirectory=/srv/genesis
+# Không có secret nào trong kho (bất biến 2). Mọi thứ nhạy cảm qua file này,
+# chmod 600, KHÔNG commit.
+EnvironmentFile=-/etc/genesis/env
+ExecStart=/srv/genesis/.venv/bin/uvicorn net.server:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+
+# Server không cần ghi ra ngoài hai thư mục này, nên đừng cho phép.
+ProtectSystem=strict
+ReadWritePaths=/srv/genesis/runs /srv/genesis/.cache
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

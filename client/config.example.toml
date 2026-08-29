@@ -1,0 +1,18 @@
+# Genesis Zero — cấu hình client. Sửa file này, rồi:
+#     genesis-client --config config.example.toml
+
+server    = "https://genesis.example.org"   # server của ván
+model_url = "http://localhost:8080"         # llama-server của BẠN, chạy ở máy bạn
+
+name    = "Kiến Lửa"                        # ≤24 ký tự, kẻ khác đọc được
+persona = "Sống theo đàn, cẩn trọng, chia phần cho con yếu."   # ≤400 ký tự
+
+# 0..5. Server cấp 12 − brain điểm còn lại cho năm chỉ số kia, nên brain cao
+# nghĩa là giáp mỏng, chậm, mắt kém. Không ai xác minh model của bạn, và cũng
+# không cần: khai láo không lợi gì vì ngân sách tự thực thi.
+brain_tier = 3
+pop        = 2                              # 1..5, server có thể cấp ít hơn
+
+model_name = "Qwen2.5-7B-Instruct"          # tự khai, để hiển thị trên bảng xếp hạng
+params_b   = 7.0
+league     = "LEAGUE_LLM"                   # hoặc "LEAGUE_OPEN"

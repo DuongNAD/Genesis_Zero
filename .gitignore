@@ -1,0 +1,20 @@
+runs/
+models/
+__pycache__/
+*.py[cod]
+*.jsonl
+.pytest_cache/
+.DS_Store
+*.egg-info/
+build/
+dist/
+.cache/
+
+# Trang tài liệu gộp — sinh lại bằng `make site`, đừng commit bản build.
+# (Bỏ dòng này nếu bạn muốn phục vụ nó qua GitHub Pages.)
+docs/site.html
+
+# Kết quả chạy và mesh tải về
+assets/meshy/tasks.json
+.venv/
+venv/
