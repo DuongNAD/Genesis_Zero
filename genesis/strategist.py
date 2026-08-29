@@ -568,6 +568,8 @@ class LlmStrategist:
         # Số chỗ THẬT của server, dò một lần ở lời gọi đầu (`/props.total_slots`).
         # `None` = chưa dò. Xem `_ensure_slots`.
         self._n_slots: int | None = None
+        # Hạn chờ TỰ HIỆU CHỈNH theo model đang cắm. `None` = chưa đo.
+        self._call_ms: float | None = None
         self.personas: dict[str, str] = dict(personas or {})
         self.log = log
         self.timeout = timeout
@@ -738,7 +740,15 @@ class LlmStrategist:
         # mất 42% lượt nghĩ là một con số sai không ai nhìn thấy.
         n_slots = self._n_slots or law_config.LLM_PARALLEL_FALLBACK
         waves = max(1, -(-len(jobs) // max(1, n_slots)))
-        timeout = self.timeout * waves
+        # Hằng số 45 s là số của MỘT model. Qwen-7B sinh ~14 tok/s nên một đợt
+        # đầy mất 20 s; Qwen-14B sinh 5–6 tok/s nên đúng đợt ấy mất **81 s** —
+        # và cả ván 14B trượt 20/41 lời gọi, đúng mốc 45004 ms, rồi ghi Sổ Luật
+        # **0 lần**. Đọc vội thì thành "14B cũng không quy nạp được", trong khi
+        # nó gần như chưa được nghĩ lần nào.
+        #
+        # Nên hạn chờ phải ĐO, không phải đặt. `_call_ms` là thời gian một đợt
+        # quan sát được, cập nhật dần; nhân 3 để chừa cho phương sai.
+        timeout = max(self.timeout, 3.0 * (self._call_ms or 0.0) / 1000.0) * waves
         async with httpx.AsyncClient(timeout=timeout, transport=self.transport) as client:
             n = await self._ensure_slots(client)
             # Semaphore dựng MỚI mỗi lượt, không nhớ lại.
@@ -774,6 +784,12 @@ class LlmStrategist:
                 for c, kind, system, user, _, tg in jobs
             ])
             elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
+            # Chỉ học từ đợt CÓ KẾT QUẢ: một đợt trượt sạch chỉ nói lên hạn chờ
+            # cũ quá ngắn, lấy nó làm mốc là tự khoá mình ở giá trị sai.
+            if any(r is not None for r in results):
+                per_wave = elapsed_ms / waves
+                self._call_ms = (per_wave if self._call_ms is None
+                                 else 0.7 * self._call_ms + 0.3 * per_wave)
 
         for (c, kind, _system, _user, phash, _tg), r in zip(jobs, results):
             if kind == "shift":

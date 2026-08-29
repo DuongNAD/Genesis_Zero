@@ -57,3 +57,40 @@ NGHIỆM THU: pytest tests/test_circuit_breaker.py tests/test_llm_client.py -q
 # đo thời gian thì máy bận là đỏ giả.
 TRẢ VỀ: chỉ diff.
 ```
+
+
+## Hạn chờ là số của MỘT model — lần thứ tư cùng một hình dạng
+
+| lần | hằng số | hỏng thế nào |
+|---|---|---|
+| 1 | `-c 12288` (3072 mỗi chỗ) | prompt giữa ván 2737–2826 token → tràn, hiện ra thành "model im lặng" |
+| 2 | `-np 4` | 15 con xếp hàng TRONG server, `timeout` đếm cả lúc chờ → 43% trượt |
+| 3 | `timeout = 20 s` | một đợt đầy Qwen-7B mất 19,9 s → trượt gần nửa |
+| 4 | `timeout = 45 s` | một đợt đầy Qwen-14B mất **81 s** → trượt 20/41, ghi Sổ Luật **0 lần** |
+
+Cả bốn là **một con số đúng cho một cấu hình, viết như thể đúng cho mọi cấu
+hình**. Ba lần đầu tôi thay bằng một con số khác — và mỗi lần nó lại sai với
+model tiếp theo.
+
+Lần thứ tư thay bằng **phép đo**: `_call_ms` là thời gian một đợt quan sát được,
+trung bình trượt, và `timeout = max(45 s, 3 × _call_ms) × số đợt`.
+
+Hai chi tiết không được bỏ:
+
+**Chỉ học từ đợt CÓ kết quả.** Một đợt trượt sạch chỉ nói lên hạn cũ quá ngắn;
+lấy nó làm mốc là tự khoá mình ở giá trị sai, vĩnh viễn.
+
+**Phải có sàn.** Model nhanh không được kéo hạn xuống dưới 45 s, để một cú chậm
+bất thường không giết cả đàn.
+
+Đo lại trên Qwen-14B, 40 tick:
+
+| | hạn 45 s cứng | hạn tự hiệu chỉnh |
+|---|---|---|
+| lời gọi | 21 | **69** |
+| trượt | **49%** | **7%** |
+| lần ghi Sổ Luật | **0** | **5** |
+
+Con số `match = 0.000` của ván 14B đầu tiên **không đọc được** — model gần như
+chưa được nghĩ lần nào. Suýt nữa nó thành kết luận "14B cũng không quy nạp
+được", đúng vào câu hỏi trung tâm của cả dự án.

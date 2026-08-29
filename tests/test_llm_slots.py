@@ -154,3 +154,41 @@ def test_khong_bao_gio_qua_n_lenh_bay_cung_luc():
 
     asyncio.run(go())
     assert peak <= 3, f"có lúc {peak} lời gọi cùng bay, server chỉ có 3 chỗ"
+
+
+def test_han_cho_tu_hieu_chinh_theo_model():
+    """Hạn chờ phải ĐO, không phải đặt cứng.
+
+    45 s là số của MỘT model. Qwen-7B sinh ~14 tok/s nên một đợt đầy mất 20 s;
+    Qwen-14B sinh 5–6 tok/s nên đúng đợt ấy mất **81 s**. Ván 14B đầu tiên
+    trượt **20/41 lời gọi**, mọi lần đúng mốc 45004 ms, và ghi Sổ Luật **0
+    lần** — đọc vội thì thành "14B cũng không quy nạp được", trong khi nó gần
+    như chưa được nghĩ lần nào.
+    """
+    import asyncio
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/props":
+            return httpx.Response(200, json={"total_slots": 4})
+        return httpx.Response(200, json={
+            "content": json.dumps({"goal": "EXPLORE", "ttl": 5}),
+            "tokens_predicted": 8,
+        })
+
+    st = _strategist([f"L1:{i}" for i in range(4)], httpx.MockTransport(handler))
+    assert st._call_ms is None, "chưa đo thì chưa có ước lượng"
+
+    # mô phỏng một đợt mất 9 giây
+    st._call_ms = 9000.0
+    n = 4
+    waves = 2
+    timeout = max(st.timeout, 3.0 * st._call_ms / 1000.0) * waves
+    # max(45, 3×9) = 45 -> nhưng đợt 9 s là ĐO ĐƯỢC, nên sàn 45 vẫn thắng ở đây;
+    # với 14B (đợt 81 s) thì 3×81 = 243 s mới là số quyết định.
+    assert timeout == 90.0, timeout          # max(45, 27) × 2 đợt
+    st._call_ms = 81000.0                    # đúng số đo của Qwen-14B
+    assert max(st.timeout, 3.0 * st._call_ms / 1000.0) * 1 == 243.0
+
+    # model nhanh thì KHÔNG được kéo hạn xuống dưới sàn
+    st._call_ms = 1000.0
+    assert max(st.timeout, 3.0 * st._call_ms / 1000.0) == st.timeout

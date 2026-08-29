@@ -81,3 +81,27 @@ thông lượng; thứ tăng được là **số máy** — mà đó đúng là 
 **Cộng một lỗi trong chính `scripts/serve_L2.sh`:** llama.cpp b9430 đổi `-fa`
 thành cờ **có giá trị** (`on|off|auto`). Cờ `-fa` trần của bản cũ nuốt mất tham
 số kế tiếp, server chết với một trang usage và không nói gì về nguyên nhân.
+
+
+## 14B trên máy này: đo được, và nó đắt hơn nhiều so với dự đoán từ số tham số
+
+| | 7B q4 | 14B q4 |
+|---|---|---|
+| sinh chữ | **~14 tok/s** | **5–6 tok/s** |
+| 1 lời gọi (~50 token) | 3,5 s | ~9 s |
+| 8 lời gọi song song | 19,9 s | **81,1 s** |
+| KV mỗi token | 56 KB | **192 KB** |
+| một ván 200 tick | ~1,5 giờ | **~6 giờ** |
+
+Prompt cache vẫn chạy hoàn hảo ở 14B — `timings` báo **nạp đúng 1 token**, phần
+còn lại tái dùng. Nút cổ chai thuần là băng thông sinh chữ.
+
+Hai chỗ dễ suy sai:
+
+**KV không tỉ lệ với số tham số.** 14B gấp đôi 7B về tham số nhưng tốn KV **gấp
+3,4 lần** mỗi token (48 lớp × 8 đầu KV, so với 28 × 4). Tính `-c` theo "gấp đôi"
+là thiếu chỗ.
+
+**Một phép đo lúc máy đang bận là một phép đo sai.** Lần đầu tôi đo 14B trong
+lúc một ván đang chạy và ra "31 s một lời gọi, chậm hơn 7B 8,9 lần". Đo lại lúc
+máy rảnh: 2,5 lần. Con số đầu suýt thành một kết luận về phần cứng.
