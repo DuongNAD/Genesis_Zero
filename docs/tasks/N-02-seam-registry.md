@@ -55,3 +55,29 @@ RÀNG BUỘC: không hardcode "L1".."L5" ở đâu ngoài from_config; không t�
 NGHIỆM THU: pytest tests/test_registry.py -q
 TRẢ VỀ: chỉ diff.
 ```
+
+## 5. Sự thật hiện tại: có HAI cấu trúc, và chỉ một cái chạy
+
+Phiếu này dựng `SpeciesRegistry` làm đường may cho chế độ mở. Nhưng khi [N-05](N-05-join.md)
+được viết, nó dựng **`net.match.Registration` riêng** và không dùng tới. Kiểm
+bằng `grep`: ngoài `tests/test_seams.py`, **không file sản phẩm nào import
+`genesis.registry`**.
+
+Nói thẳng vì đây đúng là họ lỗi đã cắn ba lần trong dự án — **hai cấu trúc cho
+một khái niệm, rồi một cái bị bỏ quên**:
+
+| lần | hai chỗ | triệu chứng |
+|---|---|---|
+| 1 | `schema_for` ở `strategist` và ở `routes_work` | đường mạng thiếu `targets` lẫn `sm` → luật ăn quả **bất khả về cấu trúc** |
+| 2 | `config.FOUNDERS` và trait cấp lúc `/join` | người chơi qua mạng **mất brain** sau cái chết đầu tiên |
+| 3 | quên-khi-chết ở `strategist.observe` và ở `net.match` | sinh vật qua mạng **giữ nguyên sổ tay** qua mọi đời |
+
+Cả ba lần, cách sửa đều là **gom về một chỗ**, không phải đồng bộ hai chỗ.
+
+`SpeciesRegistry` chưa gây ra lỗi nào vì nó không chạy — nhưng nó là cái bẫy
+đang chờ: ai đó sửa `Registration` rồi tưởng đã sửa cả hai.
+
+**Khuyến nghị:** hoặc gộp `Registration` vào `SpeciesSpec` (một cấu trúc), hoặc
+xoá hẳn `genesis/registry.py` cùng bài test của nó. Đừng để nguyên như bây giờ.
+Việc này **không nên làm chung với một thay đổi khác** — nó đụng đường `/join`,
+là đường duy nhất người lạ đi vào.

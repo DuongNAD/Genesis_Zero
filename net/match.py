@@ -370,8 +370,37 @@ class MatchRunner:
             self.world, self.creatures, self.tick_no, self.rng, self.state,
             laws=self._laws, strategist=self.strategist, log=frame_log,
         )
+        self._forget_for_dead(frame_log.events)
         self._publish(self.tick_no, frame_log.events)
         self.tick_no += 1
+
+    def _forget_for_dead(self, events: list[dict]) -> None:
+        """Sang đời mới thì sổ tay chết theo, Sổ Luật bớt chắc chắn (W-17).
+
+        Đường cục bộ làm việc này trong `strategist.observe`, nhưng ở chế độ mở
+        sổ tay và Sổ Luật nằm ở `net.routes_work`, và `RemoteClientStrategist`
+        không có `observe`. Thiếu móc này thì **người chơi qua mạng chơi một trò
+        khác người chơi cục bộ**: sinh vật của họ giữ nguyên sổ tay thô qua mọi
+        đời, đúng ngược lại thiết kế.
+
+        Đây là lần thứ ba cùng một họ lỗi trong dự án — hai đường chạy, một
+        đường bị bỏ quên. Hai lần trước: `schema_for` thiếu `targets` lẫn `sm`,
+        và `founder_traits` không biết loài đăng ký lúc chạy. Nên logic thật
+        nằm trong `lineage.forget_on_death`, một chỗ, cả hai đường gọi vào.
+
+        Nhập trong hàm để khỏi vòng phụ thuộc: `routes_work` đã nhập `net.match`.
+        """
+        from genesis.lineage import forget_on_death
+        from net import routes_work
+
+        mid = self.match_id
+        for ev in events:
+            if ev.get("kind") != "DEATH":
+                continue
+            key = (mid, ev.get("creature_id"))
+            if key in routes_work._notes or key in routes_work._codices:
+                forget_on_death(routes_work._notes.get(key),
+                                routes_work._codices.get(key))
 
     def _publish(self, tick_no: int, events: list[dict]) -> None:
         frame = self.frame(tick_no, events)
