@@ -1,39 +1,58 @@
 #!/usr/bin/env python3
-"""X-11 — Đo chất lượng sổ tay: Tỉ lệ ghép nhân quả giả trong fieldnotes.
+"""X-11 — Đo chất lượng sổ tay: Tỉ lệ ghép nhân quả giả và tính khả dĩ trong fieldnotes.
 
     python scripts/x11_sotay.py --seeds 8 --ticks 200
-    python scripts/x11_sotay.py --seeds 3 --ticks 120
+    python scripts/x11_sotay.py --seeds 2 --ticks 100
 
 ## Bối cảnh và Mệnh đề cần đo
 
 Trong Genesis Zero, `LlmStrategist.observe(tick_no, world, creatures, events, state)`
 ghi chép các dòng sổ tay (`FieldNotes`) từ sự kiện xảy ra ở mỗi tick.
 
-Quy trình ghép hành động và hệ quả của `observe()`:
-1. Thu thập hệ quả luật từ `events["law"]` gán vào `outcome[cid]`.
-2. Xác định hành động của cá thể theo thứ tự ưu tiên:
-   - Có trong `events["eat"]`   → "ăn <tên bề mặt>"
-   - Có trong `events["drink"]` → "uống nước"
-   - Có trong `events["attack"]`→ "trúng đòn"
-   - Nếu không có ở 3 mục trên:
-     - Nếu di chuyển (`moved`)  → "bước vào <địa hình>"
-     - Nếu đứng yên             → "đứng yên"
-3. Ghép cặp `(hành động, outcome)` và ghi vào sổ tay của chính cá thể đó ("TÔI ...")
-   cũng như các cá thể khác nhìn thấy ("THẤY <id> ...").
+Khi sinh vật nhận hệ quả từ luật (`events["law"]`), `observe()` chọn tiền đề theo thứ tự:
+1. Có trong `events["eat"]`    → "ăn <tên bề mặt>" (ứng với trigger EAT)
+2. Có trong `events["drink"]`  → "uống nước" (ứng với trigger DRINK)
+3. Có trong `events["attack"]` → "trúng đòn" (ứng với trigger HIT_BY)
+4. Nếu không ăn/uống/bị đánh, chọn theo 5 mức ưu tiên cố định (không nhìn vào luật):
+   1. Chuyển pha ngày/đêm      → "trời vừa chuyển sang ban ngày/đêm" (PHASE_ENTER)
+   2. Cạn năng lượng (< 25%)   → "sức đã cạn" (LOW_ENERGY)
+   3. Có kẻ đứng sát (dist<=1) → "có kẻ đứng sát bên" (ADJACENT)
+   4. Di chuyển (`moved`)      → "bước vào <địa hình>" (STEP_ON)
+   5. Đứng yên                 → "đứng yên" (REST)
 
-## Nghi vấn cốt lõi
+Ghép cặp `(tiền đề, outcome)` và ghi vào sổ tay của chính cá thể đó ("TÔI ...")
+cũng như các cá thể khác nhìn thấy ("THẤY <id> ...").
 
-Khi hệ quả đến từ một luật có trigger KHÔNG PHẢI `STEP_ON` (ví dụ `LOW_ENERGY`,
-`ADJACENT`, `PHASE_ENTER`, `ATTACK`, v.v.), mà con vật tick đó chỉ di chuyển,
-sổ tay sẽ ghi nhận:
-    `t120 TÔI bước vào đồng cỏ → sức rút đi rất nhanh`
-Đây là một CẶP NHÂN QUẢ GIẢ (false causal link).
+## Thước đo chính: Tính khả dĩ của tiền đề (Plausibility)
 
-Thí nghiệm này chạy N ván với luật thật và đo chính xác:
-- Tổng số dòng sổ tay ghi nhận hệ quả.
-- Tỉ lệ % dòng ghép với "bước vào ..." khi trigger thật KHÁC `STEP_ON`.
-- Phân bố chi tiết các trigger thật đằng sau mỗi loại hành động.
-- So sánh mức độ ghép sai giữa "bước vào ...", "ăn ...", "uống nước", "trúng đòn", "đứng yên".
+Thước đo quan trọng nhất của script này là:
+    "Tỉ lệ dòng có hệ quả mà tiền đề CÓ THỂ là nguyên nhân thật"
+    = số dòng có tiền đề ánh xạ về một trigger CÓ TRONG bộ luật của ván ấy,
+      chia cho tổng số dòng có hệ quả.
+
+LƯU Ý QUAN TRỌNG VỀ PHẠM VI Ý NGHĨA:
+- Con số này đo TÍNH KHẢ DĨ (tiền đề CÓ THỂ là nguyên nhân thật vì trigger tương ứng
+  có tồn tại trong thế giới của ván đó). Nó phản ánh chất lượng dữ liệu đầu vào mà
+  tầng quan sát (FieldNotes) cung cấp cho mô hình suy luận.
+- Con số này KHÔNG ĐO model có giải được luật hay sử dụng được dữ liệu hay không.
+  Không nên hứa quá hay đồng nhất tính khả dĩ của sổ tay với năng lực quy nạp của LLM.
+- Đo lường riêng cho "bước vào ..." vẫn được duy trì để theo dõi tiến trình lịch sử
+  (so sánh mức độ nhiễu nhân quả địa hình trước và sau khi bổ sung các mức ưu tiên).
+
+## Trần của thước đo: 68% KHÔNG thể lên 100%, và lý do là thật
+
+Nhiều luật nổ trong CÙNG một tick, còn sổ tay chỉ gọi tên được MỘT tiền đề. Nên
+khi một con vừa ăn vừa uống trong một lượt và luật `DRINK` nổ, dòng "ăn … → …"
+bị tính là giả — đúng, nhưng không phải vì trình bày sai mà vì **nhân quả trong
+thế giới này vốn chồng lấn**.
+
+Đo thật trên seed 1 và 2: cả hai **không có luật `EAT` nào**, nên mọi dòng
+"ăn → hệ quả" đều bị xếp giả. Đó là bộ đếm chạy đúng, không phải bộ đếm hỏng.
+
+Nói cách khác: phần còn lại sau khi trừ đi lỗi trình bày **là sự lẫn lộn nhân
+quả mà một nhà khoa học thật cũng phải gỡ** — và đó chính là bài mà dự án này
+đặt ra cho model. Đừng đuổi con số này lên 100%; đuổi được nghĩa là ta đã phát
+đáp án.
 """
 
 from __future__ import annotations
@@ -43,15 +62,19 @@ import collections
 import sys
 from typing import Any
 
+from genesis import law_config
 from genesis.creature import Creature
 from genesis.lawdsl import Law
 from genesis.lawgen import generate_cached
 from genesis.prompt import _TERRAIN_VN
 from genesis.strategist import LlmStrategist, ReflexStrategist
 from genesis.tick import build_match, tick
-from genesis.world import World
+from genesis.world import World, phase_at
 
 ACTION_EXPECTED_TRIGGER: dict[str, str] = {
+    "phase_enter": "PHASE_ENTER",
+    "low_energy": "LOW_ENERGY",
+    "adjacent": "ADJACENT",
     "step_on": "STEP_ON",
     "eat": "EAT",
     "drink": "DRINK",
@@ -60,12 +83,47 @@ ACTION_EXPECTED_TRIGGER: dict[str, str] = {
 }
 
 ACTION_DISPLAY_NAME: dict[str, str] = {
+    "phase_enter": "trời vừa chuyển ...",
+    "low_energy": "sức đã cạn",
+    "adjacent": "có kẻ đứng sát bên",
     "step_on": "bước vào ...",
     "eat": "ăn ...",
     "drink": "uống nước",
     "hit_by": "trúng đòn",
     "rest": "đứng yên",
 }
+
+ACTION_ORDER: list[str] = [
+    "phase_enter",
+    "low_energy",
+    "adjacent",
+    "step_on",
+    "eat",
+    "drink",
+    "hit_by",
+    "rest",
+]
+
+
+def classify_action(action: str) -> tuple[str, str]:
+    """Phân loại chuỗi hành động thành (act_key, act_label)."""
+    if action.startswith("trời vừa chuyển"):
+        return "phase_enter", ACTION_DISPLAY_NAME["phase_enter"]
+    if action == "sức đã cạn":
+        return "low_energy", ACTION_DISPLAY_NAME["low_energy"]
+    if action == "có kẻ đứng sát bên":
+        return "adjacent", ACTION_DISPLAY_NAME["adjacent"]
+    if action.startswith("bước vào"):
+        return "step_on", ACTION_DISPLAY_NAME["step_on"]
+    if action.startswith("ăn"):
+        return "eat", ACTION_DISPLAY_NAME["eat"]
+    if action == "uống nước":
+        return "drink", ACTION_DISPLAY_NAME["drink"]
+    if action == "trúng đòn":
+        return "hit_by", ACTION_DISPLAY_NAME["hit_by"]
+    if action == "đứng yên":
+        return "rest", ACTION_DISPLAY_NAME["rest"]
+    return "unknown", action
 
 
 class SotayProbe(ReflexStrategist):
@@ -97,18 +155,24 @@ class SotayProbe(ReflexStrategist):
             cid = ev["creature_id"]
             outcome_laws.setdefault(cid, []).append(ev["law_id"])
 
-        # Phục dựng chính xác logic gán hành động của LlmStrategist.observe
+        # Phục dựng chính xác logic gán tiền đề hành động của LlmStrategist.observe
         acted: list[tuple[str, str, str, str]] = []
         for ev in events.get("eat", ()):
             cls = ev.get("fruit_class")
             what = sm.surface_of(cls) if sm and cls in sm.cls_to_surface else "thứ gì đó"
-            acted.append((ev["creature_id"], f"ăn {what}", "eat", "ăn ..."))
+            act_str = f"ăn {what}"
+            act_key, act_label = classify_action(act_str)
+            acted.append((ev["creature_id"], act_str, act_key, act_label))
 
         for ev in events.get("drink", ()):
-            acted.append((ev["creature_id"], "uống nước", "drink", "uống nước"))
+            act_str = "uống nước"
+            act_key, act_label = classify_action(act_str)
+            acted.append((ev["creature_id"], act_str, act_key, act_label))
 
         for ev in events.get("attack", ()):
-            acted.append((ev["creature_id"], "trúng đòn", "hit_by", "trúng đòn"))
+            act_str = "trúng đòn"
+            act_key, act_label = classify_action(act_str)
+            acted.append((ev["creature_id"], act_str, act_key, act_label))
 
         did_something = {a for a, _, _, _ in acted}
         for ev in events.get("move", ()):
@@ -118,12 +182,27 @@ class SotayProbe(ReflexStrategist):
             c = by_id.get(cid)
             if c is None:
                 continue
-            wx, wy = world.wrap(*c.pos)
-            terr = _TERRAIN_VN.get(world.grid[wy][wx], "đất trống")
-            if ev.get("moved", False):
-                acted.append((cid, f"bước vào {terr}", "step_on", "bước vào ..."))
+
+            # 5 mức ưu tiên cố định theo LlmStrategist.observe
+            if tick_no % law_config.PHASE_LEN == 0:
+                p = "ban ngày" if phase_at(tick_no) == "DAY" else "ban đêm"
+                action_str = f"trời vừa chuyển sang {p}"
+            elif c.energy < 0.25 * c.traits.energy_max:
+                action_str = "sức đã cạn"
+            elif any(
+                o.alive and o.id != c.id and world.dist(c.pos, o.pos) <= 1
+                for o in creatures
+            ):
+                action_str = "có kẻ đứng sát bên"
+            elif ev.get("moved", False):
+                wx, wy = world.wrap(*c.pos)
+                terr = _TERRAIN_VN.get(world.grid[wy][wx], "đất trống")
+                action_str = f"bước vào {terr}"
             else:
-                acted.append((cid, "đứng yên", "rest", "đứng yên"))
+                action_str = "đứng yên"
+
+            act_key, act_label = classify_action(action_str)
+            acted.append((cid, action_str, act_key, act_label))
 
         # Chạy hàm observe thật của LlmStrategist
         self.strat.observe(tick_no, world, creatures, events, state)
@@ -209,6 +288,18 @@ def print_results(
     for n in all_notes:
         notes_by_act[n["act_key"]].append(n)
 
+    # Tính toán thước đo chính: Tỉ lệ tiền đề CÓ THỂ là nguyên nhân thật
+    # (Trigger ánh xạ từ tiền đề có mặt trong bộ luật của ván đó)
+    triggers_by_seed = {
+        seed: {law.trigger.kind.value for law in laws}
+        for seed, laws in laws_by_seed.items()
+    }
+    plausible_count = sum(
+        1 for n in all_notes
+        if ACTION_EXPECTED_TRIGGER.get(n["act_key"]) in triggers_by_seed.get(n["seed"], set())
+    )
+    plausible_pct = (plausible_count / total_notes * 100) if total_notes > 0 else 0.0
+
     print()
     print("=" * 84)
     print("   BÁO CÁO ĐO LƯỜNG CHẤT LƯỢNG SỔ TAY THỰC ĐỊA (GENESIS X-11)")
@@ -220,12 +311,15 @@ def print_results(
     print("1. TỔNG QUAN CÁC DÒNG SỔ TAY CÓ HỆ QUẢ VÀ TỶ LỆ GHÉP SAI NHÂN QUẢ")
     print("-" * 84)
     print(f"Tổng số dòng sổ tay có ghi nhận hệ quả: {total_notes:,} dòng")
+    print(
+        f"Tỉ lệ dòng có hệ quả mà tiền đề CÓ THỂ là nguyên nhân thật: "
+        f"{plausible_pct:.2f}% ({plausible_count:,}/{total_notes:,} dòng)"
+    )
     print("-" * 84)
     print(f"{'Hành động trong sổ':<20} | {'Trigger kỳ vọng':<15} | {'Số dòng':>8} | {'% Tổng':>7} | {'Đúng (%)':>9} | {'SAI / GIẢ (%)':>13}")
     print("-" * 20 + "-+-" + "-" * 15 + "-+-" + "-" * 8 + "-+-" + "-" * 7 + "-+-" + "-" * 9 + "-+-" + "-" * 13)
 
-    act_order = ["step_on", "eat", "drink", "hit_by", "rest"]
-    for key in act_order:
+    for key in ACTION_ORDER:
         notes = notes_by_act.get(key, [])
         count = len(notes)
         pct_total = (count / total_notes * 100) if total_notes > 0 else 0.0
@@ -242,24 +336,33 @@ def print_results(
 
     print("-" * 84)
 
-    # 2. CON SỐ CHÍNH: BƯỚC VÀO ...
+    # 2. CÁC CON SỐ TỔNG KẾT QUAN TRỌNG
     step_notes = notes_by_act.get("step_on", [])
     step_count = len(step_notes)
     step_false = sum(1 for n in step_notes if "STEP_ON" not in n["triggers"])
     step_false_pct = (step_false / step_count * 100) if step_count > 0 else 0.0
 
     print()
-    print("2. CON SỐ CỐT LÕI (NGHI VẤN HÀNH ĐỘNG 'BƯỚC VÀO ...'):")
-    print(f"   - Tổng số dòng ghi 'bước vào <địa hình>': {step_count:,} dòng")
-    print(f"   - Số dòng ghép SAI (Trigger thật KHÁC STEP_ON): {step_false:,} dòng")
-    print(f"   ==> TỶ LỆ GHÉP NHÂN QUẢ GIẢ CHO 'BƯỚC VÀO': {step_false_pct:.2f}% <==")
+    print("2. CÁC CON SỐ TỔNG KẾT QUAN TRỌNG:")
+    print(
+        f"   ▶ THƯỚC ĐO CHÍNH (TÍNH KHẢ DĨ CỦA TIỀN ĐỀ):\n"
+        f"     - Tỉ lệ dòng có hệ quả mà tiền đề CÓ THỂ là nguyên nhân thật: "
+        f"{plausible_pct:.2f}% ({plausible_count:,}/{total_notes:,} dòng)\n"
+        f"     (= số dòng có tiền đề ánh xạ về trigger có trong bộ luật của ván, chia cho tổng số dòng có hệ quả)"
+    )
+    print(
+        f"   ▶ ĐO LƯỜNG LỊCH SỬ (HÀNH ĐỘNG 'BƯỚC VÀO ...'):\n"
+        f"     - Tổng số dòng ghi 'bước vào <địa hình>': {step_count:,} dòng\n"
+        f"     - Số dòng ghép SAI (Trigger thật KHÁC STEP_ON): {step_false:,} dòng\n"
+        f"     ==> TỶ LỆ GHÉP NHÂN QUẢ GIẢ CHO 'BƯỚC VÀO': {step_false_pct:.2f}% <=="
+    )
 
     # 3. PHÂN BỐ TRIGGER THẬT CHO TỪNG LOẠI HÀNH ĐỘNG
     print()
     print("3. PHÂN BỐ TRIGGER THẬT ĐẰNG SAU TỪNG LOẠI HÀNH ĐỘNG GHI SỔ:")
     print("=" * 84)
 
-    for key in act_order:
+    for key in ACTION_ORDER:
         notes = notes_by_act.get(key, [])
         display_name = ACTION_DISPLAY_NAME[key]
         exp_trig = ACTION_EXPECTED_TRIGGER[key]
@@ -287,8 +390,8 @@ def print_results(
     print()
     print("4. CHI TIẾT THEO TỪNG VÁN (SEED):")
     print("-" * 84)
-    print(f"{'Seed':<6} | {'Số luật':>7} | {'Tổng dòng':>10} | {'Bước vào':>9} | {'Bước sai':>9} | {'% Bước sai':>11} | {'Uống sai':>9} | {'Ăn sai':>8}")
-    print("-" * 6 + "-+-" + "-" * 7 + "-+-" + "-" * 10 + "-+-" + "-" * 9 + "-+-" + "-" * 9 + "-+-" + "-" * 11 + "-+-" + "-" * 9 + "-+-" + "-" * 8)
+    print(f"{'Seed':<6} | {'Số luật':>7} | {'Tổng dòng':>10} | {'Khả dĩ (%)':>11} | {'Bước vào':>9} | {'Bước sai':>9} | {'% Bước sai':>11}")
+    print("-" * 6 + "-+-" + "-" * 7 + "-+-" + "-" * 10 + "-+-" + "-" * 11 + "-+-" + "-" * 9 + "-+-" + "-" * 9 + "-+-" + "-" * 11)
 
     for seed in sorted(laws_by_seed.keys()):
         seed_notes = [n for n in all_notes if n["seed"] == seed]
@@ -296,14 +399,15 @@ def print_results(
         seed_step_false = sum(1 for n in seed_step if "STEP_ON" not in n["triggers"])
         pct_step_f = (seed_step_false / len(seed_step) * 100) if seed_step else 0.0
 
-        seed_drink = [n for n in seed_notes if n["act_key"] == "drink"]
-        seed_drink_false = sum(1 for n in seed_drink if "DRINK" not in n["triggers"])
-
-        seed_eat = [n for n in seed_notes if n["act_key"] == "eat"]
-        seed_eat_false = sum(1 for n in seed_eat if "EAT" not in n["triggers"])
+        seed_triggers = triggers_by_seed.get(seed, set())
+        seed_plausible = sum(
+            1 for n in seed_notes
+            if ACTION_EXPECTED_TRIGGER.get(n["act_key"]) in seed_triggers
+        )
+        pct_plausible = (seed_plausible / len(seed_notes) * 100) if seed_notes else 0.0
 
         n_laws = len(laws_by_seed[seed])
-        print(f"{seed:<6} | {n_laws:>7} | {len(seed_notes):>10} | {len(seed_step):>9} | {seed_step_false:>9} | {pct_step_f:>10.1f}% | {seed_drink_false:>9} | {seed_eat_false:>8}")
+        print(f"{seed:<6} | {n_laws:>7} | {len(seed_notes):>10} | {pct_plausible:>10.1f}% | {len(seed_step):>9} | {seed_step_false:>9} | {pct_step_f:>10.1f}%")
 
     print("-" * 84)
 
@@ -312,24 +416,24 @@ def print_results(
     print("5. ĐỌC KẾT QUẢ VÀ BÀN LUẬN:")
     print("=" * 84)
     print(
-        "1. XÁC NHẬN NGHI VẤN VỀ NHÂN QUẢ GIẢ:\n"
-        f"   - Kết quả đo lường cho thấy {step_false_pct:.1f}% các dòng sổ tay ghi 'bước vào <địa hình>'\n"
-        "     thực chất bị kích hoạt bởi các trigger KHÔNG PHẢI STEP_ON (chủ yếu là ADJACENT,\n"
-        "     LOW_ENERGY, ATTACK, PHASE_ENTER).\n"
-        "   - Khi một sinh vật bị cạn kiệt năng lượng (LOW_ENERGY) hay đứng cạnh kẻ khác (ADJACENT)\n"
-        "     mà nó đang di chuyển, sổ tay tự động kết luận: 'bước vào <địa hình> → <hệ quả>'.\n"
+        "1. THƯỚC ĐO CHÍNH — TÍNH KHẢ DĨ CỦA TIỀN ĐỀ:\n"
+        f"   - Tỉ lệ dòng có hệ quả mà tiền đề CÓ THỂ là nguyên nhân thật đạt {plausible_pct:.2f}%\n"
+        f"     ({plausible_count:,}/{total_notes:,} dòng có tiền đề ánh xạ về trigger tồn tại trong bộ luật).\n"
+        "   - Ý nghĩa: Đây là thước đo tính khả dĩ (plausibility) ở tầng quan sát/sổ tay —\n"
+        "     dữ liệu thực địa có cung cấp tiền đề liên quan đến các quy luật hiện hữu hay không.\n"
+        "   - Giới hạn: Thước đo này KHÔNG ĐO việc LLM có suy luận hay giải được luật hay không.\n"
+        "     Nó chỉ đảm bảo tầng sổ tay không 'bịt mắt' mô hình bằng các tiền đề hoàn toàn lạc đề.\n"
         "\n"
-        "2. SỰ LAN TRUYỀN NHÂN QUẢ SAI TRONG CỘNG ĐỒNG (SOCIAL NOISE):\n"
-        "   - Không chỉ cá thể trải nghiệm (TÔI) ghi nhận sai, mà MỌI cá thể xung quanh nhìn thấy\n"
-        "     (THẤY L3:1 bước vào ...) cũng ghi nhận đúng mối liên hệ giả này vào sổ tay của mình.\n"
-        "   - Điều này khiến toàn bộ quần thể bị 'đầu độc dữ liệu' bởi các giả thuyết sai lầm.\n"
+        "2. ĐỐI CHIẾU LỊCH SỬ — HÀNH ĐỘNG 'BƯỚC VÀO ...':\n"
+        f"   - Tỉ lệ ghép nhân quả giả cho 'bước vào <địa hình>' là {step_false_pct:.2f}%.\n"
+        "   - Trước khi có cơ chế phân tầng ưu tiên (chuyển pha -> cạn sức -> kẻ đứng sát -> bước vào),\n"
+        "     mọi hành vi di chuyển đều bị dán nhãn 'bước vào', biến địa hình thành vật tế thần\n"
+        "     cho mọi hệ quả không rõ nguyên nhân (nhiễu nhân quả địa hình).\n"
         "\n"
-        "3. TÁC ĐỘNG TỚI NĂNG LỰC SUY LUẬN CỦA MÔ HÌNH (LLM BOTTLENECK):\n"
-        "   - Đây là một nút thắt ở TẦNG QUAN SÁT VÀ BIỂU DIỄN DỮ LIỆU (FieldNotes/Observe),\n"
-        "     hoàn toàn độc lập với năng lực suy luận hay định kiến của LLM.\n"
-        "   - Dù mô hình có khả năng suy luận logic hoàn hảo, việc nạp vào một cuốn sổ tay chứa\n"
-        "     hàng loạt dữ liệu tương quan giả (spurious correlation) sẽ dẫn dắt LLM đặt cược\n"
-        "     vào các luật sai về địa hình, gây lãng phí ô Sổ Luật và lượt nghĩ quý giá.\n"
+        "3. TÁC ĐỘNG TỚI TẦNG SUY LUẬN (FIELDNOTES / INDUCTION BOTTLENECK):\n"
+        "   - Sổ tay thực địa là cầu nối giữa thế giới và trí tuệ mô hình. Nếu tiền đề được ghi\n"
+        "     nhận đúng hoàn cảnh tự nhiên, LLM sẽ nhận được các mối tương quan hợp lý hơn để hình thành\n"
+        "     giả thuyết (Hunch) và kiểm chứng thành Sổ Luật (Codex).\n"
     )
     print("=" * 84)
     print()
