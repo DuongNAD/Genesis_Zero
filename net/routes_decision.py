@@ -8,10 +8,10 @@ from typing import Any
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from genesis import law_config
+from genesis import law_config, speech
 from genesis.reveal import law_from_surface_dict
 from genesis.strategist import payload_to_goal
-from genesis.validate import Verdict, validate_codex, validate_decide
+from genesis.validate import Verdict, validate_codex, validate_decide, validate_shift
 from genesis.world import visible
 import net_config
 from net.match import Phase
@@ -141,14 +141,28 @@ async def decision(
 
         note = payload.get("note")
         if isinstance(note, str) and note.strip():
+            # `sanitize_free_text`, không `.strip()[:N]`. Đường cục bộ đã học
+            # bài này bằng một ván gãy ở lượt 87: ghi chú do model viết đi thẳng
+            # vào khối E ở lượt sau, nên chỉ cần nó viết đúng chữ "HP" là
+            # `_check_no_leak` ném `PromptLeak` và **ván chết**. Ở chế độ mở thì
+            # tệ hơn hẳn — chuỗi ấy đến từ một người lạ, nên đây không còn là
+            # một tai nạn mà là một nút bấm để giết ván của mọi người.
             set_creature_notepad(
-                state.runner.match_id,
                 creature.id,
-                note.strip()[:law_config.NOTEPAD_MAX_CHARS],
+                speech.sanitize_free_text(note, law_config.NOTEPAD_MAX_CHARS),
             )
 
         if payload.get("want_codex"):
-            set_creature_want_codex(state.runner.match_id, creature.id, True)
+            set_creature_want_codex(creature.id, True)
+
+        # Nói và DẠY (B-11, B-12). Trước N-16 trường `say` có trong schema mà
+        # `/decision` không đọc: client qua mạng gửi lên rồi rơi vào hư không,
+        # nên ở chế độ mở **không ai nói được câu nào**. Cả câu hỏi Q2 của dự án
+        # ("giao tiếp đáng giá bao nhiêu?") không đo được ở đúng chế độ sinh ra
+        # để hỏi nó, và bản đồ RUNG_RAM được thiết kế riêng cho nó thì vô nghĩa.
+        say = speech.Say.parse(payload.get("say"))
+        if say is not None:
+            state.runner.strategist.pending_say[creature.id] = say
 
         latency = current_tick - work_record.issued_tick
         state.runner.on_decision(work_record.issued_tick, work_id, lambda: None)
@@ -164,7 +178,7 @@ async def decision(
         return JSONResponse(status_code=200, content=resp)
 
     elif work_record.kind == "codex":
-        cx = get_creature_codex(state.runner.match_id, creature)
+        cx = get_creature_codex(creature)
         verdict = validate_codex(
             payload,
             creature,
@@ -203,6 +217,45 @@ async def decision(
             work_record.processed = True
             work_record.cached_response = resp
             return JSONResponse(status_code=200, content=resp)
+
+        latency = current_tick - work_record.issued_tick
+        state.runner.on_decision(work_record.issued_tick, work_id, lambda: None)
+        resp = {
+            "accepted": True,
+            "applied_at_tick": current_tick,
+            "latency_ticks": latency,
+        }
+        work_record.processed = True
+        work_record.applied_at_tick = current_tick
+        work_record.latency_ticks = latency
+        work_record.cached_response = resp
+        return JSONResponse(status_code=200, content=resp)
+
+    elif work_record.kind == "shift":
+        # B-13 ở chế độ mở. Sai thì **bỏ lượt, KHÔNG thử lại** — `take_shift`
+        # nhớ mức `adapt_points` đã hỏi, nên con trả lời sai không được hỏi lại
+        # ở cùng mức điểm. Thử lại là một ưu đãi vô hình cho con hay sai: mọi
+        # lượt nghĩ của nó đổ vào một câu hỏi nó liên tục trả lời hỏng.
+        verdict = validate_shift(payload, creature)
+        state.runner._write(
+            "SHIFT_OP",
+            creature_id=creature.id, species_id=creature.species,
+            ok=verdict.ok, reason=verdict.reason,
+            frm=payload.get("from"), to=payload.get("to"),
+        )
+        if not verdict.ok:
+            resp = {"accepted": False, "reason": verdict.reason}
+            work_record.processed = True
+            work_record.cached_response = resp
+            return JSONResponse(status_code=200, content=resp)
+
+        why = payload.get("why")
+        state.runner.strategist.shift_choice[creature.id] = (
+            payload["from"], payload["to"],
+        )
+        state.runner.strategist.shift_why[creature.id] = (
+            str(why)[:80] if isinstance(why, str) else None
+        )
 
         latency = current_tick - work_record.issued_tick
         state.runner.on_decision(work_record.issued_tick, work_id, lambda: None)

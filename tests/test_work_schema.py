@@ -72,27 +72,27 @@ def test_nguoi_choi_qua_mang_NGHE_DUOC():
     bao giờ nghe thấy ai**. Cả tầng xã hội (B-11 nói, B-12 dạy) không tồn tại ở
     chế độ mở — mà chế độ mở chính là chỗ câu hỏi Q2 của dự án ("giao tiếp đáng
     giá bao nhiêu?") phải được đo.
+
+    Đọc từ `runner.minds`, cùng chỗ mà `LlmStrategist` đọc (N-16).
     """
-    from genesis import speech
-    from net import routes_work
     from net.match import MatchRunner
 
     r = MatchRunner(seed=1, ticks=5, tick_ms=1, log_dir=None)
-    mid = r.match_id
-    try:
-        r._absorb_speech_for_clients([{
-            "kind": "SPEAK", "creature_id": "L1:0",
-            "signal": "ALARM", "text": "coi chừng nước", "teach": None,
-            "hear_full": ["L2:0"], "hear_signal": ["L3:0"],
-        }])
-        assert routes_work._heard[(mid, "L2:0")], "người nghe gần phải nghe ĐỦ CÂU"
-        assert routes_work._heard[(mid, "L3:0")], "người nghe xa phải nghe ÍT NHẤT tín hiệu"
-        # người ở xa nghe được ÍT hơn người ở gần
-        assert len(routes_work._heard[(mid, "L3:0")][0]) < \
-               len(routes_work._heard[(mid, "L2:0")][0])
-        assert (mid, "L1:0") not in routes_work._heard, "người nói không tự nghe mình"
-    finally:
-        routes_work.clear_work_state()
+    r._seed_match()
+    ids = [c.id for c in r.creatures]
+    speaker, near, far = ids[0], ids[1], ids[2]
+
+    r._absorb_speech_for_clients([{
+        "kind": "SPEAK", "creature_id": speaker,
+        "signal": "ALARM", "text": "coi chừng nước", "teach": None,
+        "hear_full": [near], "hear_signal": [far],
+    }])
+    heard = r.minds.heard
+    assert heard[near], "người nghe gần phải nghe ĐỦ CÂU"
+    assert heard[far], "người nghe xa phải nghe ÍT NHẤT tín hiệu"
+    # người ở xa nghe được ÍT hơn người ở gần
+    assert len(heard[far][0]) < len(heard[near][0])
+    assert speaker not in heard, "người nói không tự nghe mình"
 
 
 def test_van_mo_ghi_prompt_hash():

@@ -143,10 +143,26 @@ class Minds:
         """Sang đời mới: sổ tay chết theo, Sổ Luật bớt chắc chắn (W-17)."""
         return forget_on_death(self.notes.get(cid), self.codices.get(cid))
 
-    def clear(self) -> None:
+    def new_match(self) -> None:
+        """Ranh giới giữa hai ván: xoá mọi thứ **trong ván**, GIỮ cẩm nang.
+
+        Đây là chỗ duy nhất trong lớp này phân biệt hai tầng trí nhớ của W-16.
+        Sổ tay và Sổ Luật là của một ván — mang sang ván sau là chép đáp án, mà
+        luật đổi mỗi ván nên đáp án cũ vừa sai vừa làm phép đo mất nghĩa. Cẩm
+        nang thì ngược lại: nó chứa **cách tìm**, và cách tìm mới là thứ đáng
+        sống qua nhiều thế giới.
+
+        Danh tiếng cũng chết theo ván: nó khoá theo `creature_id`, mà `L2:0` ở
+        ván sau là một con khác hẳn do người khác điều khiển.
+        """
         for d in (self.notes, self.codices, self.heard, self.notepad,
-                  self.handbooks, self.reputation, self.offers):
+                  self.reputation, self.offers):
             d.clear()
         self.want_codex.clear()
         self.teach_events.clear()
         self.ledger = Ledger()
+
+    def clear(self) -> None:
+        """Xoá SẠCH, cẩm nang cũng đi. Dùng lúc dựng lại từ đầu, không phải giữa hai ván."""
+        self.new_match()
+        self.handbooks.clear()

@@ -21,7 +21,7 @@
 | Thắng thua | ✅ ba danh hiệu riêng: Nhà khoa học · Kẻ sống sót · Người đầu tiên |
 | Bản đồ | ✅ năm bản đồ, cổng khả giải chạy theo cặp (bản đồ, seed) |
 | Xem 3D | ✅ `web/watch3d.html` — three.js trong repo, không CDN |
-| Số việc xong / tổng | **65 / 67** |
+| Số việc xong / tổng | **66 / 67** |
 
 Chạy được: `python -m genesis.run --seed 21 --ticks 300` — **xem thế giới chạy** · `make test` · `python scripts/logview.py runs/*.jsonl` · `uvicorn net.server:app` rồi mở `web/watch.html`.
 Chưa có: một ván LLM thật (còn nợ tải `.gguf`, xem S-02). Cả tầng tâm trí đã dựng và kiểm
@@ -81,10 +81,11 @@ nhau: "chưa bao giờ tìm ra" và "tìm ra rồi đánh mất". `L5:1` hôm na
 thứ hai — brain 0 có đúng **một ô sổ**, nó tìm ra ở tick 99 rồi phải xoá ở tick
 148 để ghi thứ khác.
 
-**Còn nợ, không gấp:** [N-16](tasks/N-16-ngang-bang-mang.md) còn 3/5 (dạy nhau +
-sổ ghi công, dịch trait, cẩm nang chưa chạy ở chế độ mở) · [N-02 §5](tasks/N-02-seam-registry.md)
+**Còn nợ, không gấp:** [N-02 §5](tasks/N-02-seam-registry.md)
 `genesis/registry.py` là mã chết trùng với `net.match.Registration`, hoặc gộp
-hoặc xoá · cơ chế **Linh cảm** đã thiết kế xong, chưa viết.
+hoặc xoá · cơ chế **Linh cảm** đã thiết kế xong, chưa viết — và **thiết kế ấy
+không nằm trong kho**: không tài liệu nào mô tả nó, nên dòng này là thứ duy nhất
+biết rằng nó tồn tại. Viết phiếu việc trước, đừng viết code trước.
 
 ### Đang bị chặn vì thiếu tài nguyên ngoài
 
@@ -254,7 +255,7 @@ Cột **Giao?**: `✅` giao được cho model rẻ · `⚠️` giao được ph
 | [N-12](tasks/N-12-xem-live.md) | Trang xem live + bảng xếp hạng mùa | ✅ | ✅ | N-08, L-07 |
 | [N-13](tasks/N-13-mesh-3d.md) | Hình 3D sinh bằng MeshyAI | ✅ | ⚠️ | N-05, N-12 |
 | [N-15](tasks/N-15-mo-ta-3d.md) | **Mô tả 3D** cho sinh vật, địa hình, quả, bản đồ | ✅ | ⚠️ | N-13, W-15 |
-| [N-16](tasks/N-16-ngang-bang-mang.md) | **Ngang bằng cục bộ / chế độ mở** | 🟨 | ❌ | N-06, N-07 |
+| [N-16](tasks/N-16-ngang-bang-mang.md) | **Ngang bằng cục bộ / chế độ mở** | ✅ | ❌ | N-06, N-07 |
 | [S-05](tasks/S-05-preflight.md) | **`make preflight`** — kiểm trước khi chạy thật | ✅ | ⚠️ | S-02, N-11 |
 | [N-14](tasks/N-14-map-3d.md) | **Trang xem 3D** (three.js trong repo) | ✅ | ⚠️ | N-12, W-15, N-13 |
 
@@ -295,6 +296,7 @@ Nếu lệnh nghiệm thu chưa pass thì trạng thái là `🟨`, không phả
 
 | Ngày | Việc | Ghi chú |
 |---|---|---|
+| 2026-08-30 | ✅ **N-16** ngang bằng cục bộ / chế độ mở | Phiếu dặn **đừng vá từng cái nữa** sau bốn lần cùng một họ lỗi, nên lần này gom: toàn bộ trí nhớ và tầng xã hội về `genesis.minds.Minds`, `MatchRunner` sở hữu một bản, `net.routes_work` chỉ tra cứu vào `state.runner.minds`. Năm dict cấp module khoá theo `(match_id, creature_id)` biến mất. Ba việc còn nợ (dạy nhau + sổ ghi công, dịch trait, cẩm nang) đóng luôn theo. **Và việc gom tìm ra ba khoảng lệch mà đếm bằng mắt đã bỏ sót** — đó mới là lập luận cho việc gom: (1) trường `say` có trong schema mà `/decision` **không đọc**, nên ở một ván mở thuần **không sinh vật nào nói được câu nào**, và khối "nghe được" vừa vá xong hôm qua không bao giờ có gì để chứa; (2) ghi chú qua mạng chỉ `.strip()[:N]` chứ không `sanitize_free_text`, tức người lạ gõ chữ "HP" là giết được ván của mọi người — đúng lỗi đã sửa ở đường cục bộ, nhưng ở đây nó là một **nút bấm** chứ không phải tai nạn; (3) `max_tokens` chép tay cho `codex` **không cộng headroom**, tức client qua mạng gánh lại đúng lỗi "JSON đứt giữa trường `effect`" mà đường cục bộ đã đo và sửa xong. Thêm `tests/test_n16_ngang_bang.py`, mười ca, trong đó một ca không kiểm chức năng nào mà **canh chừng**: đỏ ngay lúc ai đó dựng lại một dict trí nhớ cấp module ở `routes_work`. Kèm theo: `tests/test_decision.py` chạy với `tick_ms=1` và vòng lặp nền của `lifespan` là một cuộc đua có thật (ván trôi ~1000 tick/giây giữa `/work` và `/decision`, thỉnh thoảng ra 410 WORK_EXPIRED); chặn nhịp lại thay vì sống chung với một bài kiểm chớp tắt. |
 | 2026-08-29 | ✅ **W-14** ba danh hiệu · ✅ **W-15** năm bản đồ · ✅ **N-14** trang xem 3D · ✅ **N-10b/c** nhiều client | Ba việc mới theo yêu cầu. **W-14**: không cộng ba danh hiệu thành một điểm — một trọng số duy nhất giữa "hiểu" và "sống" là một tuyên bố ta **chưa biết đúng**, và đó chính là câu hỏi Q7. Để riêng thì khoảng cách giữa ba bảng **là dữ liệu**. Thêm một dòng cảnh báo khi không ai tìm ra luật: lúc ấy `R = 0.1·R_survive` cho tất cả và bảng "Nhà khoa học" chỉ là bảng sinh tồn thu nhỏ — không nói thẳng thì có người đọc nó như một kết luận về quy nạp. **W-15**: cổng khả giải phải chạy theo cặp `(bản đồ, seed)`, và đo thẳng cho thấy vì sao — một luật `DRINK` kích hoạt **349** lần trên sa mạc so với **1880** trên quần đảo. Quét `plant_scale` 0,8→3,0 trên cả năm bản đồ và kết luận thẳng: **M1 là tính chất của ĐỒNG CỎ**; ở sa mạc và hẻm núi thêm thức ăn không cứu được vì chết ở đó đến từ chen chúc, không từ đói. **N-14**: three.js r128 UMD vendor trong `web/vendor/` (chạy được cả từ `file://`), địa hình gửi **một lần** mỗi ván dưới dạng chuỗi một ký tự mỗi ô — gửi mỗi tick thì 3 KB × 200 tick chiếm gần hết băng thông luồng xem. Phát hiện kèm: trang 2D đang vẽ **ô caro giả** cho mọi bản đồ, nên năm bản đồ trông giống hệt nhau — giờ nó cũng đọc địa hình từ khung. |
 | 2026-08-29 | ✅ **R-03 đã huấn luyện thật** — và tôi đã nói sai là nó bị chặn | Kiểm lại máy: **32 GB, Apple M5, torch 2.13 + MPS, `peft` và `transformers` đã cài sẵn**. Chỉ thiếu `trl` — mà `trl` **không cần**: `GRPOTrainer` của nó dựng cho vòng sinh trực tuyến, còn ở đây rollout đã có sẵn (chúng là những ván đã chơi). Viết GRPO **ngoại tuyến** bằng torch + peft trực tiếp: `L = −Σ A·log π(y|x) + β·KL(π‖π_ref)`, `π_ref` là chính base model với adapter tắt đi (không cần bản sao thứ hai trong RAM). Chạy 30 bước LoRA trên Qwen2.5-0.5B, lưu adapter 2,1 MB (540k tham số, 0,11%). **Cộng một lỗi của tôi:** `samples_from` chỉ dùng `ΣR_i` thay vì `total_reward` — mà khi chưa con nào tìm ra luật thì `ΣR_i = 0` cho tất cả, mọi lợi thế trong nhóm bằng 0, và GRPO **không có một gradient nào**. Cái đuôi `0.1·R_survive` chính là dây neo cho giai đoạn đầu, đúng lúc cần tín hiệu nhất. |
 | 2026-08-30 | 🔴 **Lỗi thứ sáu, và nó đã bóp chết 77% dữ liệu cả ngày trong im lặng** | Qwen-14B, seed 55, tick 99: `L5:1` ghi `WHEN DRINK THEN DAMAGE` — **đúng nguyên văn luật thật L0**. `match = 0.000`. Không phải lỗi chấm: nó ghi `mag=MED` và **không ghi `dur`**, mà `verify.agree` **nhân** điểm trên từng chiều luật thật có định nghĩa — `mag` kề nhau ăn 0,85, `dur` thiếu ăn **0**, tích về 0. Đúng trigger, đúng điều kiện, đúng loại hệ quả, vẫn 0 điểm. Và schema **không đòi** `mag`/`dur` (`required: ["kind"]`). Đếm toàn bộ **235 mục Sổ Luật hợp lệ ghi trong ngày**, mọi model, mọi ván: có `dur` 77%, có `mag` 30%, **có cả hai — điều kiện CẦN để ăn điểm — chỉ 23%**. Tức 77% dữ liệu thu được **không thể ăn điểm về mặt cấu trúc**, và mọi kết luận tôi rút ra hôm qua về năng lực quy nạp của model đều đứng trên nền hỏng. Sửa: `lawdsl.EFFECT_FIELDS` — MỘT bảng, `random_law` sinh theo nó, `_effect_schema` đòi theo nó, và một test fuzz 400 luật khoá hai bên không cho lệch. **Không nới `agree`**: một luật không nêu cường độ thì khớp với MỌI cường độ, trả điểm cho nó là trả điểm cho sự mơ hồ. Đo lại: mục sổ nêu đủ `mag`+`dur` **23% → 100%**. Đây là lần thứ **sáu** cùng bài học B-01 (`target` không enum · `target` không bắt buộc · `arg` không enum · `slot` không trần · `arg` sai miền theo kind · giờ là `mag`/`dur` không bắt buộc). |

@@ -25,7 +25,14 @@ def reset_state():
 
 @pytest.fixture
 def client(monkeypatch):
-    r = MatchRunner(seed=1, ticks=10, tick_ms=1)
+    # `tick_ms=1` + vòng lặp nền của `lifespan` = một cuộc đua: đồng hồ ván chạy
+    # ~1000 tick/giây, nên giữa lúc `/work` phát việc và lúc `/decision` tới nơi
+    # có thể trôi qua vài tick, và bài kiểm lăn ra 410 WORK_EXPIRED một cách
+    # ngẫu nhiên. Không bài nào ở đây CẦN đồng hồ chạy — bài nào muốn một tick
+    # cụ thể thì tự gán `r.tick_no`. Nên chặn nhịp lại: nhịp chậm cộng `step`
+    # rỗng cho một ván đứng yên, và một bài kiểm đứng yên là bài kiểm đọc được.
+    r = MatchRunner(seed=1, ticks=10, tick_ms=10_000, log_dir=None)
+    monkeypatch.setattr(r, "step", lambda: None)
     monkeypatch.setattr(state, "runner", r)
     with TestClient(server.app) as c:
         yield c, r

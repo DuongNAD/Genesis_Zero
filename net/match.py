@@ -42,6 +42,8 @@ from genesis.creature import Creature, creature_sort_key
 from genesis.lawdsl import to_json, to_vietnamese
 from genesis.logio import LogWriter
 from genesis.lawgen import generate_cached
+from genesis.handbook import Handbook
+from genesis.minds import Minds
 from genesis.strategist import RemoteClientStrategist
 from genesis.tick import build_match, tick as run_tick
 
@@ -168,6 +170,19 @@ class MatchRunner:
         self.queued: dict[str, Registration] = {}
         self.decisions: dict[str, Any] = {}      # creature_id -> ActiveGoal chờ áp
         self.strategist = RemoteClientStrategist(self.decisions)
+        # MỘT bản trí nhớ, dùng chung với đường cục bộ (N-16). Trước đây
+        # `net.routes_work` giữ năm cuốn sổ riêng khoá theo `(match_id,
+        # creature_id)`, và mỗi lần đường cục bộ có thêm gì thì đường mạng lại
+        # thiếu đúng thứ ấy — năm lần trong một ngày. `routes_work` giờ chỉ tra
+        # cứu vào đây.
+        self.minds = Minds()
+        self.strategist.minds = self.minds
+        # Cẩm nang theo LOÀI, sống qua nhiều ván (W-16). Đọc từ đĩa lúc dựng
+        # runner, dựng lại chuỗi vào `minds.handbooks` ở mỗi `_seed_match`.
+        self.handbook_dir: Path | None = (
+            self.log_dir / "handbooks" if self.log_dir is not None else None
+        )
+        self.handbooks: dict[str, Handbook] = {}
 
         self.log = None
         self.latencies: collections.deque[int] = collections.deque(
@@ -333,9 +348,51 @@ class MatchRunner:
         # quần thể đổi giữa chừng một tick nên log không tái lập được; và loài
         # nào không kịp poll thì mất luôn những tick đầu.
         self._spawn_registered()
+        # Sau `_spawn_registered`, vì danh sách loài chỉ đầy đủ khi sinh vật của
+        # người chơi đã ra đời.
+        self.minds.new_match()
+        self._load_handbooks()
+
+    def _load_handbooks(self) -> None:
+        """Dựng khối cẩm nang cho từng loài của ván này (W-16 ở chế độ mở).
+
+        Cẩm nang là tầng trí nhớ thứ ba: sổ tay và Sổ Luật chết theo ván, cẩm
+        nang thì không. Trước N-16 nó chỉ tồn tại ở đường cục bộ, nên chế độ mở
+        — nơi cùng một người chơi thật sự chơi nhiều ván liên tiếp — lại là chế
+        độ **duy nhất không có trí nhớ qua ván**, đúng ngược lại.
+
+        Khoá theo `species_id`, y như đường cục bộ. `n_matches` tăng một lần mỗi
+        ván, ở đây, chứ không phải mỗi lần dựng prompt.
+        """
+        for species_id in sorted({c.species for c in self.creatures}):
+            hb = self.handbooks.get(species_id)
+            if hb is None:
+                hb = (Handbook.load(species_id, self.handbook_dir)
+                      if self.handbook_dir is not None
+                      else Handbook(species_id=species_id))
+                self.handbooks[species_id] = hb
+            hb.n_matches += 1
+            if self.handbook_dir is not None:
+                hb.save(self.handbook_dir)
+            text = hb.render()
+            if text:
+                self.minds.handbooks[species_id] = text
+            else:
+                self.minds.handbooks.pop(species_id, None)
 
     def _spawn_registered(self) -> None:
         from genesis.creature import Creature
+
+        # Ván mới, bảng slot mới. `slots` trả lời đúng một câu cho `genesis.tick`:
+        # "con này có ai ở đầu kia dây không". Không xoá thì id của ván trước còn
+        # nằm đó, và một con BOT trùng id sẽ bị coi là có model — nó chờ một câu
+        # trả lời không bao giờ tới, và bỏ luôn lượt dịch trait của mình.
+        self.strategist.slots.clear()
+        self.strategist.pending_say.clear()
+        self.strategist.shift_choice.clear()
+        self.strategist.shift_why.clear()
+        self.strategist.want_shift.clear()
+        self.strategist._shift_asked.clear()
 
         cells = [
             (x, y)
@@ -359,6 +416,7 @@ class MatchRunner:
                 )
                 self.creatures.append(c)
                 reg.creature_ids.append(c.id)
+                self.strategist.slots[c.id] = len(self.strategist.slots)
         self.creatures.sort(key=creature_sort_key)
 
     def step(self) -> None:
@@ -376,60 +434,33 @@ class MatchRunner:
         self.tick_no += 1
 
     def _absorb_speech_for_clients(self, events: list[dict]) -> None:
-        """Đổ lời nghe được vào hàng của từng cá thể (B-11).
+        """Lời nói, dạy nhau, sổ ghi công — cùng một hàm mà đường cục bộ gọi.
 
-        Vòng tick đã tính sẵn AI nghe được gì (`hear_full` / `hear_signal`) —
-        đây chỉ là đổ sang chỗ `routes_work` đọc. Trước đó đường mạng truyền
-        thẳng `heard=()`, tức **người chơi qua mạng không bao giờ nghe thấy
-        ai**: cả tầng xã hội không tồn tại ở chế độ mở, và câu hỏi Q2 của dự án
-        ("giao tiếp đáng giá bao nhiêu?") không đo được ở đúng chế độ sinh ra
-        để hỏi nó.
+        Trước N-16 hàm này tự đổ `render_heard` vào một cuốn sổ riêng của
+        `routes_work` và **dừng ở đó**: phần dạy nhau (`say.teach`) bị bỏ, nên
+        `Ledger` ở chế độ mở luôn rỗng và danh tiếng không bao giờ được cập
+        nhật. Hậu quả là B-12 — công chảy một nấc, đo nói dối, chống farming —
+        không tồn tại ở đúng chế độ có người lạ, tức đúng chế độ có động cơ để
+        farm.
 
-        CHƯA có phần dạy nhau (`teach`) và sổ ghi công — xem
-        `docs/tasks/N-16-ngang-bang-mang.md`.
+        Giờ nó gọi thẳng `Minds.absorb_speech`. Một bản logic, hai đường gọi.
         """
-        from genesis import law_config, speech
-        from net import routes_work
-
-        mid = self.match_id
-        for ev in events:
-            if ev.get("kind") != "SPEAK":
-                continue
-            say = speech.Say(ev.get("signal"), ev.get("text"), ev.get("teach"))
-            for ids, full in ((ev.get("hear_full") or (), True),
-                              (ev.get("hear_signal") or (), False)):
-                for hid in ids:
-                    q = routes_work._heard.setdefault((mid, hid), [])
-                    q.append(speech.render_heard(ev["creature_id"], say, full=full))
-                    del q[:-law_config.HEARD_MAX]
+        by_id = {c.id: c for c in self.creatures}
+        speak = [ev for ev in events if ev.get("kind") == "SPEAK"]
+        if speak:
+            self.minds.absorb_speech(self.tick_no, self.world, by_id, speak)
 
     def _forget_for_dead(self, events: list[dict]) -> None:
         """Sang đời mới thì sổ tay chết theo, Sổ Luật bớt chắc chắn (W-17).
 
-        Đường cục bộ làm việc này trong `strategist.observe`, nhưng ở chế độ mở
-        sổ tay và Sổ Luật nằm ở `net.routes_work`, và `RemoteClientStrategist`
-        không có `observe`. Thiếu móc này thì **người chơi qua mạng chơi một trò
-        khác người chơi cục bộ**: sinh vật của họ giữ nguyên sổ tay thô qua mọi
-        đời, đúng ngược lại thiết kế.
-
-        Đây là lần thứ ba cùng một họ lỗi trong dự án — hai đường chạy, một
-        đường bị bỏ quên. Hai lần trước: `schema_for` thiếu `targets` lẫn `sm`,
-        và `founder_traits` không biết loài đăng ký lúc chạy. Nên logic thật
-        nằm trong `lineage.forget_on_death`, một chỗ, cả hai đường gọi vào.
-
-        Nhập trong hàm để khỏi vòng phụ thuộc: `routes_work` đã nhập `net.match`.
+        Đường cục bộ làm việc này trong `strategist.observe`, nhưng
+        `RemoteClientStrategist` không có `observe` — nên chế độ mở cần móc
+        riêng. Logic thật nằm ở `Minds.on_death` (rồi `lineage.forget_on_death`),
+        một chỗ, cả hai đường gọi vào.
         """
-        from genesis.lineage import forget_on_death
-        from net import routes_work
-
-        mid = self.match_id
         for ev in events:
-            if ev.get("kind") != "DEATH":
-                continue
-            key = (mid, ev.get("creature_id"))
-            if key in routes_work._notes or key in routes_work._codices:
-                forget_on_death(routes_work._notes.get(key),
-                                routes_work._codices.get(key))
+            if ev.get("kind") == "DEATH":
+                self.minds.on_death(ev.get("creature_id"))
 
     def _publish(self, tick_no: int, events: list[dict]) -> None:
         frame = self.frame(tick_no, events)

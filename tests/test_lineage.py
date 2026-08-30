@@ -151,7 +151,7 @@ def test_duong_mang_cung_quen_nhu_duong_cuc_bo():
     """Chế độ mở phải quên GIỐNG HỆT ván cục bộ khi sang đời mới.
 
     Đường cục bộ làm việc này trong `strategist.observe`, nhưng ở chế độ mở sổ
-    tay và Sổ Luật nằm ở `net.routes_work`, và `RemoteClientStrategist` không có
+    tay và Sổ Luật nằm ở `runner.minds`, và `RemoteClientStrategist` không có
     `observe`. Thiếu móc thì sinh vật qua mạng **giữ nguyên sổ tay thô qua mọi
     đời** — ngược hẳn thiết kế.
 
@@ -160,22 +160,22 @@ def test_duong_mang_cung_quen_nhu_duong_cuc_bo():
     loài đăng ký lúc chạy).
     """
     from genesis.lawdsl import random_law, vocab_for_brain
-    from net import routes_work
     from net.match import MatchRunner
 
     r = MatchRunner(seed=1, ticks=5, tick_ms=1, log_dir=None)
-    mid = r.match_id
     fn = FieldNotes(cap=8)
     fn.record(Note(t=1, who="TÔI", action="uống nước",
                    outcome="máu tụt hẳn xuống", ctx=()))
     cx = Codex(size=2)
     cx.apply("SET", 0, random_law(random.Random(1), vocab_for_brain(5)), 3, tick=99)
 
-    routes_work._notes[(mid, "L1:0")] = fn
-    routes_work._codices[(mid, "L1:0")] = cx
+    # Một chỗ chứa, không hai: sổ tay của ván mở nằm ở `runner.minds`, đúng
+    # cùng lớp mà `LlmStrategist` dùng (N-16).
+    r.minds.notes["L1:0"] = fn
+    r.minds.codices["L1:0"] = cx
     try:
         r._forget_for_dead([{"kind": "DEATH", "creature_id": "L1:0"}])
         assert not fn.render(8).strip(), "sổ tay qua mạng phải CHẾT THEO"
         assert cx._entries[0].conf == 3 - config.CODEX_CONF_DECAY_PER_GEN
     finally:
-        routes_work.clear_work_state()
+        r.minds.clear()

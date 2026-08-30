@@ -15,7 +15,7 @@ from genesis.codex import Codex
 from genesis.creature import Creature, creature_sort_key
 from genesis.fieldnotes import FieldNotes
 from genesis.prompt import PromptCache, prompt_hash, user_block
-from genesis.strategist import schema_for
+from genesis.strategist import _budget, schema_for
 from genesis.traits import founder_traits
 from genesis.world import visible
 import net_config
@@ -50,27 +50,29 @@ class WorkRecord:
 # Shared module state
 prompt_cache = PromptCache()
 _issued_works: dict[str, WorkRecord] = {}
-_notes: dict[tuple[str, str], FieldNotes] = {}
-_codices: dict[tuple[str, str], Codex] = {}
-_notepads: dict[tuple[str, str], str] = {}
-_want_codex: set[tuple[str, str]] = set()
-# Lời mỗi cá thể NGHE ĐƯỢC ở tick vừa rồi. `MatchRunner` đổ vào; `user_block`
-# đọc ra. Trước đó đường mạng truyền thẳng `heard=()` — tức **người chơi qua
-# mạng không bao giờ nghe thấy ai**, và cả tầng xã hội (B-11 nói, B-12 dạy)
-# đơn giản là không tồn tại ở chế độ mở.
-_heard: dict[tuple[str, str], list[str]] = {}
 _fetched_work_keys: set[tuple[str, int, str]] = set()
+
+# Sổ tay, Sổ Luật, ghi chú, `want_codex`, lời nghe được, danh tiếng, sổ ghi công
+# — TẤT CẢ nằm ở `state.runner.minds`, đúng một bản, dùng chung với đường cục bộ.
+#
+# Trước N-16 chỗ này giữ năm cuốn sổ riêng khoá theo `(match_id, creature_id)`.
+# Chúng không sai; chúng chỉ **luôn thiếu một thứ** so với bản kia, và thiếu cái
+# gì thì phải có người đi so hai file mới biết. Đếm được năm lần trong một ngày:
+# `heard=()` cứng, không ghi `prompt_hash`, không quên khi chết, không dạy nhau,
+# không cẩm nang. Bản nào ít người nhìn hơn thì bản ấy mục — nên bây giờ chỉ có
+# một bản, và `routes_work` chỉ tra cứu vào nó.
+
+
+def _minds():
+    """Trí nhớ của ván đang chạy. `MatchRunner` sở hữu; ở đây chỉ mượn."""
+    return state.runner.minds
 
 
 def clear_work_state() -> None:
     """Xoá trạng thái phát việc (dùng cho test)."""
     _issued_works.clear()
-    _notes.clear()
-    _codices.clear()
-    _notepads.clear()
-    _want_codex.clear()
-    _heard.clear()
     _fetched_work_keys.clear()
+    _minds().clear()
 
 
 def get_bearer_token(authorization: str | None) -> str:
@@ -91,40 +93,36 @@ def get_registration(token: str) -> Registration:
     raise HTTPException(status_code=401, detail="BAD_TOKEN")
 
 
-def get_creature_notes(match_id: str, c: Creature) -> FieldNotes:
-    key = (match_id, c.id)
-    if key not in _notes:
-        _notes[key] = FieldNotes(cap=law_config.EVENTS_BY_BRAIN[c.traits.brain])
-    return _notes[key]
+# `match_id` không còn là một phần của khoá: `Minds` thuộc về runner và được
+# `_seed_match` gọi `new_match()` xoá sạch ở ranh giới ván, nên một khoá ghép
+# thêm `match_id` chỉ giữ lại rác của ván trước dưới một cái tên khác.
 
 
-def get_creature_codex(match_id: str, c: Creature) -> Codex:
-    key = (match_id, c.id)
-    size = law_config.CODEX_SIZE_BY_BRAIN[c.traits.brain]
-    if key not in _codices:
-        _codices[key] = Codex(size=size)
-    elif _codices[key].size != size:
-        _codices[key].resize(size)
-    return _codices[key]
+def get_creature_notes(c: Creature) -> FieldNotes:
+    return _minds().notes_of(c)
 
 
-def get_creature_notepad(match_id: str, creature_id: str) -> str:
-    return _notepads.get((match_id, creature_id), "")
+def get_creature_codex(c: Creature) -> Codex:
+    return _minds().codex_of(c)
 
 
-def set_creature_notepad(match_id: str, creature_id: str, note: str) -> None:
-    _notepads[(match_id, creature_id)] = note
+def get_creature_notepad(creature_id: str) -> str:
+    return _minds().notepad.get(creature_id, "")
 
 
-def get_creature_want_codex(match_id: str, creature_id: str) -> bool:
-    return (match_id, creature_id) in _want_codex
+def set_creature_notepad(creature_id: str, note: str) -> None:
+    _minds().notepad[creature_id] = note
 
 
-def set_creature_want_codex(match_id: str, creature_id: str, want: bool) -> None:
+def get_creature_want_codex(creature_id: str) -> bool:
+    return creature_id in _minds().want_codex
+
+
+def set_creature_want_codex(creature_id: str, want: bool) -> None:
     if want:
-        _want_codex.add((match_id, creature_id))
+        _minds().want_codex.add(creature_id)
     else:
-        _want_codex.discard((match_id, creature_id))
+        _minds().want_codex.discard(creature_id)
 
 
 def creatures_of(reg: Registration) -> list[Creature]:
@@ -163,18 +161,31 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
         if fetch_key in _fetched_work_keys:
             continue
 
-        cx = get_creature_codex(match_id, c)
+        cx = get_creature_codex(c)
         ready = (current_tick - cx.last_claim) >= law_config.CLAIM_COOLDOWN
-        want = get_creature_want_codex(match_id, c.id)
-        kind = "codex" if (want and ready) else "decide"
+        want = get_creature_want_codex(c.id)
+        # Ba loại việc, cùng thứ tự ưu tiên với `LlmStrategist.think`: hướng
+        # dịch trait đứng TRƯỚC vì `genesis.tick` đã xin nó ở cuối pha 3 và sẽ
+        # bỏ lượt dịch nếu không có câu trả lời — còn `want_codex` thì chờ được,
+        # nó chỉ mất thêm một chu kỳ nghĩ.
+        #
+        # Ba loại chứ không phải một schema gộp, y như CLAIM hai pha của B-08:
+        # nhồi cả ba vào schema quyết định thường thì con 32 token (L5) không
+        # bao giờ tham gia được vào phần được chấm.
+        if c.id in state.runner.strategist.want_shift:
+            kind = "shift"
+        elif want and ready:
+            kind = "codex"
+        else:
+            kind = "decide"
 
         work_id = f"{match_id}:t{current_tick}:{c.id}:{kind}"
         issued_tick = current_tick
         deadline_tick = issued_tick + net_config.LATE_TOLERANCE
 
         seen = visible(c, state.runner.world, state.runner.creatures)
-        notes = get_creature_notes(match_id, c)
-        notepad = get_creature_notepad(match_id, c.id)
+        notes = get_creature_notes(c)
+        notepad = get_creature_notepad(c.id)
 
         ub = user_block(
             c,
@@ -182,16 +193,20 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
             issued_tick,
             notes,
             cx,
-            heard=tuple(_heard.get((match_id, c.id), ())),
+            heard=tuple(_minds().heard.get(c.id, ())),
             notepad=notepad,
             seen=seen,
         )
 
-        max_tokens = (
-            c.traits.token_budget
-            if kind == "decide"
-            else law_config.CLAIM_BUDGET_BY_BRAIN[c.traits.brain]
-        )
+        # `_budget`, không phải một biểu thức chép tay. Bản chép tay ở đây cho
+        # `codex` đúng `CLAIM_BUDGET_BY_BRAIN` **không cộng headroom**, trong khi
+        # đường cục bộ cộng `3 * TOKEN_JSON_HEADROOM` — và nó cộng vì lý do đã đo
+        # được: `codex` chạm đúng trần rồi **đứt giữa trường `effect`**, đó là
+        # toàn bộ 3/13 lượt hỏng của ván thật đầu tiên. Chép tay ở đây nghĩa là
+        # client qua mạng gánh lại đúng cái lỗi đã sửa xong ở đường kia.
+        max_tokens = _budget(c.traits, kind)
+        if kind == "shift":
+            state.runner.strategist.want_shift.discard(c.id)
         # `targets` VÀ `sm` — cả hai, y như đường chạy cục bộ ở
         # `strategist.think`. Thiếu chúng thì client qua mạng chơi một trò khác
         # hẳn với client chạy cục bộ:
@@ -214,8 +229,12 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
         # Cùng `prompt_cache` mà `/match/brief` dùng, nên băm ở đây đúng bằng
         # băm của prompt client thật sự thấy — không phải một bản dựng lại gần
         # đúng.
+        # `handbook` — bất biến 4 của W-16: cẩm nang vào SYSTEM, không vào USER.
+        # Thiếu tham số này thì chế độ mở là chế độ DUY NHẤT không có trí nhớ
+        # qua ván, dù nó lại là chỗ cùng một người chơi nhiều ván liên tiếp.
         sys_prompt = prompt_cache.get(
-            c, reg.persona, state.runner.world.surface_map, tick_no=issued_tick
+            c, reg.persona, state.runner.world.surface_map, tick_no=issued_tick,
+            handbook=_minds().handbooks.get(c.species, ""),
         )
         phash = prompt_hash(sys_prompt, ub)
         record = WorkRecord(
@@ -260,11 +279,16 @@ async def match_brief(
     creatures = creatures_of(reg)
     creatures_dict = {}
     for c in creatures:
+        # Cùng `handbook` với `generate_work_items`. Lệch một tham số ở đây là
+        # lệch cả khối SYSTEM, nên `prompt_hash` ghi trong `WorkRecord` sẽ không
+        # còn là băm của prompt client thật sự thấy — và `rollout.samples_from`
+        # bỏ sạch mẫu của ván mở mà không báo gì.
         sys_prompt = prompt_cache.get(
             c,
             reg.persona,
             state.runner.world.surface_map,
             tick_no=state.runner.tick_no,
+            handbook=_minds().handbooks.get(c.species, ""),
         )
         interval = max(1, c.traits.think_interval)
         offset = int(c.id.rpartition(":")[2]) % interval
