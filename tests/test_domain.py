@@ -174,3 +174,59 @@ def test_passable_la_duong_DUY_NHAT():
         if "world.passable(" in line:
             assert "who" in line or ", c)" in line, (
                 f"gọi passable mà không nói CON NÀO: {line.strip()}")
+
+
+# ── chặng C: cổng gác KHÔNG cần, nhưng phải canh chừng ──────────────────────
+
+def _quan_sat_duoc(trig, species_id) -> bool:
+    """Một loài có bao giờ TỰ TRẢI QUA được trigger này không.
+
+    Không hỏi "nó có hiểu không" mà hỏi "chuyện ấy có bao giờ xảy ra VỚI NÓ
+    không" — đó là Gate A/D ở mức tầng.
+    """
+    from genesis.lawdsl import TriggerKind
+    from genesis.traits import founder_traits
+
+    dom, tr = domain_of(species_id), founder_traits(species_id)
+    k = trig.kind
+    if k is TriggerKind.DRINK:
+        return (can_enter(dom, Terrain.WATER, tr) or can_enter(dom, Terrain.DEEP, tr))
+    if k is TriggerKind.EAT:
+        # Luật nêu ĐÍCH DANH một lớp quả thì cá không bao giờ gặp: nó ăn rong,
+        # còn quả chỉ mọc trên ô PLAIN mà nó không vào nổi.
+        if trig.arg and trig.arg != "CORPSE":
+            return can_enter(dom, Terrain.PLAIN, tr)
+        return can_enter(dom, Terrain.PLAIN, tr) or dom is Domain.NUOC
+    if k is TriggerKind.STEP_ON and trig.arg:
+        m = {"PLAIN": Terrain.PLAIN, "WATER": Terrain.WATER, "BUSH": Terrain.BUSH,
+             "ROCK": Terrain.ROCK, "FIRE": Terrain.FIRE}
+        return can_enter(dom, m.get(trig.arg, Terrain.PLAIN), tr)
+    return True
+
+
+def test_khong_tang_nao_ngoi_trong_mot_van_KHONG_CO_DAP_AN():
+    """W-18 bất biến 1, và nó **thay cho** cái cổng gác mà chặng C định xây.
+
+    Đo trước khi xây: trên 40 seed, **không loài nào** rơi vào ván mà nó không
+    quan sát được luật nào — cá 91% số luật, các loài khác 99–100%. Cái ca thảm
+    hoạ mà bất biến 1 lo sợ **không xảy ra**, vì bộ sinh luật chủ yếu chọn
+    trigger vô can với tầng (`ADJACENT` 37, `DRINK` 23 trên 120 luật) còn
+    `STEP_ON` chỉ 3.
+
+    Nên đừng xây cổng. Xây một cái cổng cho một vấn đề không xảy ra là thêm một
+    thứ phải bảo trì, và nó sẽ âm thầm loại bỏ những bộ luật hợp lệ.
+
+    Bài kiểm này là thứ thay thế: nó **rẻ**, và nó sẽ đỏ ngay ngày ai đó làm
+    `STEP_ON` phổ biến hơn, thêm một tầng mới, hay đổi `SPECIES_DOMAIN` — tức là
+    đúng những thay đổi khiến vấn đề bắt đầu xảy ra thật.
+    """
+    from genesis.lawgen import generate_cached
+
+    for seed in range(1, 26):
+        laws = generate_cached(seed, arm="STANDARD")
+        for sp in sorted(config.POPULATION):
+            n = sum(1 for lw in laws if _quan_sat_duoc(lw.trigger, sp))
+            assert n > 0, (
+                f"seed {seed}: loài {sp} ({domain_of(sp).value}) ngồi trong một ván "
+                f"KHÔNG CÓ luật nào nó quan sát được — mọi điểm 0 của nó sẽ là "
+                f"hiện vật của lỗi, không phải kết quả")

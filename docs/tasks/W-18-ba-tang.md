@@ -173,6 +173,19 @@ Mở rộng của Gate A/D. Thiếu nó thì cả một tầng người chơi ng
 không có đáp án tìm được, và `match = 0` của họ là **hiện vật của lỗi**, đúng
 loại kết luận sai mà dự án này liên tục bắt được.
 
+> **Đo trước khi xây, và phép đo nói ĐỪNG XÂY.** Trên 40 seed: cá quan sát được
+> **91%** số luật, các loài khác **99–100%**, và **không loài nào** từng rơi vào
+> một ván không có luật nào nó quan sát được. Ca thảm hoạ mà bất biến này lo sợ
+> **không xảy ra** — bộ sinh luật chủ yếu chọn trigger vô can với tầng
+> (`ADJACENT` 37 · `DRINK` 23 trên 120 luật) còn `STEP_ON` chỉ **3**.
+>
+> Nên chặng C **không xây cổng gác**. Một cổng gác cho một vấn đề không xảy ra
+> là thêm một thứ phải bảo trì, và nó sẽ âm thầm loại bỏ những bộ luật hợp lệ.
+> Thay bằng `tests/test_domain.py::test_khong_tang_nao_ngoi_trong_mot_van_KHONG_CO_DAP_AN`
+> — rẻ, và nó đỏ ngay ngày ai đó làm `STEP_ON` phổ biến hơn, thêm một tầng mới,
+> hay đổi `SPECIES_DOMAIN`. Tức là đúng những thay đổi khiến vấn đề bắt đầu có
+> thật.
+
 **Bất biến 2 — `passable` là đường DUY NHẤT quyết định ai đi được đâu.** Không
 được có bảng thứ hai ở `reflex`, ở render, hay ở client. Đây là bài học đã trả
 giá tám lần: hai bản của một khái niệm thì bản ít người nhìn sẽ mục.
@@ -214,7 +227,7 @@ hai sinh vật KHÁC TẦNG đứng cạnh nhau trong một ván.
 |---|---|---|
 | **A** | `Domain`, hai địa hình, `passable` theo tầng+trait, bản đồ có bờ | `pytest tests/test_domain.py` · M0 còn xanh |
 | **B** | cá, quả trên cây, phản xạ theo tầng | M1 chạy lại 5 seed × 400 tick |
-| **C** | Gate theo tầng, `TERRAIN` mở rộng sau công tắc, X-10 đo cái giá | X-10 trả lời được, kể cả trả lời KHÔNG |
+| **C** | ~~Gate theo tầng~~ — **đo xong: KHÔNG cần**, thay bằng bài canh chừng | `pytest tests/test_domain.py -q` |
 
 ## 11. Nghiệm thu
 
