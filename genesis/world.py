@@ -47,6 +47,7 @@ class Terrain(StrEnum):
     # và ba kiểu nước.
     DEEP = "DEEP"        # nước sâu — chỉ tầng NƯỚC; cạn chết đuối, trời bay qua
     TREE = "TREE"        # cây — cạn phải đủ `speed` mới trèo; đây là "khỉ/sư tử"
+    CAVE = "CAVE"        # hang — LÕI của khối đá, chỉ loài biết đào hang vào được
 
 
 TERRAIN_GLYPHS: dict[Terrain, str] = {
@@ -57,6 +58,7 @@ TERRAIN_GLYPHS: dict[Terrain, str] = {
     Terrain.FIRE: "^",
     Terrain.DEEP: "≈",
     Terrain.TREE: "T",
+    Terrain.CAVE: "C",
 }
 
 # Mã MỘT KÝ TỰ cho đường truyền (khung xem live gửi địa hình dạng chuỗi).
@@ -71,6 +73,7 @@ TERRAIN_CODE: dict[Terrain, str] = {
     Terrain.FIRE: "F",
     Terrain.DEEP: "D",
     Terrain.TREE: "T",
+    Terrain.CAVE: "C",
 }
 
 # Thứ tự GIEO HẠT địa hình. Một tuple, và cả hai đường dựng lưới đọc từ đây.
@@ -105,6 +108,12 @@ def erode_cores(grid: list[list[Terrain]], w: int, h: int) -> list[list[Terrain]
         hồ   = mảng WATER vừa  -> một lõi DEEP nhỏ, viền WATER
         biển = mảng WATER lớn  -> lõi DEEP lớn, viền WATER
 
+    Cùng phép ấy cho đá, và nó cho ra HANG: lõi của một khối đá là chỗ rỗng bên
+    trong. Hang **nằm lọt giữa đá** nên không ai đi bộ tới được — chỉ loài biết
+    ĐÀO HANG mới vào, vì nó xuyên qua chính lớp đá bao quanh (`DAO_HANG` mở khoá
+    cả `ROCK` lẫn `CAVE`). Nên hang là chỗ trốn **tuyệt đối**: kẻ săn nhìn thấy
+    con mồi biến mất vào vách đá và không có đường nào theo vào.
+
     Và nó **bảo đảm bờ bằng cấu trúc**, không bằng kỷ luật: một ô chỉ thành DEEP
     khi bốn phía là nước, nên quanh mọi vùng DEEP luôn còn một viền WATER. Bờ
     nước là ô DUY NHẤT mà tầng NƯỚC và tầng CẠN đứng cạnh nhau được (W-18 §7) —
@@ -126,7 +135,7 @@ def erode_cores(grid: list[list[Terrain]], w: int, h: int) -> list[list[Terrain]
     dựng lưới vẫn là một chỗ đáng gom nữa, nhưng gom chúng là một việc riêng.
     """
     out = [row[:] for row in grid]
-    core = {Terrain.WATER: Terrain.DEEP}
+    core = {Terrain.WATER: Terrain.DEEP, Terrain.ROCK: Terrain.CAVE}
     for y in range(h):
         for x in range(w):
             here = grid[y][x]
@@ -159,6 +168,10 @@ class World:
         # W-12 dựa trên nó, nên bản đồ mới KHÔNG được đổi bản mặc định.
         self.map_name: str = map_name or "DONG_CO"
         self.plant_scale: float = 1.0
+        # Đặc điểm sinh học theo LOÀI (W-19). Rỗng = ván trước W-19, chạy y hệt
+        # như cũ. `build_match` điền vào; loài lạ đăng ký giữa ván thì `.get`
+        # trả `None` và con vật ấy đơn giản là không có đặc điểm nào.
+        self.kits: dict[str, object] = {}
         if map_name is not None:
             from genesis.maps import MAPS
             self.plant_scale = MAPS[map_name].plant_scale
@@ -270,7 +283,8 @@ class World:
         terrain = self.grid[y][x]
         if creature is None:
             return can_enter(Domain.CAN, terrain, None)
-        return can_enter(domain_of(creature.species), terrain, creature.traits)
+        return can_enter(domain_of(creature.species), terrain, creature.traits,
+                         self.kits.get(creature.species))
 
     def touchable(self, pos: tuple[int, int], creature) -> bool:
         """Con vật này ĂN / UỐNG / ĐÁNH được ở ô này không (W-18 bất biến 3)."""

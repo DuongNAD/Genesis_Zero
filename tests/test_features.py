@@ -1,0 +1,221 @@
+"""Genesis Zero — tests/test_features: ba đặc điểm bốc thăm mỗi loài (W-19)."""
+
+from __future__ import annotations
+
+import collections
+import random
+
+from genesis import config
+from genesis.domain import Domain, can_enter
+from genesis.features import (BY_KEY, FEATURES, N_FEATURES, describe, kit_of,
+                              roll, roll_for_species)
+from genesis.tick import build_match
+from genesis.world import Terrain
+
+
+def test_boc_ba_dac_diem_khong_trung_nhau():
+    for seed in range(50):
+        fs = roll(random.Random(seed))
+        assert len(fs) == N_FEATURES
+        assert len({f.key for f in fs}) == N_FEATURES
+
+
+def test_TAT_DINH_theo_loai_va_seed():
+    """Bốc lại mỗi lần chạy thì ba đường gãy cùng lúc: bộ đệm hình 3D khoá theo
+    chuỗi mô tả, `--replay` dựng lại ván cũ, và bộ chấm so hai ván với nhau."""
+    a = roll_for_species("L1", 21)
+    b = roll_for_species("L1", 21)
+    assert [f.key for f in a] == [f.key for f in b]
+    assert roll_for_species("L1", 22) != a or roll_for_species("L2", 21) != a
+
+
+def test_thu_tu_tra_ve_CO_DINH():
+    """Trả theo `key` chứ không theo thứ tự bốc: cùng ba đặc điểm phải cho cùng
+    MỘT chuỗi mô tả, nếu không thì một sinh vật sinh ra hai hình 3D khác nhau."""
+    for seed in range(30):
+        fs = roll(random.Random(seed))
+        assert [f.key for f in fs] == sorted(f.key for f in fs)
+
+
+def test_phan_phoi_deu():
+    c = collections.Counter()
+    for seed in range(300):
+        for f in roll(random.Random(seed)):
+            c[f.key] += 1
+    tot = sum(c.values())
+    share = [c[f.key] / tot for f in FEATURES]
+    assert min(share) > 0.5 / len(FEATURES), c
+    assert max(share) < 2.0 / len(FEATURES), c
+
+
+# ── mặt cơ chế ──────────────────────────────────────────────────────────────
+
+def test_he_so_NHAN_chu_khong_cong():
+    """Hai đặc điểm cùng giảm sát thương thì tích vẫn > 0. Cộng trừ thì đủ hai
+    cái là bất tử — và đủ hai cái giảm upkeep là con vật KIẾM ĐƯỢC năng lượng
+    bằng cách đứng yên."""
+    k = kit_of((BY_KEY["VAY_CUNG"], BY_KEY["VO_SO"], BY_KEY["LONG_DAI"]))
+    assert 0.0 < k.dmg_taken_mult < 1.0
+    assert 0.0 < k.upkeep_mult < 1.0
+
+
+def test_dao_hang_mo_khoa_ca_DA_lan_HANG():
+    """Hang nằm lọt giữa đá, nên vào được hang nghĩa là xuyên qua được đá.
+
+    Thiếu `ROCK` thì hang thành ô không ai tới được — một chỗ trốn mà chính chủ
+    cũng không vào nổi.
+    """
+    k = kit_of((BY_KEY["DAO_HANG"],))
+    assert Terrain.CAVE in k.extra_terrain
+    assert Terrain.ROCK in k.extra_terrain
+    assert can_enter(Domain.CAN, Terrain.CAVE, None, k) is True
+    assert can_enter(Domain.CAN, Terrain.CAVE, None, None) is False
+
+
+def test_treo_gioi_ha_nguong_nhung_khong_xoa_nguong():
+    """Đặc điểm HẠ ngưỡng, không bỏ ngưỡng: một con speed 0 vẫn không lên cây."""
+    from genesis.traits import Traits
+
+    k = kit_of((BY_KEY["TREO_GIOI"],))
+    vua = Traits(brain=5, attack=4, armor=0, speed=1, sense=1, stomach=1)
+    kiet = Traits(brain=5, attack=5, armor=1, speed=0, sense=1, stomach=0)
+    assert can_enter(Domain.CAN, Terrain.TREE, vua, k) is True
+    assert can_enter(Domain.CAN, Terrain.TREE, vua, None) is False
+    assert can_enter(Domain.CAN, Terrain.TREE, kiet, k) is False
+
+
+def test_ca_co_dac_diem_van_khong_len_bo():
+    """Tầng đứng TRƯỚC đặc điểm. Cá mang `DAO_HANG` vẫn là cá."""
+    k = kit_of((BY_KEY["DAO_HANG"], BY_KEY["CANH_LUOT"]))
+    for t in (Terrain.PLAIN, Terrain.BUSH, Terrain.TREE):
+        assert can_enter(Domain.NUOC, t, None, k) is False
+
+
+def test_world_gan_kit_cho_moi_loai():
+    w, cs, st, rng = build_match(21)
+    for sp in {c.species for c in cs}:
+        assert sp in w.kits
+        assert len(w.kits[sp].features) == N_FEATURES
+
+
+def test_loai_la_khong_co_kit_thi_khong_nem():
+    """Người chơi qua mạng đăng ký loài giữa ván — `passable` không được gãy."""
+    from genesis.creature import Creature
+    from genesis.traits import founder_traits
+
+    w, cs, st, rng = build_match(21)
+    la = Creature(id="ZZ:0", species="ZZ", traits=founder_traits("L1"),
+                  pos=(0, 0), hp=1.0, energy=1.0)
+    assert w.passable((0, 0), la) in (True, False)
+
+
+# ── mặt ngoại hình ──────────────────────────────────────────────────────────
+
+def test_moi_dac_diem_co_ca_HAI_mat():
+    """Đặc điểm là cầu nối giữa cơ chế và ngoại hình — thiếu một mặt là hỏng ý.
+
+    Thiếu `look`: hình 3D không phản ánh được nó, và kênh quan sát gián tiếp mất
+    một chiều. Thiếu `note`: không ai biết nó đổi gì trong vòng tick.
+    """
+    for f in FEATURES:
+        assert f.look and len(f.look) > 30, f.key
+        assert f.note and len(f.note) > 10, f.key
+        assert f.vn, f.key
+        # `look` phải tả HÌNH KHỐI, không tả công dụng — Meshy dựng được cái
+        # nhìn thấy, không dựng được cái suy ra.
+        assert not any(w in f.look for w in ("giúp", "để có thể", "nhờ đó")), f.key
+
+
+def test_mo_ta_ghep_du_ba_dac_diem():
+    fs = roll_for_species("L1", 21)
+    txt = describe(fs)
+    for f in fs:
+        assert f.look.rstrip(".").split(",")[0] in txt
+
+
+def test_prompt_meshy_mang_ca_TANG_lan_DAC_DIEM():
+    from genesis.mesh_prompts import creature_prompt
+    from genesis.traits import founder_traits
+
+    fs = (BY_KEY["LUONG_CU"], BY_KEY["LONG_DAI"], BY_KEY["RANG_NANH"])
+    ca = creature_prompt(founder_traits("L1"), "NUOC", fs)
+    chim = creature_prompt(founder_traits("L1"), "TROI", fs)
+    assert "vây" in ca and "không có chân" in ca
+    assert "cánh" in chim and "biết bay" in chim.lower()
+    assert "màng bơi" in ca and "lông dài" in ca and "nanh" in ca
+
+
+def test_prompt_khong_co_dac_diem_thi_van_chay():
+    """Ván trước W-19 không truyền `features` — không được ném."""
+    from genesis.mesh_prompts import creature_prompt
+    from genesis.traits import founder_traits
+
+    assert creature_prompt(founder_traits("L1"))
+
+
+# ── hàng rào của tầng viết lại ──────────────────────────────────────────────
+
+def test_viet_lai_khong_duoc_danh_roi_bo_phan():
+    from genesis.genai import verify_rewrite
+
+    goc = "Sinh vật bốn chân, có đuôi dài, chân có màng bơi giữa các ngón."
+    assert verify_rewrite(goc, "Con vật bốn chi, đuôi dài, các ngón có màng.")[0]
+    assert not verify_rewrite(goc, "Con vật bốn chân với chiếc đuôi dài.")[0]
+
+
+def test_viet_lai_khong_duoc_mang_chu_so():
+    """Mô tả HÌNH không được mang chỉ số — nó là kênh quan sát, không phải bảng."""
+    from genesis.genai import verify_rewrite
+
+    ok, why = verify_rewrite("Sinh vật bốn chân.", "Con vật bốn chân, giáp 3.")
+    assert not ok and "chữ số" in why
+
+
+def test_dong_nghia_bon_chan_bon_chi():
+    """Hồi quy: bộ kiểm bản đầu bắt oan ngay lần chạy thật đầu tiên vì Gemini
+    viết 'bốn chi' còn bản gốc viết 'bốn chân'."""
+    from genesis.genai import verify_rewrite
+
+    assert verify_rewrite("Sinh vật bốn chân, có đuôi.",
+                          "Con vật đứng vững trên bốn chi, có chiếc đuôi dài.")[0]
+
+
+def test_khong_co_khoa_thi_tra_ve_ban_GOC_khong_nem():
+    """Hết khoá, mất mạng, model trả rác — tất cả rơi về bản gốc.
+
+    Bản gốc đã đúng sẵn; cái ta mua ở tầng viết lại là văn phong, không phải sự
+    thật. Trả tiền cho văn phong bằng một ván gãy thì quá đắt.
+    """
+    import os
+
+    from genesis.genai import rewrite
+
+    old = {k: os.environ.pop(k, None) for k in ("GEMINI_API_KEYS", "GEMINI_API_KEY")}
+    try:
+        txt, src = rewrite("Sinh vật bốn chân.")
+        assert txt == "Sinh vật bốn chân." and src == "goc"
+    finally:
+        for k, v in old.items():
+            if v is not None:
+                os.environ[k] = v
+
+
+def test_khong_co_khoa_nao_trong_kho():
+    """Bài canh chừng. `.env` bị gitignore; không khoá nào được lọt vào file theo dõi."""
+    import subprocess
+
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    tracked = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True,
+                             text=True).stdout.split()
+    for rel in tracked:
+        p = root / rel
+        if not p.is_file() or p.stat().st_size > 400_000:
+            continue
+        try:
+            txt = p.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        assert "AIzaSy" not in txt, f"{rel} chứa khoá Google API"
+        assert "AQ.Ab8RN6" not in txt, f"{rel} chứa khoá Google API"

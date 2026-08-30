@@ -57,9 +57,21 @@ def resolve_combat(
         if world.dist(attacker.pos, defender.pos) > MELEE_RANGE:
             continue
 
-        # Sát thương = damage của attacker * dmg_taken_mult của defender
-        dmg = attacker.traits.damage * defender.traits.dmg_taken_mult
+        # Sát thương = damage của attacker * dmg_taken_mult của defender,
+        # rồi nhân tiếp hai hệ số đặc điểm (W-19): răng nanh của kẻ đánh, vảy
+        # cứng / vỏ sò của kẻ đỡ.
+        ka = world.kits.get(attacker.species)
+        kd = world.kits.get(defender.species)
+        dmg = (attacker.traits.damage * defender.traits.dmg_taken_mult
+               * (getattr(ka, "damage_mult", 1.0) if ka else 1.0)
+               * (getattr(kd, "dmg_taken_mult", 1.0) if kd else 1.0))
         dmg_by_target[defender.id] = dmg_by_target.get(defender.id, 0.0) + dmg
+
+        # GAI ĐỘC: kẻ tấn công cũng chịu đòn. Không phụ thuộc nó đánh trúng bao
+        # nhiêu — gai là thứ nằm sẵn trên mình kẻ bị đánh, ai chạm vào thì chịu.
+        thorns = getattr(kd, "thorns", 0.0) if kd else 0.0
+        if thorns > 0.0:
+            dmg_by_target[attacker.id] = dmg_by_target.get(attacker.id, 0.0) + thorns
 
         # Độc phản lại mọi kẻ tấn công L5 trong tick đó
         if defender.species in POISON_SPECIES:

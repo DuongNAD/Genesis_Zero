@@ -96,6 +96,15 @@ def build_match(
                   map_name=map_name)
     creatures = spawn_population(world, rng)
     state = SimState(match_seed=seed)
+    # Ba đặc điểm bốc thăm cho mỗi loài (W-19), tất định theo `(loài, seed)`.
+    # Tất định là bắt buộc: bộ đệm hình 3D khoá theo chuỗi mô tả, `--replay`
+    # dựng lại ván cũ, và bộ chấm so hai ván với nhau — bốc lại mỗi lần chạy
+    # thì cả ba đường ấy gãy cùng lúc.
+    from genesis.features import kit_of, roll_for_species
+
+    world.kits = {sp: kit_of(roll_for_species(sp, seed))
+                  for sp in sorted({c.species for c in creatures})}
+
     return world, creatures, state, rng
 
 
@@ -283,7 +292,7 @@ def tick(
 
         tick_regen(c)
 
-        if upkeep_and_check_death(c, tick_no):
+        if upkeep_and_check_death(c, tick_no, world.kits.get(c.species)):
             death_causes[c.id] = "starve"
 
     # Thắng trận: mục tiêu chết vì đòn của mình trong tick đó -> award_adapt(c, "win")

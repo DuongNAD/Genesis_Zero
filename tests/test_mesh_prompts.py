@@ -97,12 +97,25 @@ def test_khong_lo_dinh_danh_noi_bo():
 
 
 def test_khong_mang_thu_do_client_viet():
-    """Không có chỗ nào nhận display_name/persona: chữ ký hàm là bằng chứng."""
+    """Không có chỗ nào nhận display_name/persona: chữ ký hàm là bằng chứng.
+
+    Danh sách CHO PHÉP, không phải danh sách cấm — cấm thì mỗi tên mới do người
+    lạ nghĩ ra lại lọt qua. Tất cả đều là thứ **server tự dựng** từ seed:
+    `domain` là tầng của loài (W-18), `features` là ba đặc điểm bốc thăm tất định
+    theo `(loài, seed)` (W-19). Không cái nào đến từ bàn phím của ai.
+
+    Vì sao guard này đáng giữ: chuỗi ở đây đi thẳng sang Meshy, và trước đó đã có
+    ba lần chữ của người khác lọt vào prompt qua ba đường khác nhau (lời nói, ghi
+    chú, persona) — xem nhật ký 2026-08-29.
+    """
     import inspect
 
+    cho_phep = {"tr", "domain", "features"}
+    cam = {"display_name", "persona", "name", "text", "note", "label", "desc"}
     for fn in (creature_prompt, creature_visual):
         params = set(inspect.signature(fn).parameters)
-        assert params == {"tr"}, f"{fn.__name__} nhận thêm {params - {'tr'}}"
+        assert params <= cho_phep, f"{fn.__name__} nhận thêm {params - cho_phep}"
+        assert not (params & cam), f"{fn.__name__} nhận chữ do client viết"
 
 
 def test_phu_kin_dia_hinh_qua_ban_do():

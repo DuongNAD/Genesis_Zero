@@ -15,7 +15,7 @@ GENERATED_TERRAINS = (Terrain.PLAIN, Terrain.WATER, Terrain.BUSH, Terrain.ROCK)
 
 
 def test_terrain_enum() -> None:
-    """Terrain enum có đúng 7 giá trị chuỗi (5 gốc + DEEP, TREE của W-18)."""
+    """Terrain enum có đúng 8 giá trị (5 gốc + DEEP, TREE, CAVE của W-18/W-19)."""
     assert Terrain.PLAIN == "PLAIN"
     assert Terrain.WATER == "WATER"
     assert Terrain.BUSH == "BUSH"
@@ -23,10 +23,12 @@ def test_terrain_enum() -> None:
     assert Terrain.FIRE == "FIRE"
     assert Terrain.DEEP == "DEEP"
     assert Terrain.TREE == "TREE"
-    # Bảy, và **chỉ** bảy. Ba kiểu nước của đề bài (ao / hồ / biển) sinh ra từ
-    # CÁCH XẾP chứ không từ enum mới — xem `world.erode_cores`. Thêm loại địa
-    # hình là thêm miền cho `TERRAIN` trong DSL luật, mà quy nạp đang hỏng sẵn.
-    assert len(Terrain) == 7
+    assert Terrain.CAVE == "CAVE"
+    # Tám, và **chỉ** tám. Ba kiểu nước của đề bài (ao / hồ / biển) sinh ra từ
+    # CÁCH XẾP chứ không từ enum mới — `erode_cores` biến lõi mảng nước thành
+    # DEEP và lõi khối đá thành CAVE. Thêm loại địa hình là thêm miền cho
+    # `TERRAIN` trong DSL luật, mà quy nạp đang hỏng sẵn.
+    assert len(Terrain) == 8
 
 
 def test_acceptance_criteria() -> None:

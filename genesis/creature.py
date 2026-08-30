@@ -98,15 +98,20 @@ def random_step(c: Creature, world: World, rng: random.Random) -> int:
     return steps_taken
 
 
-def upkeep_and_check_death(c: Creature, tick: int) -> bool:
+def upkeep_and_check_death(c: Creature, tick: int, kit=None) -> bool:
     """Trừ upkeep và kiểm tra chết đói.
+
+    `kit` là ba đặc điểm của loài (W-19): lông dài và túi má đỡ hao sức, vỏ sò
+    thì tốn thêm. Nhân chứ không cộng — hai đặc điểm cùng giảm thì tích vẫn > 0,
+    còn cộng trừ thì đủ hai cái là upkeep âm và con vật **kiếm được năng lượng
+    bằng cách đứng yên**.
 
     Bẫy: nếu đã chết từ trước thì trả False, không báo chết lần hai.
     """
     if not c.alive:
         return False
     c.age += 1
-    c.energy -= c.traits.upkeep
+    c.energy -= c.traits.upkeep * (getattr(kit, "upkeep_mult", 1.0) if kit else 1.0)
     if c.energy <= 0:
         c.alive = False
         return True

@@ -74,14 +74,28 @@ _GATED: dict[Terrain, tuple[str, int]] = {
 }
 
 
-def can_enter(domain: Domain, terrain: Terrain, traits=None) -> bool:
-    """Tầng `domain` với vector `traits` có vào được ô `terrain` không.
+def can_enter(domain: Domain, terrain: Terrain, traits=None, kit=None) -> bool:
+    """Tầng `domain` + vector `traits` + ba đặc điểm `kit` có vào được ô này không.
 
     Hàm THUẦN, và là nguồn sự thật DUY NHẤT cho câu hỏi ấy (bất biến 2). Mọi
     đường khác — `reflex`, render, client, bộ sinh bản đồ — phải hỏi qua
     `World.passable`, chứ không dựng bảng thứ hai.
+
+    Ba nấc, và thứ tự có nghĩa:
+
+    1. **tầng** — cá không lên bờ, dù nó có đặc điểm gì đi nữa;
+    2. **đặc điểm** — `DAO_HANG` mở khoá đá và hang, `CANH_LUOT` mở khoá đá;
+    3. **trait** — `speed` để trèo, `armor` để băng lửa, và `TREO_GIOI` hạ
+       ngưỡng trèo xuống, nên một con `speed` vừa phải mà có đặc điểm ấy vẫn
+       lên cây được.
+
+    Nấc 2 đứng TRƯỚC nấc 3 là cố ý: một đặc điểm là thứ con vật *sinh ra đã có*,
+    còn trait thì nó **kiếm được** bằng dịch trait (B-13). Hai đường khác nhau
+    tới cùng một chỗ, và cả hai đều mở.
     """
     if terrain in _BASE[domain]:
+        return True
+    if kit is not None and terrain in getattr(kit, "extra_terrain", ()):
         return True
     if domain is not Domain.CAN:
         return False
@@ -89,6 +103,8 @@ def can_enter(domain: Domain, terrain: Terrain, traits=None) -> bool:
     if gate is None or traits is None:
         return False
     name, need = gate
+    if terrain is Terrain.TREE and kit is not None:
+        need -= getattr(kit, "climb_bonus", 0)
     return getattr(traits, name, 0) >= need
 
 

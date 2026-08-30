@@ -18,3 +18,8 @@ docs/site.html
 assets/meshy/tasks.json
 .venv/
 venv/
+
+# KHOÁ API — không bao giờ vào kho. Đọc qua biến môi trường, xem genesis/genai.py.
+.env
+.env.*
+!.env.example

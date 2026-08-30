@@ -27,6 +27,7 @@
     F: { h: 0.16, c: 0xea580c },   // lửa
     D: { h: 0.00, c: 0x0c2a6b },   // nước sâu — trũng hẳn, chỉ tầng NƯỚC (W-18)
     T: { h: 1.40, c: 0x166534 },   // cây — cao nhất bản đồ, chỉ loài biết trèo
+    C: { h: 0.30, c: 0x1c1917 },   // hang — trũng trong lòng đá, chỉ loài đào hang
   };
 
   const el = (id) => document.getElementById(id);

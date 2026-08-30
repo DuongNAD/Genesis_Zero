@@ -111,17 +111,44 @@ def creature_visual(tr: Traits) -> str:
     return ", ".join(parts)
 
 
-def creature_prompt(tr: Traits) -> str:
-    """Prompt Meshy cho một cá thể. Hàm thuần của vector trait, không gì khác.
+# Dáng cơ bản theo TẦNG. Số chi và tư thế là thứ Meshy cần biết trước tiên, và
+# nó không suy ra được từ vector trait — một con `speed 5` có thể là con báo bốn
+# chân hay con chim hai chân, hai hình rất khác nhau.
+_DANG = {
+    "NUOC": ("Sinh vật SỐNG DƯỚI NƯỚC, thân thuôn hình thoi, không có chân, "
+             "hai vây ngực và một vây đuôi dựng đứng, mang xẻ hai bên đầu"),
+    "CAN": ("Sinh vật BỐN CHÂN sống trên cạn, thân đối xứng, đứng trên bốn chi, "
+            "đầu hướng về trước, có đuôi"),
+    "TROI": ("Sinh vật BIẾT BAY, hai cánh lớn xoè rộng hai bên, hai chân sau "
+             "có vuốt quắp, thân ngắn gọn, đuôi xoè hình quạt"),
+}
 
-    Phần số vẫn là `body_line` nguyên văn — giữ đúng "một chỗ duy nhất" của
-    [N-13]; nếu ai đổi thang trait thì cả câu chữ lẫn hình đổi theo cùng lúc.
+
+def creature_prompt(tr: Traits, domain: str = "CAN", features=()) -> str:
+    """Prompt Meshy cho một cá thể: TẦNG + đặc điểm + vector trait.
+
+    Ba lớp, và thứ tự là thứ tự Meshy cần đọc:
+
+    1. **dáng cơ bản theo tầng** — bốn chân / có vây / có cánh. Đây là thứ vector
+       trait không nói được: `speed 5` có thể là con báo hoặc con chim.
+    2. **ba đặc điểm bốc thăm** (W-19) — lông dài, chân màng, gai lưng… Đây là
+       chỗ hai con cùng vector trait trông khác hẳn nhau.
+    3. **vector trait** — vẫn là `body_line` nguyên văn, giữ đúng "một chỗ duy
+       nhất" của [N-13]: đổi thang trait thì cả câu chữ lẫn hình đổi cùng lúc.
+
+    Lớp 2 là lớp làm cho hình 3D **mang thông tin** chứ không chỉ trang trí: ai
+    nhìn thấy chân màng và mõm dài thì đọc được là con này bơi được và đào bới,
+    trước khi nó kịp làm gì. Đó là quan sát gián tiếp theo đúng nghĩa của
+    [03 §4](../docs/03-LUAT-AN-V5.md).
     """
-    return (
-        f"Sinh vật bốn chân hư cấu, thân đối xứng: {creature_visual(tr)}. "
-        f"Chỉ số: {body_line(tr)} "
-        f"{STYLE}."
-    )
+    from genesis.features import describe
+
+    parts = [_DANG.get(domain, _DANG["CAN"]) + f": {creature_visual(tr)}."]
+    if features:
+        parts.append(describe(tuple(features)))
+    parts.append(f"Chỉ số: {body_line(tr)}")
+    parts.append(f"{STYLE}.")
+    return " ".join(parts)
 
 
 # ─── Địa hình: năm loại ô ───────────────────────────────────────────────────
@@ -134,6 +161,7 @@ _TERRAIN: dict[Terrain, str] = {
     Terrain.FIRE: "một mảng đất cháy đen, than đỏ âm ỉ, khói mỏng bốc lên",
     Terrain.DEEP: "mặt nước sâu xanh thẫm, không thấy đáy, sóng lăn tăn chậm",
     Terrain.TREE: "một thân cây to có tán lá rộng che kín ô, cành thấp vươn ngang",
+    Terrain.CAVE: "miệng hang tối trong lòng đá, vòm đá nhẵn, nền phủ cát khô",
 }
 
 
