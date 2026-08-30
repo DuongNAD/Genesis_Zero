@@ -131,9 +131,12 @@ def reflex_step(
 
     if goal.goal == Goal.FORAGE:
         # Cây gần nhất trong tầm nhìn
+        # `food_for(c)`, không phải `world.plants`. Một con cá hỏi `world.plants`
+        # sẽ nhắm vào quả trên ô `PLAIN` mà nó không bao giờ vào được — bơi về
+        # phía bờ rồi đứng đó tới chết, trông y như tầng phản xạ hỏng.
         visible_plants = [
             p
-            for p in world.plants
+            for p in world.food_for(c)
             if world.dist(c.pos, p) <= c.traits.sight_radius
         ]
         if not visible_plants:

@@ -42,21 +42,32 @@ def spawn_population(world: World, rng: random.Random) -> list[Creature]:
     Bẫy: species_id lấy động từ config.POPULATION lúc chạy, không hardcode.
     Danh sách trả về PHẢI được sắp xếp theo id cố định để thứ tự duyệt tất định.
     """
-    passable_cells = [
-        (x, y)
-        for y in range(world.h)
-        for x in range(world.w)
-        if world.passable((x, y))
-    ]
-    if not passable_cells:
-        raise RuntimeError("Không có ô passable nào để thả sinh vật")
-
     creatures: list[Creature] = []
     for species_id, count in config.POPULATION.items():
         traits = founder_traits(species_id)
-        for i in range(count):
+        # Ô ĐI ĐƯỢC CỦA LOÀI NÀY, không phải ô đi được của một sinh vật cạn
+        # trung bình. Bản cũ hỏi `world.passable((x, y))` không truyền con vật,
+        # nên nó **thả cá lên đồng cỏ** — và con cá ấy không đi được một bước
+        # nào, không ăn được gì, chết ở đúng chỗ nó sinh ra.
+        mau = Creature(id=f"{species_id}:0", species=species_id, traits=traits,
+                       pos=(0, 0), hp=1.0, energy=1.0)
+        o_song = [
+            (x, y)
+            for y in range(world.h)
+            for x in range(world.w)
+            if world.passable((x, y), mau)
+        ]
+        if not o_song:
+            # Loài không có chỗ nào sống được trên bản đồ này -> KHÔNG thả.
+            # Ném ở đây là chặn cả ván vì một loài không hợp bản đồ; bỏ qua nó
+            # thì bốn loài kia vẫn chơi được, và `HOANG_MAC` vẫn là một ván hợp
+            # lệ dù nó không nuôi nổi cá.
+            continue
+        # Quần thể CO THEO môi trường sống. Xem `config.CELLS_PER_CREATURE`.
+        n = max(1, min(count, len(o_song) // config.CELLS_PER_CREATURE))
+        for i in range(n):
             cid = f"{species_id}:{i}"
-            pos = rng.choice(passable_cells)
+            pos = rng.choice(o_song)
             creatures.append(
                 Creature(
                     id=cid,

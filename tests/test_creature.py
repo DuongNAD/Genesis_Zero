@@ -48,9 +48,14 @@ def test_spawn_population_basic() -> None:
     cs = spawn_population(w, random.Random(2))
 
     total = sum(config.POPULATION.values())
-    assert len(cs) == total
+    # Quần thể co theo môi trường sống của TỪNG loài (W-18 chặng B) — xem
+    # `config.CELLS_PER_CREATURE`. Nói "không vượt quá" để bài kiểm còn đúng khi
+    # ai đó đổi bản đồ mặc định.
+    assert 0 < len(cs) <= total
     assert cs == sorted(cs, key=lambda c: c.id)
-    assert all(w.passable(c.pos) for c in cs)
+    # `passable(pos, c)` — hỏi CHO CON NÀY. Hỏi `passable(pos)` là hỏi cho một
+    # sinh vật cạn trung bình, và với câu hỏi ấy thì mọi con cá đều "sai chỗ".
+    assert all(w.passable(c.pos, c) for c in cs)
     assert all(c.energy == c.traits.energy_max for c in cs)
     assert all(c.hp == float(config.HP_MAX) for c in cs)
     assert len({c.id for c in cs}) == len(cs)

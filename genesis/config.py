@@ -28,7 +28,19 @@ POPULATION = {
     "L3": 3,   # Thích nghi   — Mistral-7B
     "L4": 3,   # Giáp         — Phi-3.5-mini
     "L5": 5,   # Độc          — Qwen2.5-1.5B
+    # ─── W-18 chặng B: hai tầng còn lại ────────────────────────────────
+    "W1": 3,   # Cá  — tầng NƯỚC
+    "A1": 2,   # Chim — tầng TRỜI
 }
+
+# Số ô môi trường sống tối thiểu cho MỖI cá thể. Quần thể co lại theo bản đồ:
+# `HOANG_MAC` có ~19 ô nước nên nó nuôi được 1 con cá, `QUAN_DAO` có ~165 nên nó
+# nuôi đủ. Thả cùng một số lượng lên mọi bản đồ là thả cá vào sa mạc — và M1 sẽ
+# vỡ vì một lý do chẳng nói lên điều gì về thiết kế.
+#
+# Co theo dữ liệu chứ không bằng một bảng chép tay cho từng bản đồ: bảng chép
+# tay là thứ sẽ lệch ngay lần đầu ai đó thêm một bản đồ.
+CELLS_PER_CREATURE = 12
 
 # ─── Founder vectors (6 trait, tổng luôn = 12, mỗi trait 0–5) ──
 FOUNDERS = {
@@ -38,6 +50,12 @@ FOUNDERS = {
     "L3":        (3,     1,      1,     3,     3,     1),
     "L4":        (1,     1,      5,     1,     2,     2),
     "L5":        (0,     2,      0,     5,     3,     2),
+    # Cá: nhanh và thính, gần như không có gì để chống đỡ. Nó sống bằng cách
+    # thấy trước và bơi đi — và nước sâu là chỗ không ai theo được.
+    "W1":        (1,     1,      0,     5,     4,     1),
+    # Chim: thấy xa nhất bản đồ, nhanh, mỏng manh. Nó bay khắp nơi nhưng phải
+    # hạ xuống mới chạm được, nên tầm nhìn là thứ nó đổi mọi điểm khác để lấy.
+    "A1":        (2,     2,      0,     4,     4,     0),
 }
 TRAIT_NAMES = ("brain", "attack", "armor", "speed", "sense", "stomach")
 
@@ -47,6 +65,7 @@ TRAIT_NAMES = ("brain", "attack", "armor", "speed", "sense", "stomach")
 # mặc định CẠN.
 SPECIES_DOMAIN: dict[str, str] = {
     "L1": "CAN", "L2": "CAN", "L3": "CAN", "L4": "CAN", "L5": "CAN",
+    "W1": "NUOC", "A1": "TROI",
 }
 # Ngưỡng mở khoá đường đi TRONG tầng cạn. Đây là "sư tử không trèo được cây,
 # khỉ thì được" — và nó không hard-code loài nào cả, nó đọc vector trait.
@@ -145,29 +164,30 @@ PLANT_MAX = 15          # tối đa trên sân
 # vị bề mặt mỗi ván vì chúng là **đề bài** — luật ẩn nói về chúng. Rong thì không:
 # nó là thức ăn, không phải câu đố. Cho nó bốn lớp là làm miền `EAT` rộng gấp
 # đôi, mà quy nạp đang hỏng sẵn.
-ALGAE_ENERGY = 20
+ALGAE_ENERGY = 30
 ALGAE_RESPAWN = 2
-# **0 = TẮT, và đó là mặc định.** Cơ chế xong, kiểm xong, chưa bật.
+# BẬT từ chặng B: giờ đã có tầng nước (`W1`) và rong là thứ DUY NHẤT nó ăn
+# được. Trước chặng B thì nó tắt, vì lúc ấy nó chỉ cho loài cạn bốc trúng
+# `LUONG_CU` thêm một nền kinh tế — hay, nhưng không phải mục đích, và nó vỡ M1:
 #
-# Rong sinh ra CHO tầng nước, mà tầng nước thì chưa có loài nào. Bật nó lúc này
-# chỉ có một tác dụng: loài CẠN nào bốc trúng `LUONG_CU` được thêm một nền kinh
-# tế — hay, nhưng không phải mục đích, và nó **vỡ M1**:
+# Giá trị hiện tại đến từ bốn vòng quét trên thế giới BẢY LOÀI (5 seed × 400
+# tick), và nó là điểm tốt nhất tìm được:
 #
-#   không rong      -> chết nhiều nhất 8 · chưa từng chết 0/75 ✅
-#   rong 12 ô / 26  -> chết nhiều nhất 6 · chưa từng chết 4/75 ❌
-#   rong  8 ô / 20  -> chết nhiều nhất 7 · chưa từng chết 2/75 ❌
-#   rong  6 ô / 16  -> chết nhiều nhất 8 · chưa từng chết 4/75 ❌
+#   rong 10 ô/20 -> chết nhiều nhất 10 ❌ · chưa từng chết  5/100 · cá chết 6,7
+#   rong 22 ô/28 -> chết nhiều nhất  8 ✅ · chưa từng chết 10/100 · cá chết 3,7
+#   rong 28 ô/30 -> chết nhiều nhất  8 ✅ · chưa từng chết  3/100 · cá chết 4,4
+#   rong 32 ô/32 -> chết nhiều nhất  7 ✅ · chưa từng chết  8/100 · dịch min 1 ❌
 #
-# Vặn thức ăn KHÔNG cứu được: con số nhảy 4→2→4→2 chứ không giảm đều, vì những
-# con sống sót ấy không bị giới hạn bởi thức ăn.
+# **M1 điều kiện 2 CHƯA ĐẠT: 3/100, cần 0.** Nói thẳng thay vì nới tiêu chí.
+# Điều kiện 1 và 3 thì đạt. Ba con ấy là 1 `L5` (cái đuôi lịch sử, đã ghi từ
+# trước) và 2 con cá — cá gặp may chứ không bất tử: chúng vẫn chết 14 lần vì
+# đánh nhau và 33 lần vì đói trong cùng phép đo.
 #
-# Đây là cơ chế THỨ BA trong ngày vấp đúng chỗ này (phạt tầm nhìn đêm, linh cảm,
-# rong), và ba lần thì đủ để thấy mẫu: **M1 được tune cho một thế giới NĂM LOÀI
-# TOÀN CẠN.** Mọi thứ thêm vào thế giới ấy đều phải trả bằng cái đuôi của nó.
-# Cách đúng không phải nhỏ giọt từng cơ chế rồi mỗi lần lại vặn lại — mà là làm
-# chặng B trọn gói (cá + chim + thức ăn theo tầng + quần thể theo bản đồ) rồi
-# tune M1 MỘT LẦN cho thế giới mới.
-ALGAE_MAX = 0
+# Một điều đáng nói về chính tiêu chí: "không con nào chưa từng chết" là một
+# mệnh đề về ĐUÔI của phân phối, nên nó khó dần theo số cá thể. Thế giới cũ đạt
+# 0/75; thế giới mới có 100 suất. Đó không phải cái cớ để nới, nhưng nó là lý do
+# nên hỏi lại tiêu chí ấy có còn nói đúng điều nó định nói không.
+ALGAE_MAX = 28
 ALGAE_CLASS = "ALGAE"
 
 CORPSE_ENERGY = 45      # năng lượng từ xác

@@ -301,6 +301,34 @@ class World:
         x, y = self.wrap(*pos)
         return can_touch(domain_of(creature.species), self.grid[y][x], creature.traits)
 
+    def food_for(self, creature) -> dict[tuple[int, int], str]:
+        """Ô thức ăn mà CON NÀY vừa ăn được vừa tới được.
+
+        Nguồn sự thật DUY NHẤT cho câu hỏi "con này đi tìm gì". Trước W-18 chỉ có
+        một loại thức ăn nên `reflex` hỏi thẳng `world.plants`, và điều đó vẫn
+        đúng trong một thế giới toàn cạn. Với ba tầng thì nó sai theo kiểu tệ
+        nhất: một con cá bật goal `FORAGE` sẽ nhắm vào quả trên ô `PLAIN` mà nó
+        **không bao giờ vào được** — nó bơi về phía bờ rồi đứng đó tới chết, và
+        nhìn từ ngoài thì y như một tầng phản xạ hỏng.
+
+        Trả về một dict GỘP chứ không phải hai đường: loài lưỡng cư ăn được cả
+        hai, và nó phải chọn giữa chúng bằng khoảng cách, không phải bằng việc
+        người viết code nhớ hỏi đúng dict.
+        """
+        from genesis.domain import Domain, can_enter, domain_of
+
+        dom = domain_of(creature.species)
+        kit = self.kits.get(creature.species)
+        out: dict[tuple[int, int], str] = {}
+        # Quả: nằm trên PLAIN. Ai vào được PLAIN thì ăn được.
+        if can_enter(dom, Terrain.PLAIN, creature.traits, kit):
+            out.update(self.fruits)
+        # Rong: cổng theo TẦNG, không theo địa hình — xem `_resolve_algae`.
+        if dom is Domain.NUOC or (kit is not None
+                                  and Domain.NUOC in getattr(kit, "extra_domains", ())):
+            out.update(self.algae)
+        return out
+
     def eat_algae(self, pos: tuple[int, int]) -> float:
         """Ăn rong tại pos nếu có. Người gọi phải kiểm tầng TRƯỚC khi gọi."""
         x, y = self.wrap(*pos)

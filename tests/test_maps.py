@@ -61,7 +61,17 @@ def test_ban_do_nao_cung_di_lai_duoc():
             passable = sum(1 for y in range(world.h) for x in range(world.w)
                            if world.passable((x, y)))
             assert passable > world.w * world.h * 0.4, f"{name} bịt quá kín"
-            assert len(creatures) == sum(config.POPULATION.values())
+            # Quần thể CO THEO bản đồ (W-18 chặng B): `HOANG_MAC` chỉ có ~19
+            # ô nước nên nó nuôi 1 con cá thay vì 3. Bất biến là "không vượt quá
+            # cấu hình", không phải "bằng đúng cấu hình".
+            assert 0 < len(creatures) <= sum(config.POPULATION.values())
+            # Và bất biến QUAN TRỌNG hơn: mọi con ra đời ở ô mà CHÍNH NÓ đi
+            # được. Bản cũ hỏi `passable` không truyền con vật nên nó thả cá lên
+            # đồng cỏ — con cá ấy không đi nổi một bước, không ăn được gì, chết
+            # ở đúng chỗ nó sinh ra.
+            for c in creatures:
+                assert world.passable(c.pos, c), (
+                    f"{name}: {c.id} ({c.species}) ra đời ở ô nó không vào được")
 
 
 def test_ban_do_van_tat_dinh():
