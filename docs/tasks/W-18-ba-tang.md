@@ -125,6 +125,33 @@ nhắc bỏ điểm vào `speed` để với tới quả trên cây, đổi lấ
 Trước phiếu này, `speed` chỉ là "đi nhanh hơn"; sau phiếu này nó là "với tới được
 một nguồn thức ăn mà kẻ khác không với tới".
 
+### Hai thứ CHẶN chặng B, đã đo (2026-08-30)
+
+Chặng A xong rồi mà vẫn chưa thả được cá hay chim, và lý do không phải thiếu thời
+gian. Đo trên 8 seed mỗi bản đồ:
+
+| bản đồ | ô nước | ô sâu | vùng nước to nhất |
+|---|---|---|---|
+| `QUAN_DAO` | 133 | 32 | 137 |
+| `DONG_CO` | 54 | 8 | 36 |
+| `HEM_NUI` | 49 | 5 | 38 |
+| `RUNG_RAM` | 40 | 7 | 43 |
+| **`HOANG_MAC`** | **18** | **1** | **25** |
+
+**Chặn 1 — `HOANG_MAC` không nuôi nổi một quần thể nước.** 18 ô cho cả một loài
+là thả cá vào chỗ chết, và M1 ("không con nào chết quá 8 lần") sẽ vỡ ngay. Nên
+quần thể phải phụ thuộc BẢN ĐỒ, không phải một hằng số toàn cục — đó là một thay
+đổi kiến trúc riêng, không phải một dòng config.
+
+**Chặn 2 — và đây mới là cái thật: CÁ KHÔNG CÓ GÌ ĂN.** `spawn_plants` chỉ mọc
+quả trên ô `PLAIN`. Tầng nước hiện không có một nguồn thức ăn nào, nên một con cá
+thả xuống đó chết đói dù có bao nhiêu nước đi nữa.
+
+Nghĩa là §6 ở trên **chưa được thi công**, và nó là điều kiện CẦN của chặng B chứ
+không phải phần tô điểm. Thứ tự đúng: nguồn thức ăn theo tầng → quần thể theo bản
+đồ → rồi mới thả loài mới. Thả loài trước là thả vào một thế giới chưa có chỗ cho
+chúng sống.
+
 ## 7. Ba tầng phải GẶP NHAU — nếu không thì đây là ba trò chơi rời nhau
 
 Bất biến bản đồ, không phải trang trí:
