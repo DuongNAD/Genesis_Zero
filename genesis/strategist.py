@@ -822,7 +822,23 @@ class LlmStrategist:
     def build_prompt(
         self, c: Creature, world: World, seen: list[Creature], tick_no: int
     ) -> tuple[str, str]:
-        """Dùng chung cho gọi thật và cho replay — replay so hash của CHÍNH nó."""
+        """Dùng chung cho gọi thật và cho replay — replay so hash của CHÍNH nó.
+
+        Đặt `world.phase` ngay tại đây, và đó là chỗ ĐÚNG để đặt nó.
+
+        `visible` đọc `world.phase` để biết đêm có rút ngắn tầm nhìn không, mà
+        `world.phase` là trạng thái sống — `tick` gán nó ở đầu mỗi lượt. Ai dựng
+        prompt **ngoài** vòng tick thì nhận pha của lượt TRƯỚC, và hai bản chỉ
+        lệch đúng ở ranh giới ngày/đêm: một mẫu hỏng trong vài trăm, im lặng.
+        Đã cắn một lần ở `rollout.samples_from`, và bộ canh `prompt_hash` của
+        B-06 bắt được.
+
+        Vá ở `rollout` thì bẫy vẫn còn nguyên cho mọi chỗ gọi sau này. Vá ở đây
+        thì **ai dựng prompt cho lượt T cũng nhận đúng pha của lượt T**, vì hàm
+        này đã cầm sẵn `tick_no` trong tay. Trong vòng tick nó là phép gán lặp
+        vô hại; ngoài vòng tick nó là thứ duy nhất giữ cho prompt đúng.
+        """
+        world.phase = phase_at(tick_no)
         system = self.cache.get(
             c, self.personas.get(c.species, ""), world.surface_map, tick_no, self.log,
             handbook=self.handbooks.get(c.species, ""),

@@ -37,7 +37,6 @@ from genesis.logio import LogWriter, read_log
 from genesis.prompt import prompt_hash
 from genesis.strategist import LlmStrategist
 from genesis.tick import build_match, tick
-from genesis.world import phase_at
 from genesis.world import visible
 
 
@@ -144,14 +143,9 @@ def samples_from(
     out: list[Sample] = []
     mismatched = 0
     for t in range(ticks):
-        # Đặt pha TRƯỚC khi dựng lại prompt. `tick` gán `world.phase` ở đầu mỗi
-        # lượt, nhưng ở đây prompt được dựng **trước** khi `tick(t)` chạy, nên
-        # nếu không gán thì nó dùng pha của lượt TRƯỚC — và hai bản chỉ lệch
-        # đúng ở ranh giới ngày/đêm, tức là một mẫu hỏng trong vài trăm.
-        #
-        # Bắt được nhờ bộ canh `prompt_hash` của B-06, và đây đúng là loại lỗi
-        # nó sinh ra để bắt: replay chạy trơn, file kết quả trông như thật.
-        world.phase = phase_at(t)
+        # `build_prompt` tự đặt `world.phase = phase_at(t)` từ khi bẫy này bị
+        # bịt ở gốc, nên ở đây không cần gán nữa. Giữ lại lời kể vì nó là một
+        # bài học đắt: vá ở CHỖ GỌI thì bẫy còn nguyên cho mọi chỗ gọi sau.
         for rec in by_tick.get(t, ()):
             c = next((x for x in creatures if x.id == rec["creature_id"]), None)
             if c is None:

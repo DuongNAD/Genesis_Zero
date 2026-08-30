@@ -361,3 +361,34 @@ def test_LUONG_CU_van_doi_duoc_tang_vi_no_la_extra_domains():
 
     k = kit_of((BY_KEY["LUONG_CU"],))
     assert can_enter(Domain.CAN, Terrain.DEEP, founder_traits("L1"), k) is True
+
+
+def test_dung_prompt_NGOAI_vong_tick_van_nhan_dung_pha():
+    """Bẫy `world.phase` bị bịt ở GỐC, không phải ở từng chỗ gọi.
+
+    `visible` đọc `world.phase` để biết đêm có rút ngắn tầm nhìn không, mà đó là
+    trạng thái sống: `tick` gán nó ở đầu mỗi lượt. Ai dựng prompt **ngoài** vòng
+    tick — `rollout.samples_from` là một — nhận pha của lượt TRƯỚC, và hai bản
+    chỉ lệch đúng ở ranh giới ngày/đêm: một mẫu hỏng trong vài trăm, im lặng.
+
+    Vá ở chỗ gọi thì bẫy còn nguyên cho mọi chỗ gọi sau. `build_prompt` đã cầm
+    `tick_no` trong tay nên nó tự đặt lấy — và bài này khoá điều đó lại.
+    """
+    from genesis import law_config
+    from genesis.strategist import LlmStrategist
+    from genesis.tick import build_match
+    from genesis.world import phase_at, visible
+
+    w, cs, st, rng = build_match(9)
+    strat = LlmStrategist("http://x", [c.id for c in cs])
+    c = cs[0]
+
+    # Cố tình đặt pha SAI, rồi dựng prompt cho một lượt thuộc pha kia.
+    dem = next(t for t in range(400) if phase_at(t) == "NIGHT")
+    ngay = next(t for t in range(400) if phase_at(t) == "DAY")
+    w.phase = "DAY"
+    strat.build_prompt(c, w, visible(c, w, cs), dem)
+    assert w.phase == "NIGHT", "dựng prompt cho lượt ĐÊM mà pha vẫn là NGÀY"
+    strat.build_prompt(c, w, visible(c, w, cs), ngay)
+    assert w.phase == "DAY"
+    assert law_config.PHASE_LEN > 0
