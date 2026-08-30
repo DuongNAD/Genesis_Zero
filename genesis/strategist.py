@@ -1335,9 +1335,32 @@ class LlmStrategist:
             c = by_id.get(cid)
             if c is None:
                 continue
-            wx, wy = world.wrap(*c.pos)
-            terr = _TERRAIN_VN.get(world.grid[wy][wx], "đất trống")
-            acted.append((cid, f"bước vào {terr}" if ev["moved"] else "đứng yên"))
+            # Thứ tự ưu tiên tiền đề CỐ ĐỊNH và KHÔNG ĐƯỢC nhìn vào luật đang chạy.
+            # Nếu chọn tiền đề theo trigger của luật thật, sổ tay sẽ thành "phao"
+            # (rò đáp án cho LLM), làm mất hoàn toàn ý nghĩa đo năng lực quy nạp.
+            # Thứ tự phản ánh sự nổi bật tự nhiên của trạng thái/hoàn cảnh:
+            # 1. Chuyển pha ngày/đêm (toàn cảnh thế giới thay đổi)
+            # 2. Cạn năng lượng (trạng thái nguy cấp của cơ thể)
+            # 3. Có kẻ đứng sát bên (kích thích tương tác lân cận)
+            # 4. Bước vào địa hình mới (hành động di chuyển)
+            # 5. Đứng yên (mặc định còn lại)
+            if tick_no % law_config.PHASE_LEN == 0:
+                p = "ban ngày" if phase_at(tick_no) == "DAY" else "ban đêm"
+                action = f"trời vừa chuyển sang {p}"
+            elif c.energy < 0.25 * c.traits.energy_max:
+                action = "sức đã cạn"
+            elif any(
+                o.alive and o.id != c.id and world.dist(c.pos, o.pos) <= 1
+                for o in creatures
+            ):
+                action = "có kẻ đứng sát bên"
+            elif ev["moved"]:
+                wx, wy = world.wrap(*c.pos)
+                terr = _TERRAIN_VN.get(world.grid[wy][wx], "đất trống")
+                action = f"bước vào {terr}"
+            else:
+                action = "đứng yên"
+            acted.append((cid, action))
 
         for actor_id, action in acted:
             actor = by_id.get(actor_id)
