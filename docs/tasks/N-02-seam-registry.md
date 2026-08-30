@@ -81,3 +81,31 @@ Cả ba lần, cách sửa đều là **gom về một chỗ**, không phải đ
 xoá hẳn `genesis/registry.py` cùng bài test của nó. Đừng để nguyên như bây giờ.
 Việc này **không nên làm chung với một thay đổi khác** — nó đụng đường `/join`,
 là đường duy nhất người lạ đi vào.
+
+## 6. Đã chọn: XOÁ (2026-08-30)
+
+`genesis/registry.py` đã bị xoá cùng ba bài test của nó. Ba lý do, theo thứ tự
+sức nặng:
+
+1. **Bất biến 1 của phiếu này chưa bao giờ thành hiện thực.** "Lab mode nạp
+   registry từ config, Open mode nạp từ `/join`, cùng một lớp" — thực tế Lab
+   mode đọc thẳng `config.POPULATION` qua `build_match`, còn Open mode dựng
+   `Registration` riêng. Không có đường nào đi qua `SpeciesRegistry`. Giữ lại
+   một lớp không ai gọi **không** giữ lại được bất biến ấy; nó chỉ giữ lại ảo
+   giác rằng bất biến ấy đang được thi hành.
+2. **Gộp sẽ tạo một lớp hai trách nhiệm.** `Registration` mang `token`,
+   `last_heartbeat`, `feral_since` — trạng thái **phiên**, không phải đặc tả
+   loài. Nhét chúng vào `SpeciesSpec` là đổi một mã chết lấy một lớp mà không ai
+   nói được nó là cái gì.
+3. **Rủi ro nằm sai chỗ.** Gộp thì phải sửa `/join`, `sweep_health`, `reclaim`,
+   `is_feral` — đường duy nhất người lạ đi vào — để đổi lấy đúng một lợi ích:
+   ít đi một tên lớp. Xoá thì rủi ro bằng không và cái bẫy biến mất.
+
+**Giữ lại một thứ:** bài `test_add_species_mid_match` dùng registry để minh hoạ
+[W-11](W-11-vong-tick.md) bất biến 3 (thêm sinh vật giữa ván, vòng tick chạy
+tiếp). Bất biến ấy không phụ thuộc vào registry và là thứ cả chế độ mở đứng lên
+trên, nên bài kiểm được viết lại không dùng registry, tên mới
+`test_them_ca_the_giua_van` ở `tests/test_seams.py`.
+
+Phần §1–§5 ở trên giữ nguyên làm hồ sơ: nó ghi lại vì sao đường may này từng
+được cho là cần, và câu trả lời hoá ra là `net.match.Registration`.

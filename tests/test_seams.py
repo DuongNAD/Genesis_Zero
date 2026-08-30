@@ -12,12 +12,6 @@ from genesis import config
 from genesis.creature import Creature
 from genesis.logio import COMMON_FIELDS, EVENT_KINDS, LogWriter
 from genesis.reflex import ActiveGoal, Goal
-from genesis.registry import (
-    SpeciesRegistry,
-    SpeciesSpec,
-    from_config,
-    registry_from_config,
-)
 from genesis.strategist import (
     LlmStrategist,
     ReflexStrategist,
@@ -25,7 +19,6 @@ from genesis.strategist import (
     Strategist,
 )
 from genesis.tick import SimState, build_match, tick
-from genesis.traits import founder_traits
 
 
 def test_strategist_protocol_and_classes() -> None:
@@ -69,58 +62,21 @@ def test_tick_without_mode_branch() -> None:
     assert "mode ==" not in src
 
 
-def test_registry_from_config_matches_population() -> None:
-    """B2 & B3: registry_from_config tạo đúng số lượng và thứ tự cố định."""
-    r = registry_from_config()
-    ids = [s.species_id for s in r]
-    assert ids == sorted(ids), ids
-    assert sum(s.pop for s in r) == sum(config.POPULATION.values())
+def test_them_ca_the_giua_van() -> None:
+    """W-11 bất biến 3: thêm sinh vật giữa ván thì vòng tick chạy tiếp bình thường.
 
-    r2 = from_config()
-    assert [s.species_id for s in r2] == ids
-
-
-def test_registry_operations() -> None:
-    """N-02: Các thao tác add, remove, mark_feral, __iter__."""
-    reg = SpeciesRegistry()
-    tr = founder_traits("L1")
-    spec_b = SpeciesSpec(species_id="b_species", display_name="B", persona="pB", traits=tr, pop=2)
-    spec_a = SpeciesSpec(species_id="a_species", display_name="A", persona="pA", traits=tr, pop=3)
-
-    # Thêm thứ tự b trước a
-    ids_b = reg.add(spec_b)
-    ids_a = reg.add(spec_a)
-
-    assert ids_b == ["b_species:0", "b_species:1"]
-    assert ids_a == ["a_species:0", "a_species:1", "a_species:2"]
-
-    # __iter__ luôn trả về theo thứ tự sorted: a_species trước b_species
-    iter_ids = [s.species_id for s in reg]
-    assert iter_ids == ["a_species", "b_species"]
-
-    # mark_feral
-    assert not reg["b_species"].is_feral
-    reg.mark_feral("b_species", True)
-    assert reg["b_species"].is_feral
-
-    # remove
-    reg.remove("a_species")
-    assert "a_species" not in reg
-    assert len(reg) == 1
-
-
-def test_add_species_mid_match() -> None:
-    """B4: Thêm loài và cá thể giữa ván, sim tiếp tục chạy bình thường."""
+    Đây là phần CÒN GIÁ TRỊ của ba bài kiểm `SpeciesRegistry` cũ. Bản thân
+    `SpeciesRegistry` đã bị xoá (xem [N-02 §5]) vì nó là cấu trúc thứ hai cho
+    một khái niệm mà `net.match.Registration` mới là bản chạy thật; nhưng bất
+    biến nó dùng để minh hoạ thì không phụ thuộc vào nó, và bất biến ấy là thứ
+    cả chế độ mở đứng lên trên — người lạ `/join` giữa ván là chuyện thường.
+    """
     w, cs, st, rng = build_match(seed=3)
-    r = registry_from_config()
     for t in range(30):
         tick(w, cs, t, rng, st)
 
-    tr = next(iter(r)).traits
-    new_ids = r.add(SpeciesSpec("zz_new", "Moi", "x", tr, 2))
-    assert len(new_ids) == 2 and all(i.startswith("zz_new:") for i in new_ids)
-
-    # Thêm thực thể mới vào cs
+    tr = cs[0].traits
+    new_ids = ["zz_new:0", "zz_new:1"]
     for cid in new_ids:
         cs.append(
             Creature(
