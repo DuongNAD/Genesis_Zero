@@ -51,7 +51,32 @@ S-02 ─────────────────────────
 | ✦ **M0** W-06 | 300 tick không crash · hai lần cùng seed cho JSONL `diff` sạch · **bạn thấy vui khi ngồi xem** | Sửa thế giới. Đừng đi tiếp. |
 | ✦ **M1** W-12 | 400 tick × 5 seed: không con nào chết > 8 lần · không con nào **chưa từng** chết · mỗi con dịch ≥ 2 điểm trait | Tune `config.py`. Bạn sẽ sửa vài chục lần. Đây là mốc quan trọng nhất. |
 | ✦ **M2** B-06 | JSON hợp lệ ≥ 99% · `LLM_SEMANTIC_FAIL` < 5% · con dùng LLM **không tệ hơn** con reflex cùng loài · `--replay` dựng lại đúng ván cũ | Nếu LLM tệ hơn reflex, báo cáo đúng như vậy — v4 §11.5 |
-| ✦ **ĐO ĐƯỢC** B-10 | nhánh `REFLEX` ra `match ≈ 0` · ít nhất một cá thể đạt `match ≥ 0.8` trên luật D1 trong 5 ván | Chẩn đoán theo thứ tự: sổ tay nghèo (B-07) → luật hiếm kích hoạt (L-05) → từ vựng quá rộng (B-02). **Đừng chẩn đoán bằng cách đổi model.** |
+| ✦ **ĐO ĐƯỢC** B-10 | nhánh `REFLEX` ra `match ≈ 0` · ít nhất một cá thể đạt `match ≥ 0.8` trên luật D1 trong 5 ván | Chẩn đoán theo **thang dưới đây**, không phải bằng cách đổi model. |
+
+### Thang chẩn đoán khi `match = 0` — đã đi hết ba nấc đầu, cả ba đều SẠCH
+
+Ba nấc gốc của [B-10 §3](tasks/B-10-score.md) đã được đo trên ván 7B thật
+(2026-08-30) và **không nấc nào là nguyên nhân**. Ghi lại cả ba cùng cách đo,
+để lần sau không ai đi lại:
+
+| # | Nghi can | Cách đo | Kết quả |
+|---|---|---|---|
+| 1 | sổ tay nghèo (B-07) | đếm tỉ lệ loại hành động vào sổ | **sạch** — `EAT` 45% · `ATTACK` 32% · `DRINK` 19%, cân đối |
+| 2 | luật hiếm kích hoạt (L-05) | đếm `LAW_FIRED` theo `law_id` | **sạch** — luật `DRINK` của seed 26 nổ **78 lần** |
+| 3 | từ vựng quá rộng (B-02) | đếm `arg` phân biệt được mỗi trigger | **sạch** — `STEP_ON` giàu `arg` ngang `EAT` mà chỉ ăn 2% mục sổ |
+| 4 | **bộ chấm** | chế độ gian lận | **sạch** — `match = 1.000`; oracle: đáp án hoàn hảo = 1.000 |
+| 5 | **cửa sổ trí nhớ** ★ | tuổi cá thể **lúc ghi Sổ Luật** | 🔴 **trung vị 27 tick** — chết 4,4–4,9 lần/ván, sổ tay chết theo đời |
+| 6 | **định kiến chú ý** ★ | so tỉ lệ *vào sổ tay* với tỉ lệ *ra mục sổ* | 🔴 `EAT` 45% vào → **85% ra**; `DRINK` 19% vào → **2% ra** |
+| 7 | ngân sách token của TỪNG loại lời gọi | so token thật dùng với trần | 🔴 oracle được cấp 48–208, cần ~337 |
+| 8 | model | đổi model | **việc cuối cùng**, không phải việc đầu |
+
+★ = hai nấc mới, thêm 2026-08-30. Nấc 5 và 6 giải thích được cả hai triệu chứng
+mà ba nấc đầu không giải thích nổi, và **cả hai đều là lỗi thiết kế của ta**,
+không phải giới hạn của model.
+
+Nấc 7 đáng đứng riêng vì nó đã cắn **hai lần trong một ngày** ở hai đường khác
+nhau (`codex` qua mạng, `oracle` cục bộ), và cả hai lần triệu chứng đều là một
+cột toàn số 0 trông y hệt "model kém".
 
 > **Mốc "ĐO ĐƯỢC" là mốc chứng minh bản v5 có sống được không.** Nếu qua 5 ván × 15 con mà không ai tìm ra nổi một luật D1 nào thì thiết kế có vấn đề, và bạn cần biết điều đó ở tuần thứ sáu chứ không phải tháng thứ sáu.
 
