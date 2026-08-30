@@ -172,3 +172,8 @@ LINEAGE_ENABLED = True
 # Không có nó thì một cú đoán may truyền qua mười đời trông y hệt một tri thức:
 # cháu phải tự kiểm lại thứ ông nó tin.
 CODEX_CONF_DECAY_PER_GEN = 1
+
+# Token cho MỘT đáp án oracle. Đo bằng cách in thật một đáp án đầy đủ
+# `{"q": 0, "effect": {"kind", "mag", "dur"}}` có xuống dòng và thụt lề: 90 ký
+# tự, ~30 token. Nhân `ORACLE_QUERIES` ra ngân sách của cả lượt hỏi.
+TOKEN_PER_ORACLE_ANSWER = 42

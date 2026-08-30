@@ -678,6 +678,20 @@ def _budget(traits: Traits, kind: str) -> int:
         # `codex`, và triệu chứng lại là "model không chịu nêu giả thuyết".
         base = law_config.CLAIM_BUDGET_BY_BRAIN[traits.brain]
         return base + 3 * config.TOKEN_JSON_HEADROOM
+    if kind == "oracle":
+        # Ngân sách theo SỐ CÂU HỎI, không theo brain. Tất cả đều bị hỏi đúng
+        # `ORACLE_QUERIES` câu, nên cấp theo `token_budget` là cấp theo một đại
+        # lượng chẳng liên quan gì tới độ dài câu trả lời.
+        #
+        # Đo: một đáp án `{"q":0,"effect":{"kind","mag","dur"}}` in kèm xuống
+        # dòng và thụt lề tốn ~30 token, nên 8 câu tốn ~337. Bản cũ hard-code
+        # `CLAIM_BUDGET_BY_BRAIN * 2` ngay trong `oracle_run`, cho L1 **208** và
+        # L5 **48** — thiếu 1,6 lần và 7 lần. Hậu quả đúng như mọi lần trước:
+        # hỏng IM LẶNG. `pred_acc` ra **đúng 0.000 trên cả 65 dòng, cả 5 loài,
+        # cả hai seed** — phương sai bằng không, thứ không một model nào tạo ra
+        # được, nhưng nó đọc y hệt "model không tiên đoán được".
+        return (law_config.ORACLE_QUERIES * config.TOKEN_PER_ORACLE_ANSWER
+                + config.TOKEN_JSON_HEADROOM)
     if kind == "shift":
         base = max(48, traits.token_budget // 2)
     else:

@@ -24,7 +24,7 @@ from genesis.lawdsl import Effect, EffectKind, Dur, Law, Mag
 from genesis.llm_client import ask
 from genesis.oracle import build_queries, score_answers
 from genesis.situations import sample_situations
-from genesis.strategist import schema_for
+from genesis.strategist import _budget, schema_for
 from genesis.world import visible
 
 _ORACLE_TAIL = (
@@ -110,9 +110,13 @@ async def run_oracle(
     ) as client:
         async def _one(c, system, body):
             async with gate:
+                # `_budget`, không phải một biểu thức chép tay. Bản cũ viết
+                # `CLAIM_BUDGET_BY_BRAIN * 2` ngay tại đây — đường thứ tư gọi
+                # model, và nó bỏ bài học thứ TƯ của `think` sau khi đã bỏ ba
+                # bài đầu (xem khối chú thích ngay trên).
                 return await ask(
                     strategist.base_url, strategist.slots[c.id] % n, system, body,
-                    law_config.CLAIM_BUDGET_BY_BRAIN[c.traits.brain] * 2,
+                    _budget(c.traits, "oracle"),
                     schema_for(c.traits, "oracle", sm=world.surface_map), client=client)
 
         results = await asyncio.gather(*[
@@ -131,8 +135,14 @@ async def run_oracle(
         acc = score_answers(answers, law, sits)
         per_creature.setdefault(c.id, []).append(acc)
         if log is not None:
+            # `n_answered` tách được hai chuyện mà `pred_acc` gộp làm một: **trả
+            # lời sai** và **không trả lời gì**. Thiếu cột này thì một lượt hỏi
+            # bị cắt giữa chừng, hay một `{"answers": []}` nhả ra cho xong, đều
+            # đọc thành `pred_acc = 0` — và ta kết luận về năng lực tiên đoán của
+            # model từ một con số chỉ nói rằng nó đã im lặng.
             log.write(tick_no, "ORACLE", creature_id=c.id, species_id=c.species,
-                      law_idx=i, pred_acc=round(acc, 4), n_q=len(sits))
+                      law_idx=i, pred_acc=round(acc, 4), n_q=len(sits),
+                      n_answered=sum(1 for a in answers if a is not None))
 
     out = {cid: round(sum(v) / len(v), 4) for cid, v in per_creature.items() if v}
     if log is not None:

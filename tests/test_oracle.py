@@ -234,3 +234,62 @@ def test_oracle_khong_viet_lai_bang_tra() -> None:
                 "oracle đang tự định nghĩa lại bảng tra thay vì dùng của lawdsl"
             )
     assert "_SIGNAL_VN" not in assigned
+
+
+def test_ngan_sach_oracle_du_cho_TAT_CA_cau_hoi():
+    """Ngân sách phải theo SỐ CÂU HỎI, không theo brain.
+
+    Bản cũ hard-code `CLAIM_BUDGET_BY_BRAIN * 2` ngay trong `oracle_run`, cho L1
+    **208 token** và L5 **48 token** trong khi 8 đáp án đầy đủ tốn ~337. Hậu quả
+    hỏng im lặng: `pred_acc` ra **đúng 0.000 trên cả 65 dòng, cả 5 loài, cả hai
+    seed** — phương sai bằng không, thứ không một model nào tạo ra được, nhưng nó
+    đọc y hệt "model không tiên đoán được".
+
+    Mọi loài phải nhận cùng một ngân sách: ai cũng bị hỏi đúng `ORACLE_QUERIES`
+    câu, nên cấp theo `token_budget` là cấp theo một đại lượng chẳng liên quan
+    gì tới độ dài câu trả lời.
+    """
+    import json
+
+    from genesis import law_config
+    from genesis.strategist import _budget
+    from genesis.traits import founder_traits
+
+    one = json.dumps({"q": 0, "effect": {"kind": "DAMAGE", "mag": "MED",
+                                         "dur": "SHORT"}}, indent=2)
+    can = law_config.ORACLE_QUERIES * (len(one) // 3)
+
+    budgets = {sp: _budget(founder_traits(sp), "oracle")
+               for sp in ("L1", "L2", "L3", "L4", "L5")}
+    assert len(set(budgets.values())) == 1, f"ngân sách oracle lệch theo loài: {budgets}"
+    assert next(iter(budgets.values())) >= can, (
+        f"ngân sách {budgets} không đủ cho {law_config.ORACLE_QUERIES} đáp án (~{can})")
+
+
+def test_oracle_run_khong_tu_tinh_ngan_sach():
+    """Đường thứ TƯ gọi model phải mượn `_budget`, không viết bản thứ hai.
+
+    Đây là lần thứ năm cùng một họ: hai chỗ cùng tính một thứ, rồi một chỗ mục.
+    Bốn lần trước: `schema_for` ở strategist và routes_work · `founder_traits` và
+    trait cấp lúc /join · quên-khi-chết ở hai chỗ · `max_tokens` chép tay ở
+    routes_work.
+    """
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parent.parent / "genesis" / "oracle_run.py").read_text(
+        encoding="utf-8")
+    code = "\n".join(ln for ln in src.splitlines() if not ln.lstrip().startswith("#"))
+    assert "CLAIM_BUDGET_BY_BRAIN" not in code, \
+        "oracle_run tự tính ngân sách trở lại — dùng `_budget(traits, 'oracle')`"
+    assert '_budget(c.traits, "oracle")' in code
+
+
+def test_oracle_ghi_n_answered_de_tach_IM_LANG_khoi_TRA_LOI_SAI():
+    """`pred_acc = 0` gộp hai chuyện rất khác nhau. Phải tách được."""
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parent.parent / "genesis" / "oracle_run.py").read_text(
+        encoding="utf-8")
+    assert "n_answered=" in src, (
+        "thiếu cột `n_answered` thì một lượt bị cắt giữa chừng và một lượt trả "
+        "lời sai đều đọc thành pred_acc = 0")
