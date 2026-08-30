@@ -439,8 +439,15 @@ def visible(obs: Creature, world: World, creatures: list[Creature]) -> list[Crea
         # CÂY che khuất y như bụi (W-18) — và đó không phải chuyện cho đẹp: cây
         # là ô mà chỉ loài biết trèo vào được, nên nếu nó không che thì "trốn lên
         # cây" chỉ là đứng trên bục cho cả bản đồ nhìn. Chỗ trốn phải trốn được.
+        # RÂU CẢM ỨNG (W-19) nới bán kính này ra: kẻ có râu **cảm** được con nấp
+        # trong bụi ở khoảng cách 2 thay vì 1. Đây là đặc điểm duy nhất đối lại
+        # trực tiếp cơ chế che khuất, nên nó là đặc điểm chống phục kích — và nó
+        # đắt đúng chỗ: một trong ba ô đặc điểm, đổi lấy việc không có gai,
+        # không có vảy, không đào hang.
+        kit = world.kits.get(obs.species)
+        che = max(1, getattr(kit, "feel_radius", 0) if kit else 1)
         ox, oy = world.wrap(*other.pos)
-        if world.grid[oy][ox] in (Terrain.BUSH, Terrain.TREE) and d > 1:
+        if world.grid[oy][ox] in (Terrain.BUSH, Terrain.TREE) and d > che:
             continue
         seen.append(other)
 

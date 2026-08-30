@@ -58,6 +58,9 @@ class Feature:
     thorns: float = 0.0             # đòn phản lại kẻ tấn công
     # Loài mang đặc điểm này thì ngưỡng trèo cây hạ xuống bấy nhiêu điểm speed.
     climb_bonus: int = 0
+    night_sight: bool = False
+    # Bán kính CẢM được kẻ nấp trong bụi / trên cây. 0 = không có râu.
+    feel_radius: int = 0
 
 
 # Mười hai đặc điểm, trải đều ba tầng và bốn nhóm (đi lại · phòng thủ · giác
@@ -129,7 +132,8 @@ FEATURES: tuple[Feature, ...] = (
     Feature(
         "RAU_CAM_UNG", "râu cảm ứng",
         "chùm râu dài cứng toả ra hai bên mõm, chóp râu cong nhẹ",
-        "lần được trong bụi rậm và trong hang",
+        "thấy được kẻ nấp trong bụi và trên cây ở khoảng cách 2 thay vì 1",
+        feel_radius=2,
     ),
     # ── kiếm ăn ──────────────────────────────────────────────────────────
     Feature(
@@ -188,6 +192,7 @@ class Kit:
     thorns: float = 0.0
     climb_bonus: int = 0
     night_sight: bool = False
+    feel_radius: int = 0
     keys: tuple[str, ...] = field(default_factory=tuple)
 
     def has(self, key: str) -> bool:
@@ -207,6 +212,7 @@ def kit_of(features: tuple[Feature, ...]) -> Kit:
         k.thorns += f.thorns
         k.climb_bonus += f.climb_bonus
         k.night_sight = k.night_sight or f.night_sight
+        k.feel_radius = max(k.feel_radius, f.feel_radius)
     return k
 
 

@@ -266,13 +266,17 @@ def test_moi_dac_diem_deu_DOI_MOT_THU_GI_DO():
     #
     # Nêu tên để lần sau ai thêm một đặc điểm rỗng thì phải sửa chính dòng này —
     # một danh sách ngoại lệ phải khó nới ra, nếu không nó thành cái thùng rác.
-    chua_noi_co_che = {"RAU_CAM_UNG", "MAT_DEM"}
+    # Chỉ còn MỘT ngoại lệ. `RAU_CAM_UNG` đã có cơ chế (nới bán kính cảm
+    # được kẻ nấp trong bụi); `MAT_DEM` thì cơ chế ĐÃ dựng nhưng
+    # `NIGHT_SIGHT_PENALTY = 0` nên đang tắt — nó tự hết ngoại lệ khi hằng số
+    # ấy > 0. Danh sách này phải khó nới ra, nếu không nó thành thùng rác.
+    chua_noi_co_che = {"MAT_DEM"}
     for f in FEATURES:
         if f.key in chua_noi_co_che:
             continue
         k = kit_of((f,))
         doi = (k.extra_terrain or k.extra_domains or k.climb_bonus or k.thorns
-               or k.night_sight
+               or k.night_sight or k.feel_radius
                or abs(k.upkeep_mult - 1) > 1e-9 or abs(k.damage_mult - 1) > 1e-9
                or abs(k.dmg_taken_mult - 1) > 1e-9)
         assert doi, f"{f.key} có `look` mà không đổi gì trong vòng tick"
@@ -392,3 +396,34 @@ def test_dung_prompt_NGOAI_vong_tick_van_nhan_dung_pha():
     strat.build_prompt(c, w, visible(c, w, cs), ngay)
     assert w.phase == "DAY"
     assert law_config.PHASE_LEN > 0
+
+
+def test_rau_cam_ung_thay_duoc_ke_nap_trong_bui():
+    """Đặc điểm duy nhất đối lại trực tiếp cơ chế che khuất — nên nó chống phục kích.
+
+    Bụi và cây giấu kẻ đứng trong đó nếu khoảng cách > 1 (W-08 bẫy B6). Râu nới
+    ngưỡng ấy lên 2: kẻ có râu **cảm** được con nấp mà không nhìn thấy.
+    """
+    from genesis.creature import Creature
+    from genesis.tick import build_match
+    from genesis.traits import founder_traits
+    from genesis.world import Terrain, visible
+
+    w, cs, st, rng = build_match(9)
+    bui = next((x, y) for y in range(w.h) for x in range(w.w)
+               if w.grid[y][x] == Terrain.BUSH)
+
+    def dat(sp, pos):
+        return Creature(id=f"{sp}:9", species=sp, traits=founder_traits(sp),
+                        pos=pos, hp=10.0, energy=10.0)
+
+    nap = dat("L3", bui)
+    # người quan sát đứng cách đúng 2 ô
+    obs_pos = w.wrap(bui[0] + 2, bui[1])
+    obs = dat("L1", obs_pos)
+    assert w.dist(obs.pos, nap.pos) == 2
+
+    w.kits["L1"] = kit_of((BY_KEY["LONG_DAI"],))          # không râu
+    assert nap not in visible(obs, w, [obs, nap])
+    w.kits["L1"] = kit_of((BY_KEY["RAU_CAM_UNG"],))       # có râu
+    assert nap in visible(obs, w, [obs, nap]), "râu phải cảm được kẻ nấp ở khoảng cách 2"

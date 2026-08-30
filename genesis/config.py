@@ -164,7 +164,7 @@ PLANT_MAX = 15          # tối đa trên sân
 # vị bề mặt mỗi ván vì chúng là **đề bài** — luật ẩn nói về chúng. Rong thì không:
 # nó là thức ăn, không phải câu đố. Cho nó bốn lớp là làm miền `EAT` rộng gấp
 # đôi, mà quy nạp đang hỏng sẵn.
-ALGAE_ENERGY = 30
+ALGAE_ENERGY = 32
 ALGAE_RESPAWN = 2
 # BẬT từ chặng B: giờ đã có tầng nước (`W1`) và rong là thứ DUY NHẤT nó ăn
 # được. Trước chặng B thì nó tắt, vì lúc ấy nó chỉ cho loài cạn bốc trúng
@@ -178,7 +178,24 @@ ALGAE_RESPAWN = 2
 #   rong 28 ô/30 -> chết nhiều nhất  8 ✅ · chưa từng chết  3/100 · cá chết 4,4
 #   rong 32 ô/32 -> chết nhiều nhất  7 ✅ · chưa từng chết  8/100 · dịch min 1 ❌
 #
-# **M1 điều kiện 2 CHƯA ĐẠT: 3/100, cần 0.** Nói thẳng thay vì nới tiêu chí.
+# **CẬP NHẬT sau khi sửa lỗi cá-chui-qua-đá và thêm râu cảm ứng:** M1 tụt tiếp,
+# và tôi để nguyên vì cả hai đều là thay đổi ĐÚNG. Điểm hiện tại `36/32`:
+#
+#   max chết 9 ❌ (L4 và W1) · chưa từng chết 7/100 ❌ · dịch min 1 ❌ (đúng 1 con cá)
+#
+# Quét thêm `28/30`, `44/34`, và `quả ×0,95` đều không hội tụ. Chẩn đoán theo
+# loài cho thấy đây KHÔNG phải một bài toán hai nút thức ăn:
+#
+#   L4 (giáp 5) vừa có con chết 9 lần vừa có 3 con chưa từng chết — một dựng
+#   người feast-or-famine, và không nút thức ăn nào sửa được phương sai trong
+#   nội bộ một loài.
+#   `dịch min 1` là ĐÚNG MỘT con cá trên 100.
+#
+# Nên M1 cần một lượt tune riêng cho thế giới bảy loài, đúng như phiếu W-12 đã
+# dặn từ đầu ("bạn sẽ sửa vài chục lần"). Đó là việc của người chủ dự án, không
+# phải thứ vặn kèm trong một buổi thêm tính năng.
+#
+# **KHÔNG nới tiêu chí.** Chưa đạt thì ghi là chưa đạt.
 # Điều kiện 1 và 3 thì đạt. Ba con ấy là 1 `L5` (cái đuôi lịch sử, đã ghi từ
 # trước) và 2 con cá — cá gặp may chứ không bất tử: chúng vẫn chết 14 lần vì
 # đánh nhau và 33 lần vì đói trong cùng phép đo.
@@ -187,7 +204,7 @@ ALGAE_RESPAWN = 2
 # mệnh đề về ĐUÔI của phân phối, nên nó khó dần theo số cá thể. Thế giới cũ đạt
 # 0/75; thế giới mới có 100 suất. Đó không phải cái cớ để nới, nhưng nó là lý do
 # nên hỏi lại tiêu chí ấy có còn nói đúng điều nó định nói không.
-ALGAE_MAX = 28
+ALGAE_MAX = 36
 ALGAE_CLASS = "ALGAE"
 
 CORPSE_ENERGY = 45      # năng lượng từ xác
