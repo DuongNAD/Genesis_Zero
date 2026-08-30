@@ -293,3 +293,41 @@ def test_oracle_ghi_n_answered_de_tach_IM_LANG_khoi_TRA_LOI_SAI():
     assert "n_answered=" in src, (
         "thiếu cột `n_answered` thì một lượt bị cắt giữa chừng và một lượt trả "
         "lời sai đều đọc thành pred_acc = 0")
+
+
+def test_dap_an_hoan_hao_an_1_va_doan_bua_an_0():
+    """Chứng minh oracle CHẤM ĐƯỢC ĐIỂM DƯƠNG — chưa ai từng chứng minh điều đó.
+
+    `pred_acc` ra **đúng 0.000 trên mọi dòng của mọi ván đã chạy**, và khi một
+    cột chỉ có một giá trị thì "model dở" với "cơ chế hỏng" trông giống hệt
+    nhau. Bài này tách chúng ra bằng cách hỏi thẳng: đáp án HOÀN HẢO ăn bao
+    nhiêu?
+
+    Và ca thứ ba là ca đáng giá nhất: trả lời "có hệ quả" ở **mọi** câu cũng ăn
+    **0**. Đường cơ sở null của `score_answers` chặn đúng chiến lược đó — vì chỉ
+    ~3–4/8 tình huống là luật thật nổ, nên đoán bừa "luôn có" ăn bằng đúng đường
+    cơ sở. Không có nó thì một model chỉ cần luôn trả lời "có" là ăn điểm mà
+    không hiểu gì, y như `match()` sẽ hỏng nếu bỏ chuẩn hoá null.
+    """
+    import random
+
+    from genesis import law_config
+    from genesis.lawgen import generate_cached
+    from genesis.laweval import evaluate
+    from genesis.oracle import score_answers
+    from genesis.situations import sample_situations
+
+    laws = generate_cached(9, arm="STANDARD")
+    for i, law in enumerate(laws):
+        sits = sample_situations(law, law_config.ORACLE_QUERIES,
+                                 random.Random(9 * 977 + i))
+        truth = [evaluate(law, s) for s in sits]
+        n_fire = sum(1 for t in truth if t is not None)
+        assert 0 < n_fire < len(sits), (
+            f"luật {i}: {n_fire}/{len(sits)} tình huống nổ — bộ lấy mẫu phải có "
+            f"CẢ ca dương lẫn ca âm, nếu không phép chấm vô nghĩa")
+
+        assert score_answers(truth, law, sits) == 1.0, "đáp án hoàn hảo phải ăn 1.0"
+        assert score_answers([None] * len(sits), law, sits) == 0.0
+        assert score_answers([law.effect] * len(sits), law, sits) == 0.0, (
+            "luôn đoán 'có hệ quả' phải ăn 0 — đó là việc của chuẩn hoá null")

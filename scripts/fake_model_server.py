@@ -52,6 +52,18 @@ class Handler(BaseHTTPRequestHandler):
         rng = random.Random(hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16])
 
         if "[CÂU HỎI]" in prompt:
+            # KHÔNG có chế độ gian lận cho oracle, và lý do đáng ghi lại.
+            #
+            # Đã thử: biết `cheat_law` rồi trả lời cùng một hệ quả cho MỌI câu.
+            # Nó ra `pred_acc = 0.000` — và đó là **đúng**, không phải hỏng.
+            # `score_answers` chuẩn hoá theo đường cơ sở null y như `match()`,
+            # mà chỉ ~3-4/8 tình huống là luật thật NỔ; trả lời "có hệ quả" ở cả
+            # 8 câu thì ăn đúng bằng đường cơ sở, nên điểm chuẩn hoá về 0.
+            #
+            # Muốn gian lận thật thì phải biết TỪNG tình huống có nổ hay không,
+            # mà model giả chỉ nhìn thấy chuỗi câu hỏi — nó không có `Situation`
+            # để `evaluate`. Nên phép kiểm ấy thuộc về bài test, không thuộc về
+            # server giả: xem `tests/test_oracle.py::test_dap_an_hoan_hao_an_1`.
             out = {"answers": []}
         elif "[GHI SỔ LUẬT]" in prompt:
             if self.cheat_law is None:
