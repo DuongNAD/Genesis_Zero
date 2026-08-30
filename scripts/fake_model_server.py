@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import hashlib
 import random
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -24,12 +25,31 @@ GOALS = ("FORAGE", "REST", "WANDER", "FLEE")
 
 class Handler(BaseHTTPRequestHandler):
     cheat_law: dict | None = None
-    rng = random.Random(0)
+    # Tần suất xin nêu linh cảm. `0.0` cho một NHÁNH ĐỐI CHỨNG thật: bật
+    # `--hunch` mà không con nào xin, nên khối E6 luôn rỗng và hai nhánh
+    # phải ra hai ván GIỐNG HỆT. Nhánh ấy là cách duy nhất tách được
+    # "linh cảm làm đổi kết quả" khỏi "hai ván vốn đã khác nhau".
+    hunch_rate: float = 0.35
 
     def do_POST(self) -> None:  # noqa: N802 (tên do BaseHTTPRequestHandler quy định)
         n = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(n) or b"{}")
         prompt = body.get("prompt", "")
+
+        # RNG suy từ CHÍNH PROMPT, không phải một dòng ngẫu nhiên dùng chung.
+        #
+        # Bản cũ giữ một `random.Random(0)` ở cấp lớp và tiêu nó theo thứ tự yêu
+        # cầu tới. Hậu quả chỉ lộ ra khi có ai đó so hai NHÁNH: đổi bất cứ thứ gì
+        # làm lệch thứ tự lời gọi — thêm một loại việc, thêm một khối prompt — là
+        # cả hai nhánh nhận hai dòng ngẫu nhiên khác nhau và trôi thành hai thế
+        # giới khác hẳn. Lúc ấy mọi chênh lệch đo được đều là nhiễu đội lốt kết
+        # quả. Đã suýt đọc nhầm một lần: `x09` cho thấy ghi sổ tụt 11 -> 2 khi
+        # bật linh cảm, trông y như linh cảm đang cướp lượt nghĩ, trong khi hai
+        # ván ấy đơn giản là hai ván khác nhau.
+        #
+        # Suy từ prompt thì cùng một câu hỏi luôn nhận cùng một câu trả lời, nên
+        # hai nhánh chỉ tách ra ở đúng chỗ cơ chế thật sự khác nhau.
+        rng = random.Random(hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16])
 
         if "[CÂU HỎI]" in prompt:
             out = {"answers": []}
@@ -49,9 +69,9 @@ class Handler(BaseHTTPRequestHandler):
         elif "[DỊCH CƠ THỂ]" in prompt:
             out = {"from": "speed", "to": "brain", "why": "cần nhớ nhiều hơn"}
         else:
-            out = {"goal": self.rng.choice(GOALS), "ttl": self.rng.randint(3, 8),
-                   "want_codex": self.rng.random() < 0.25,
-                   "want_hunch": self.rng.random() < 0.35}
+            out = {"goal": rng.choice(GOALS), "ttl": rng.randint(3, 8),
+                   "want_codex": rng.random() < 0.25,
+                   "want_hunch": rng.random() < Handler.hunch_rate}
 
         payload = json.dumps(out, ensure_ascii=False)
         resp = json.dumps({
@@ -71,9 +91,13 @@ class Handler(BaseHTTPRequestHandler):
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8099)
+    ap.add_argument("--hunch-rate", type=float, default=0.35,
+                    help="xác suất model giả xin nêu linh cảm; 0.0 = nhánh đối chứng")
     ap.add_argument("--cheat-seed", type=int, default=None,
                     help="biết trước luật của seed này — CHỈ để kiểm bộ chấm")
     a = ap.parse_args(argv)
+
+    Handler.hunch_rate = a.hunch_rate
 
     if a.cheat_seed is not None:
         from genesis.lawgen import generate_cached

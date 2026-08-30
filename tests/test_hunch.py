@@ -435,3 +435,60 @@ def test_che_do_mo_tat_linh_cam_thi_khong_phat_viec_hunch():
         state.runner = old
         clear_rate_limits()
         clear_work_state()
+
+
+def test_bat_hunch_ma_khong_ai_neu_thi_van_chay_Y_HET(tmp_path):
+    """Bất biến 6 ở mức VÁN, không chỉ ở mức prompt.
+
+    `hunch_enabled = True` bật thêm một nhánh trong pha 4 của vòng tick — pha ấy
+    giờ chạy cả khi `laws` rỗng, để `WORLD_FLAT` vẫn đếm được "đã thử và không
+    có gì". Nhánh thêm vào là chỗ dễ làm lệch RNG hoặc lệch thứ tự duyệt, và
+    lệch một tick là hỏng cả nhánh đối chứng của X-09.
+
+    Bài này suýt không được viết: `x09` với model giả cho thấy ghi sổ tụt 62 -> 11
+    khi bật linh cảm, trông y như linh cảm đang cướp lượt nghĩ. Chạy lại với
+    nhánh đối chứng thật (bật cơ chế, không con nào nêu linh cảm) thì hai nhánh
+    ra **con số giống hệt** — 18/18, 16/16, 11/11. Cú tụt kia là một ván khác
+    hẳn, không phải một cơ chế hỏng.
+    """
+    from genesis.lawgen import generate_cached
+    from genesis.logio import LogWriter
+    from genesis.strategist import ReflexStrategist
+    from genesis.tick import build_match, tick
+
+    def run(enabled: bool, path):
+        laws = generate_cached(9, arm="STANDARD")
+        w, cs, st, rng = build_match(9, laws=laws)
+        strat = ReflexStrategist()
+        strat.minds = Minds()
+        strat.minds.hunch_enabled = enabled
+        with LogWriter(path, "m") as log:
+            for t in range(120):
+                tick(w, cs, t, rng, st, log=log, laws=laws, strategist=strat)
+        return path.read_text(encoding="utf-8")
+
+    a = run(False, tmp_path / "off.jsonl")
+    b = run(True, tmp_path / "on.jsonl")
+    assert a == b, "bật cơ chế mà không ai dùng thì ván phải giống hệt tới từng dòng"
+
+
+def test_linh_cam_KHONG_BAO_GIO_cuop_luot_ghi_so():
+    """Thứ tự ưu tiên là một cam kết, không phải một chi tiết.
+
+    `codex` đứng TRƯỚC `hunch`: một kết luận đáng giá hơn một giả thuyết khi cả
+    hai cùng chờ. Đảo thứ tự này là làm nhánh thí nghiệm của X-09 ghi sổ ít hơn
+    nhánh đối chứng vì một lý do thuần cơ học, và kết quả sẽ đọc thành "linh cảm
+    làm hỏng việc khám phá".
+    """
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parent.parent / "genesis" / "strategist.py").read_text(
+        encoding="utf-8")
+    i_codex = src.index('kind = "codex"')
+    i_hunch = src.index('kind = "hunch"')
+    assert i_codex < i_hunch, "`codex` phải được xét TRƯỚC `hunch`"
+
+    src_net = (Path(__file__).resolve().parent.parent / "net" / "routes_work.py").read_text(
+        encoding="utf-8")
+    assert src_net.index('kind = "codex"') < src_net.index('kind = "hunch"'), \
+        "đường mạng phải giữ CÙNG thứ tự ưu tiên với đường cục bộ"
