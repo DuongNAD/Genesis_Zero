@@ -90,7 +90,12 @@ def test_acceptance_w13_full(tmp_path: Path) -> None:
     assert k["DRINK"] > 0, k
     assert k["PHASE_CHANGE"] == 400 // law_config.PHASE_LEN, (k["PHASE_CHANGE"], 400 // law_config.PHASE_LEN)
 
-    f = collections.Counter(r.get("fruit_surface") for r in rows if r["kind"] == "EAT")
+    # Chỉ đếm QUẢ. Rong (W-18 §6) cũng sinh ra sự kiện `EAT` nhưng nó không phải
+    # đề bài: bề mặt quả bị hoán vị mỗi ván vì luật ẩn nói về chúng, còn rong thì
+    # giữ đúng một tên. Trộn nó vào phép đếm này là đo cân bằng của bốn lớp quả
+    # bằng một mẫu có năm thứ.
+    f = collections.Counter(r.get("fruit_surface") for r in rows
+                            if r["kind"] == "EAT" and r.get("fruit_surface") != "rong")
     assert len(f) == 4, f
     assert max(f.values()) / min(f.values()) < 1.6, f
 

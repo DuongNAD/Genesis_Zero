@@ -188,6 +188,10 @@ class World:
         # nhớ để `visible` khỏi phải nhận thêm tham số ở cả 14 chỗ gọi. `tick`
         # cập nhật mỗi lượt; mặc định DAY để mọi bài kiểm cũ chạy y hệt.
         self.phase: str = "DAY"
+        # Rong — thức ăn của tầng NƯỚC. Rỗng cho tới khi `spawn_algae` chạy, và
+        # nó vô hại với mọi ván cũ: sinh vật CẠN không ăn được rong, nên thêm nó
+        # vào thế giới không dịch một con số cân bằng nào.
+        self.algae: dict[tuple[int, int], str] = {}
         self.surface_map: SurfaceMap = (
             surface_map if surface_map is not None else roll_surface_map(rng)
         )
@@ -297,6 +301,14 @@ class World:
         x, y = self.wrap(*pos)
         return can_touch(domain_of(creature.species), self.grid[y][x], creature.traits)
 
+    def eat_algae(self, pos: tuple[int, int]) -> float:
+        """Ăn rong tại pos nếu có. Người gọi phải kiểm tầng TRƯỚC khi gọi."""
+        x, y = self.wrap(*pos)
+        if (x, y) in self.algae:
+            del self.algae[(x, y)]
+            return float(config.ALGAE_ENERGY)
+        return 0.0
+
     def eat_plant(self, pos: tuple[int, int]) -> float:
         """Ăn cây tại pos nếu có, trả về năng lượng. Phải wrap trước khi tra."""
         x, y = self.wrap(*pos)
@@ -304,6 +316,30 @@ class World:
             del self.fruits[(x, y)]
             return float(config.PLANT_ENERGY)
         return 0.0
+
+
+def spawn_algae(world: World, rng: random.Random, tick: int = 0) -> int:
+    """Mọc rong trên ô nước (nông và sâu). Song song với `spawn_plants`.
+
+    Không dùng `plant_scale`: hệ số ấy là nút chỉnh độ khó cho TẦNG CẠN, đã tune
+    riêng cho từng bản đồ ở W-15. Nước là một nền kinh tế khác, và trộn hai nút
+    vào nhau thì chỉnh cái này lại lệch cái kia.
+    """
+    room = config.ALGAE_MAX - len(world.algae)
+    if room <= 0:
+        return 0
+    candidates = [
+        (x, y)
+        for y in range(world.h)
+        for x in range(world.w)
+        if world.grid[y][x] in (Terrain.WATER, Terrain.DEEP) and (x, y) not in world.algae
+    ]
+    if not candidates:
+        return 0
+    n = min(config.ALGAE_RESPAWN, room, len(candidates))
+    for pos in rng.sample(candidates, n):
+        world.algae[pos] = config.ALGAE_CLASS
+    return n
 
 
 def spawn_plants(world: World, rng: random.Random, tick: int = 0) -> int:

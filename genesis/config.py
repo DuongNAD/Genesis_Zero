@@ -136,6 +136,40 @@ PLANT_ENERGY = 30       # năng lượng nhận khi ăn plant
 PLANT_RESPAWN = 2       # số plant mọc mỗi tick
 PLANT_MAX = 15          # tối đa trên sân
 
+# ─── Rong: thức ăn của TẦNG NƯỚC (W-18 §6) ─────────────────────────────────
+# Tầng nước hiện không có nguồn thức ăn nào — quả chỉ mọc trên PLAIN, nên một
+# con cá thả xuống chết đói dù có bao nhiêu nước. Đây là điều kiện CẦN của chặng
+# B, không phải phần tô điểm.
+#
+# **MỘT lớp duy nhất, không có bề mặt.** Quả có bốn lớp `FRUIT_A..D` và được hoán
+# vị bề mặt mỗi ván vì chúng là **đề bài** — luật ẩn nói về chúng. Rong thì không:
+# nó là thức ăn, không phải câu đố. Cho nó bốn lớp là làm miền `EAT` rộng gấp
+# đôi, mà quy nạp đang hỏng sẵn.
+ALGAE_ENERGY = 20
+ALGAE_RESPAWN = 2
+# **0 = TẮT, và đó là mặc định.** Cơ chế xong, kiểm xong, chưa bật.
+#
+# Rong sinh ra CHO tầng nước, mà tầng nước thì chưa có loài nào. Bật nó lúc này
+# chỉ có một tác dụng: loài CẠN nào bốc trúng `LUONG_CU` được thêm một nền kinh
+# tế — hay, nhưng không phải mục đích, và nó **vỡ M1**:
+#
+#   không rong      -> chết nhiều nhất 8 · chưa từng chết 0/75 ✅
+#   rong 12 ô / 26  -> chết nhiều nhất 6 · chưa từng chết 4/75 ❌
+#   rong  8 ô / 20  -> chết nhiều nhất 7 · chưa từng chết 2/75 ❌
+#   rong  6 ô / 16  -> chết nhiều nhất 8 · chưa từng chết 4/75 ❌
+#
+# Vặn thức ăn KHÔNG cứu được: con số nhảy 4→2→4→2 chứ không giảm đều, vì những
+# con sống sót ấy không bị giới hạn bởi thức ăn.
+#
+# Đây là cơ chế THỨ BA trong ngày vấp đúng chỗ này (phạt tầm nhìn đêm, linh cảm,
+# rong), và ba lần thì đủ để thấy mẫu: **M1 được tune cho một thế giới NĂM LOÀI
+# TOÀN CẠN.** Mọi thứ thêm vào thế giới ấy đều phải trả bằng cái đuôi của nó.
+# Cách đúng không phải nhỏ giọt từng cơ chế rồi mỗi lần lại vặn lại — mà là làm
+# chặng B trọn gói (cá + chim + thức ăn theo tầng + quần thể theo bản đồ) rồi
+# tune M1 MỘT LẦN cho thế giới mới.
+ALGAE_MAX = 0
+ALGAE_CLASS = "ALGAE"
+
 CORPSE_ENERGY = 45      # năng lượng từ xác
 CORPSE_DECAY = 15       # xác biến mất sau 15 tick
 

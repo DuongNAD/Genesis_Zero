@@ -83,6 +83,30 @@ def one_match(seed: int, ticks: int, url: str, out: Path, with_hunch: bool,
         for r in log_rows
         if r.get("kind") == "HUNCH_OP" and r.get("ok") and r.get("law")
     )
+
+    # BẢNG ĐẾM cuối ván — cột đáng đọc nhất khi `match` kẹt ở 0 cho cả hai nhánh.
+    #
+    # `match` chỉ trả lời "có tìm ra luật không". Nếu cả hai nhánh cùng 0 thì nó
+    # không phân biệt được "linh cảm vô dụng" với "chưa gì cứu nổi ở mức này" —
+    # và câu thứ hai mới đúng với Qwen-7B hôm nay. Ba cột dưới đây trả lời một
+    # câu KHÁC và trả lời được ngay cả khi match = 0: *cơ chế có chạy không, và
+    # con vật có thu được bằng chứng phủ định không.*
+    thu = dung = 0
+    bac_bo = 0          # linh cảm thử >= 5 lần mà đúng 0 — bằng chứng PHỦ ĐỊNH
+    xac_nhan = 0        # thử >= 5 lần và đúng >= 80%
+    o_da_dung = 0
+    for hb in strat.minds.hunches.values():
+        for h in hb.entries():
+            if h is None:
+                continue
+            o_da_dung += 1
+            thu += h.tried
+            dung += h.hit
+            if h.tried >= 5:
+                if h.hit == 0:
+                    bac_bo += 1
+                elif h.hit >= 0.8 * h.tried:
+                    xac_nhan += 1
     return {
         "seed": seed, "hunch": with_hunch,
         "n_found": len(found),
@@ -93,6 +117,10 @@ def one_match(seed: int, ticks: int, url: str, out: Path, with_hunch: bool,
         "chu_de_so": dict(subj.most_common(4)),
         "n_hunch": n_hunch,
         "chu_de_linh_cam": dict(subj_h.most_common(4)),
+        "o_linh_cam_da_dung": o_da_dung,
+        "tong_thu": thu, "tong_dung": dung,
+        "so_linh_cam_bi_BAC_BO": bac_bo,
+        "so_linh_cam_duoc_XAC_NHAN": xac_nhan,
     }
 
 
@@ -115,7 +143,10 @@ def main(argv: list[str] | None = None) -> int:
                   f"tìm ra {r['n_found']} · match cao nhất {r['best_match']:.2f} · "
                   f"t_discover {r['mean_t_discover']} · "
                   f"ghi sổ {r['n_codex']} {r['chu_de_so']}"
-                  + (f" · linh cảm {r['n_hunch']} {r['chu_de_linh_cam']}" if hu else ""),
+                  + (f" · linh cảm {r['n_hunch']} ô, thử {r['tong_thu']} đúng "
+                     f"{r['tong_dung']}, bác bỏ {r['so_linh_cam_bi_BAC_BO']} "
+                     f"xác nhận {r['so_linh_cam_duoc_XAC_NHAN']} {r['chu_de_linh_cam']}"
+                     if hu else ""),
                   flush=True)
 
     (a.out / "x09.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2),
@@ -132,6 +163,14 @@ def main(argv: list[str] | None = None) -> int:
               f"match cao nhất {max((r['best_match'] for r in sub), default=0.0):.3f} · "
               f"t_discover trung bình {statistics.fmean(ts) if ts else 'NA'} · "
               f"chủ đề sổ {dict(subj.most_common(4))}")
+    co = [r for r in rows if r["hunch"]]
+    print(f"\nCƠ CHẾ CÓ CHẠY KHÔNG: {sum(r['o_linh_cam_da_dung'] for r in co)} ô đã dùng · "
+          f"{sum(r['tong_thu'] for r in co)} lượt thử · "
+          f"{sum(r['so_linh_cam_bi_BAC_BO'] for r in co)} linh cảm BỊ BÁC BỎ · "
+          f"{sum(r['so_linh_cam_duoc_XAC_NHAN'] for r in co)} được XÁC NHẬN")
+    print("  (bác bỏ = thử >= 5 lần, đúng 0 — đó là bằng chứng phủ định, thứ sổ\n"
+          "   tay 6 dòng không giữ nổi. Bằng 0 nghĩa là cơ chế chưa chạy tới nơi,\n"
+          "   và mọi kết luận về `match` bên dưới đều chưa có căn cứ.)")
     print(
         "\nĐọc kết quả — cột CHỦ ĐỀ trước cột match:\n"
         "  · `t_discover` ngắn lại VÀ chủ đề tản ra khỏi chỗ quả -> nút thắt đúng\n"

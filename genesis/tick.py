@@ -45,6 +45,7 @@ from genesis.world import (
     World,
     decay_corpses,
     phase_at,
+    spawn_algae,
     spawn_plants,
     visible,
 )
@@ -141,6 +142,58 @@ def _collect_intents(
         intent = reflex_step(c, world, creatures, g, crng)
         intents.append(intent)
     return intents
+
+
+def _resolve_algae(
+    world: World,
+    creatures: list[Creature],
+    tick: int = 0,
+) -> list[dict]:
+    """Ăn rong — song song với `_resolve_eating`, nhưng chỉ TẦNG NƯỚC ăn được.
+
+    Cổng theo tầng chứ không theo địa hình, và đó là một lựa chọn có lý do: sinh
+    vật CẠN **vào được** ô nước nông (nó tới đó để uống), nên nếu không có cổng
+    thì rong thành thức ăn chung và tầng nước mất đúng cái ổ mà W-18 dựng lên
+    cho nó. Một con thú lội xuống mép nước không gặm rong.
+
+    `LUONG_CU` mở cổng này — đó là phần thưởng thật của đặc điểm ấy: nó không chỉ
+    cho đi thêm mấy ô, nó cho ăn ở một nền kinh tế thứ hai.
+    """
+    from genesis.domain import Domain, domain_of
+
+    by_pos: dict[tuple[int, int], list[Creature]] = {}
+    for c in creatures:
+        if not c.alive:
+            continue
+        kit = world.kits.get(c.species)
+        an_duoc = (domain_of(c.species) is Domain.NUOC
+                   or (kit is not None and Domain.NUOC in getattr(kit, "extra_domains", ())))
+        if an_duoc:
+            by_pos.setdefault(world.wrap(*c.pos), []).append(c)
+
+    events: list[dict] = []
+    for pos in sorted(world.algae.keys()):
+        occupants = by_pos.get(pos)
+        if not occupants:
+            continue
+        # Cùng luật phân xử với quả: tất định theo `creature_sort_key`.
+        winner = min(occupants, key=creature_sort_key)
+        gained = world.eat_algae(pos)
+        if gained <= 0:
+            continue
+        winner.energy = min(winner.traits.energy_max, winner.energy + gained)
+        award_adapt(winner, "eat")
+        events.append({
+            "creature_id": winner.id, "species_id": winner.species,
+            "energy": winner.energy, "pos": list(winner.pos),
+            "fruit_class": config.ALGAE_CLASS,
+            # Rong có TÊN, không để `None`. Bề mặt của quả bị hoán vị mỗi ván vì
+            # quả là đề bài; rong thì không phải đề bài nên nó giữ đúng một tên,
+            # và tên ấy phải có mặt trong log để sổ tay đọc được "TÔI ăn rong"
+            # thay vì "TÔI ăn thứ gì đó".
+            "fruit_surface": "rong",
+        })
+    return events
 
 
 def _resolve_eating(
@@ -272,6 +325,11 @@ def tick(
             })
 
     eat_events = _resolve_eating(world, creatures, log=None, tick=tick_no)
+    # Rong đi vào CÙNG danh sách `eat_events`: với sổ tay và với luật ẩn, ăn rong
+    # là một sự kiện `EAT` như mọi sự kiện ăn khác. Tách ra thành loại riêng là
+    # nói cho agent biết thế giới có hai hạng thức ăn, mà đó là thứ nó phải tự
+    # nhận ra — hoặc không cần nhận ra.
+    eat_events += _resolve_algae(world, creatures, tick=tick_no)
 
     # 3. ÁP DỤNG CHI PHÍ: cost_attack cho kẻ đã vung đòn, tick_poison, tick_regen, upkeep
     for att in attacks:
@@ -495,6 +553,7 @@ def tick(
 
     # 6. THẾ GIỚI: spawn_plants, decay_corpses | rồi GHI LOG một chỗ duy nhất
     spawn_plants(world, rng, tick_no)
+    spawn_algae(world, rng, tick_no)
     decay_corpses(world, tick_no)
 
     observe = getattr(strat, "observe", None)
