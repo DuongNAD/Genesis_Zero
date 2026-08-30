@@ -137,26 +137,26 @@ def reflex_step(
             if world.dist(c.pos, p) <= c.traits.sight_radius
         ]
         if not visible_plants:
-            path = _wander_path(c.pos, moves, world, rng)
+            path = _wander_path(c.pos, moves, world, rng, c)
         else:
             # Hoà thì chọn ô có toạ độ nhỏ nhất
             target_plant = min(
                 visible_plants,
                 key=lambda p: (world.dist(c.pos, p), p),
             )
-            path = _greedy_path_towards(c.pos, target_plant, moves, world)
+            path = _greedy_path_towards(c.pos, target_plant, moves, world, c)
         return Intent(creature_id=c.id, path=path)
 
     if goal.goal == Goal.HUNT:
         target_c = _find_creature_by_id(creatures, goal.target)
         if target_c is None:
-            path = _wander_path(c.pos, moves, world, rng)
+            path = _wander_path(c.pos, moves, world, rng, c)
             return Intent(creature_id=c.id, path=path)
 
         if world.dist(c.pos, target_c.pos) <= 1:
             return Intent(creature_id=c.id, path=(), attack_id=target_c.id)
 
-        path = _greedy_path_towards(c.pos, target_c.pos, moves, world)
+        path = _greedy_path_towards(c.pos, target_c.pos, moves, world, c)
         end_pos = path[-1] if path else c.pos
         attack_id = target_c.id if world.dist(end_pos, target_c.pos) <= 1 else None
         return Intent(creature_id=c.id, path=path, attack_id=attack_id)
@@ -164,9 +164,9 @@ def reflex_step(
     if goal.goal == Goal.FLEE:
         target_c = _find_creature_by_id(creatures, goal.target)
         if target_c is None:
-            path = _wander_path(c.pos, moves, world, rng)
+            path = _wander_path(c.pos, moves, world, rng, c)
         else:
-            path = _greedy_path_away(c.pos, target_c.pos, moves, world)
+            path = _greedy_path_away(c.pos, target_c.pos, moves, world, c)
         return Intent(creature_id=c.id, path=path)
 
     if goal.goal == Goal.FOLLOW:
@@ -177,17 +177,17 @@ def reflex_step(
             if other.species == c.species
         ]
         if not same_species:
-            path = _wander_path(c.pos, moves, world, rng)
+            path = _wander_path(c.pos, moves, world, rng, c)
         else:
             target_c = min(
                 same_species,
                 key=lambda other: (world.dist(c.pos, other.pos), creature_sort_key(other)),
             )
-            path = _greedy_path_towards(c.pos, target_c.pos, moves, world)
+            path = _greedy_path_towards(c.pos, target_c.pos, moves, world, c)
         return Intent(creature_id=c.id, path=path)
 
     # Goal.WANDER hoặc fallback
-    path = _wander_path(c.pos, moves, world, rng)
+    path = _wander_path(c.pos, moves, world, rng, c)
     return Intent(creature_id=c.id, path=path)
 
 
@@ -205,15 +205,20 @@ def _greedy_path_towards(
     target_pos: tuple[int, int],
     max_steps: int,
     world: World,
+    who: Creature | None = None,
 ) -> tuple[tuple[int, int], ...]:
-    """Tìm đường tham lam tiến về đích: giảm dist nhiều nhất, phá hoà bằng toạ độ nhỏ nhất."""
+    """Tìm đường tham lam tiến về đích: giảm dist nhiều nhất, phá hoà bằng toạ độ nhỏ nhất.
+
+    `who` là con vật ĐANG đi. Không truyền nó thì đường đi được tính cho một sinh
+    vật cạn trung bình, và cả tầng nước lẫn tầng trời sẽ đi theo bản đồ của người
+    khác — W-18 bất biến 2 hỏng ngay ở đây, im lặng."""
     path: list[tuple[int, int]] = []
     curr = start_pos
     for _ in range(max_steps):
         curr_dist = world.dist(curr, target_pos)
         if curr_dist == 0:
             break
-        passable_neighbors = [p for p in world.neighbors(curr) if world.passable(p)]
+        passable_neighbors = [p for p in world.neighbors(curr) if world.passable(p, who)]
         if not passable_neighbors:
             break
         min_d = min(world.dist(p, target_pos) for p in passable_neighbors)
@@ -233,13 +238,14 @@ def _greedy_path_away(
     target_pos: tuple[int, int],
     max_steps: int,
     world: World,
+    who: Creature | None = None,
 ) -> tuple[tuple[int, int], ...]:
     """Tìm đường tham lam chạy xa đích: tăng dist nhiều nhất, phá hoà bằng toạ độ nhỏ nhất."""
     path: list[tuple[int, int]] = []
     curr = start_pos
     for _ in range(max_steps):
         curr_dist = world.dist(curr, target_pos)
-        passable_neighbors = [p for p in world.neighbors(curr) if world.passable(p)]
+        passable_neighbors = [p for p in world.neighbors(curr) if world.passable(p, who)]
         if not passable_neighbors:
             break
         max_d = max(world.dist(p, target_pos) for p in passable_neighbors)
@@ -259,12 +265,13 @@ def _wander_path(
     max_steps: int,
     world: World,
     rng: random.Random,
+    who: Creature | None = None,
 ) -> tuple[tuple[int, int], ...]:
     """Đi ngẫu nhiên từng bước sang ô lân cận passable."""
     path: list[tuple[int, int]] = []
     curr = start_pos
     for _ in range(max_steps):
-        candidates = [p for p in world.neighbors(curr) if world.passable(p)]
+        candidates = [p for p in world.neighbors(curr) if world.passable(p, who)]
         if not candidates:
             break
         nxt = rng.choice(candidates)
@@ -284,8 +291,9 @@ def apply_intent(
         return 0
     steps = 0
     for pos in intent.path:
-        # Bẫy: chỉ đi vào ô passable
-        if not world.passable(pos):
+        # Bẫy: chỉ đi vào ô passable — và passable CỦA CON NÀY. Con vật đã ở
+        # trong tay rồi thì không có cớ gì hỏi bằng bản đồ của loài khác.
+        if not world.passable(pos, c):
             break
         c.pos = world.wrap(*pos)
         c.energy -= config.COST_MOVE

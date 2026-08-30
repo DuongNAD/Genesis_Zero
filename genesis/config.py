@@ -40,6 +40,24 @@ FOUNDERS = {
     "L5":        (0,     2,      0,     5,     3,     2),
 }
 TRAIT_NAMES = ("brain", "attack", "armor", "speed", "sense", "stomach")
+
+# ─── Ba tầng (W-18) ─────────────────────────────────────────────────────────
+# Tầng là thuộc tính của LOÀI, không phải một trait: nhét nó vào vector trait
+# thì nó hội tụ, đúng lỗi W-12 đã dính một lần. Loài lạ (người chơi qua mạng)
+# mặc định CẠN.
+SPECIES_DOMAIN: dict[str, str] = {
+    "L1": "CAN", "L2": "CAN", "L3": "CAN", "L4": "CAN", "L5": "CAN",
+}
+# Ngưỡng mở khoá đường đi TRONG tầng cạn. Đây là "sư tử không trèo được cây,
+# khỉ thì được" — và nó không hard-code loài nào cả, nó đọc vector trait.
+#
+# Với FOUNDERS hiện tại, ngưỡng 3 chia đàn đúng làm hai nhóm có thật:
+#   trèo được : L5 (speed 5) · L3 (speed 3)
+#   không trèo: L1 (2) · L2 (1) · L4 (1)
+#   băng lửa  : L4 (armor 5) · chỉ mình nó
+# Nên ổ sinh thái xuất hiện NGAY với năm loài sẵn có, không cần thêm loài nào.
+CLIMB_SPEED = 3
+FIRE_ARMOR = 3
 TRAIT_SUM = 12         # bất biến: tổng 6 trait luôn bằng con số này
 TRAIT_MIN = 0
 TRAIT_MAX = 5

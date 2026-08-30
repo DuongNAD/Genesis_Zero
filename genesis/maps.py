@@ -30,7 +30,8 @@ from dataclasses import dataclass
 import random
 
 from genesis import config
-from genesis.world import CARDINAL_OFFSETS, Terrain
+from genesis.world import (CARDINAL_OFFSETS, SEEDED_TERRAINS, Terrain,
+                           erode_cores)
 
 
 @dataclass(frozen=True)
@@ -53,31 +54,31 @@ class MapSpec:
 MAPS: dict[str, MapSpec] = {
     "DONG_CO": MapSpec(
         "DONG_CO", "Đồng cỏ",
-        {Terrain.WATER: 4, Terrain.BUSH: 4, Terrain.ROCK: 4},
+        {Terrain.WATER: 4, Terrain.BUSH: 4, Terrain.ROCK: 4, Terrain.TREE: 2},
         config.TERRAIN_WALK_STEPS,
         "bản chuẩn, đã tune ở W-12 — mọi bản đồ khác so với nó",
     ),
     "HOANG_MAC": MapSpec(
         "HOANG_MAC", "Hoang mạc",
-        {Terrain.WATER: 1, Terrain.BUSH: 1, Terrain.ROCK: 12},
+        {Terrain.WATER: 1, Terrain.BUSH: 1, Terrain.ROCK: 12, Terrain.TREE: 0},
         36,
         "uống nước thành sự kiện hiếm — luật DRINK ở đây rất khó học",
     ),
     "QUAN_DAO": MapSpec(
         "QUAN_DAO", "Quần đảo",
-        {Terrain.WATER: 10, Terrain.BUSH: 3, Terrain.ROCK: 2},
+        {Terrain.WATER: 10, Terrain.BUSH: 3, Terrain.ROCK: 2, Terrain.TREE: 1},
         34,
         "đất vụn thành đảo, quần thể tách đàn và ít gặp nhau",
     ),
     "HEM_NUI": MapSpec(
         "HEM_NUI", "Hẻm núi",
-        {Terrain.WATER: 3, Terrain.BUSH: 2, Terrain.ROCK: 9},
+        {Terrain.WATER: 3, Terrain.BUSH: 2, Terrain.ROCK: 9, Terrain.TREE: 1},
         40,
         "đá thành vách, chừa hành lang — ép chạm mặt, luật ADJACENT dễ học",
     ),
     "RUNG_RAM": MapSpec(
         "RUNG_RAM", "Rừng rậm",
-        {Terrain.WATER: 3, Terrain.BUSH: 11, Terrain.ROCK: 1},
+        {Terrain.WATER: 3, Terrain.BUSH: 11, Terrain.ROCK: 1, Terrain.TREE: 5},
         38,
         "bụi rậm chặn tầm nhìn VÀ tầm nghe — bản đồ để hỏi giao tiếp đáng giá bao nhiêu",
         plant_scale=1.3,
@@ -125,7 +126,10 @@ def generate_terrain(spec: MapSpec, w: int, h: int, rng: random.Random) -> list[
     grid = [[Terrain.PLAIN for _ in range(w)] for _ in range(h)]
 
     walkers: list[tuple[int, int, Terrain]] = []
-    for terrain in (Terrain.WATER, Terrain.BUSH, Terrain.ROCK):
+    # `SEEDED_TERRAINS`, không phải một tuple chép tay. Bản chép tay ở đây đã
+    # lặng lẽ bỏ qua `Terrain.TREE` dù cả năm bản đồ đều khai số hạt cho nó —
+    # không lỗi, không cảnh báo, chỉ là không có cây nào mọc.
+    for terrain in SEEDED_TERRAINS:
         for _ in range(spec.seeds.get(terrain, 0)):
             walkers.append((rng.randrange(w), rng.randrange(h), terrain))
     for x, y, terrain in walkers:
@@ -139,7 +143,10 @@ def generate_terrain(spec: MapSpec, w: int, h: int, rng: random.Random) -> list[
             grid[ny][nx] = terrain
             nxt.append((nx, ny, terrain))
         walkers = nxt
-    return grid
+    # Cùng phép xói mòn với `World._generate_terrain` — MỘT hàm, hai đường gọi.
+    # Bản đầu của W-18 chỉ sửa đường kia, nên năm bản đồ không sinh ra ô DEEP nào
+    # và tôi suýt kết luận là ngưỡng đặt sai.
+    return erode_cores(grid, w, h)
 
 
 def terrain_mix(grid: list[list[Terrain]]) -> dict[str, float]:

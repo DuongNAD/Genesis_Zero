@@ -15,13 +15,18 @@ GENERATED_TERRAINS = (Terrain.PLAIN, Terrain.WATER, Terrain.BUSH, Terrain.ROCK)
 
 
 def test_terrain_enum() -> None:
-    """Terrain enum có đúng 5 giá trị chuỗi."""
+    """Terrain enum có đúng 7 giá trị chuỗi (5 gốc + DEEP, TREE của W-18)."""
     assert Terrain.PLAIN == "PLAIN"
     assert Terrain.WATER == "WATER"
     assert Terrain.BUSH == "BUSH"
     assert Terrain.ROCK == "ROCK"
     assert Terrain.FIRE == "FIRE"
-    assert len(Terrain) == 5
+    assert Terrain.DEEP == "DEEP"
+    assert Terrain.TREE == "TREE"
+    # Bảy, và **chỉ** bảy. Ba kiểu nước của đề bài (ao / hồ / biển) sinh ra từ
+    # CÁCH XẾP chứ không từ enum mới — xem `world.erode_cores`. Thêm loại địa
+    # hình là thêm miền cho `TERRAIN` trong DSL luật, mà quy nạp đang hỏng sẵn.
+    assert len(Terrain) == 7
 
 
 def test_acceptance_criteria() -> None:
@@ -127,15 +132,46 @@ def test_wrap_and_neighbors_non_toroidal(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_passable() -> None:
-    """B4: ROCK không đi qua được, các địa hình khác đi qua được."""
+    """W-18: `passable` trả lời cho MỘT con vật, không cho cả thế giới.
+
+    `creature=None` nghĩa là "hỏi cho một sinh vật CẠN trung bình", nên nó đi
+    được đúng ba ô: đất bằng, bụi, và nước NÔNG. Đá thì không ai qua; nước sâu
+    dành cho tầng NƯỚC; cây và lửa đòi trait đủ ngưỡng mà `None` thì không có
+    trait nào.
+    """
     w = World(config.GRID_W, config.GRID_H, random.Random(7))
+    walkable = {Terrain.PLAIN, Terrain.BUSH, Terrain.WATER}
     for y in range(w.h):
         for x in range(w.w):
             pos = (x, y)
-            is_rock = (w.grid[y][x] == Terrain.ROCK)
-            assert w.passable(pos) == (not is_rock)
-            # Chữ ký có creature
-            assert w.passable(pos, creature=None) == (not is_rock)
+            want = w.grid[y][x] in walkable
+            assert w.passable(pos) is want
+            assert w.passable(pos, creature=None) is want
+
+
+def test_passable_theo_TRAIT_khong_theo_loai() -> None:
+    """"Sư tử không trèo được cây, khỉ thì được" — và nó đọc VECTOR TRAIT.
+
+    Không hard-code loài nào cả. Với `FOUNDERS` hiện tại, ngưỡng `CLIMB_SPEED`
+    chia đàn đúng làm hai nhóm có thật, nên ổ sinh thái xuất hiện ngay với năm
+    loài sẵn có — không cần thêm loài nào.
+    """
+    from genesis.creature import Creature
+    from genesis.traits import founder_traits
+
+    w = World(config.GRID_W, config.GRID_H, random.Random(7))
+    tree = next(((x, y) for y in range(w.h) for x in range(w.w)
+                 if w.grid[y][x] == Terrain.TREE), None)
+    assert tree is not None, "seed này phải có ít nhất một ô cây"
+
+    def make(sp):
+        return Creature(id=f"{sp}:0", species=sp, traits=founder_traits(sp),
+                        pos=(0, 0), hp=1.0, energy=1.0)
+
+    khi = make("L5")     # speed 5 — trèo được
+    su_tu = make("L2")   # speed 1, attack 4 — không trèo được
+    assert w.passable(tree, khi) is True
+    assert w.passable(tree, su_tu) is False
 
 
 def test_terrain_patch_distribution_multiple_seeds() -> None:

@@ -119,7 +119,8 @@
     // 1. Ve nen luoi dia hinh — tu KHUNG, khong phai o caro gia.
     // Ban dau ve mot ban co xanh cho MOI ban do, nen nam ban do cua W-15 trong
     // giong het nhau tren trang xem.
-    const TER = { P: '#3f6212', W: '#1d4ed8', B: '#14532d', R: '#57534e', F: '#ea580c' };
+    const TER = { P: '#3f6212', W: '#1d4ed8', B: '#14532d', R: '#57534e', F: '#ea580c',
+                  D: '#0c2a6b', T: '#166534' };   // D nước sâu · T cây (W-18)
     const rows = latestTerrain;
     for (let y = 0; y < GRID_H; y++) {
       for (let x = 0; x < GRID_W; x++) {

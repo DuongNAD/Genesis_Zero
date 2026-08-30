@@ -36,10 +36,17 @@ NEIGHBOR_OFFSETS: tuple[tuple[int, int], ...] = (
 
 class Terrain(StrEnum):
     PLAIN = "PLAIN"
-    WATER = "WATER"
+    WATER = "WATER"      # nước NÔNG (mép nước): cạn lội vào uống được, cá sống được
     BUSH = "BUSH"
     ROCK = "ROCK"
     FIRE = "FIRE"
+    # ── W-18, hai ô mới ──────────────────────────────────────────────────
+    # Chỉ HAI. "Không quá to nhưng phải đầy đủ" đạt được bằng cách tăng số
+    # CÁCH XẾP chứ không tăng số loại: ao là một mảng WATER nhỏ, hồ là WATER
+    # có lõi DEEP, biển là DEEP lớn viền WATER. Bảy loại địa hình cho ba tầng
+    # và ba kiểu nước.
+    DEEP = "DEEP"        # nước sâu — chỉ tầng NƯỚC; cạn chết đuối, trời bay qua
+    TREE = "TREE"        # cây — cạn phải đủ `speed` mới trèo; đây là "khỉ/sư tử"
 
 
 TERRAIN_GLYPHS: dict[Terrain, str] = {
@@ -48,7 +55,35 @@ TERRAIN_GLYPHS: dict[Terrain, str] = {
     Terrain.BUSH: '"',
     Terrain.ROCK: "#",
     Terrain.FIRE: "^",
+    Terrain.DEEP: "≈",
+    Terrain.TREE: "T",
 }
+
+# Mã MỘT KÝ TỰ cho đường truyền (khung xem live gửi địa hình dạng chuỗi).
+# Một bảng, và mọi chỗ mã hoá địa hình phải đọc từ đây. Trước W-18 thì
+# `net/match.py` giữ chuỗi `"PWBRF"` chép tay cùng một tuple thứ tự chép tay —
+# thêm một địa hình là ném `ValueError` ở giữa vòng phát khung cho người xem.
+TERRAIN_CODE: dict[Terrain, str] = {
+    Terrain.PLAIN: "P",
+    Terrain.WATER: "W",
+    Terrain.BUSH: "B",
+    Terrain.ROCK: "R",
+    Terrain.FIRE: "F",
+    Terrain.DEEP: "D",
+    Terrain.TREE: "T",
+}
+
+# Thứ tự GIEO HẠT địa hình. Một tuple, và cả hai đường dựng lưới đọc từ đây.
+#
+# Thứ tự là một phần của bất biến tái lập: nó quyết định RNG được tiêu theo thứ
+# tự nào, nên đổi thứ tự là đổi mọi bản đồ của mọi seed. Thêm loại mới thì thêm
+# vào CUỐI.
+#
+# `FIRE` không có mặt: lửa không sinh tự nhiên, nó chỉ đến từ luật `SPREAD`
+# (W-13). `DEEP` cũng không: nó không được gieo, nó được xói ra từ lõi nước.
+SEEDED_TERRAINS: tuple[Terrain, ...] = (
+    Terrain.WATER, Terrain.BUSH, Terrain.ROCK, Terrain.TREE,
+)
 
 PLANT_GLYPH: str = "*"
 CORPSE_GLYPH: str = "x"
@@ -56,6 +91,55 @@ CORPSE_GLYPH: str = "x"
 FRUIT_CLASSES: tuple[str, ...] = tuple(
     f"FRUIT_{chr(ord('A') + i)}" for i in range(law_config.FRUIT_KINDS)
 )
+
+
+def erode_cores(grid: list[list[Terrain]], w: int, h: int) -> list[list[Terrain]]:
+    """Lõi của mảng nước thành NƯỚC SÂU; lõi của mảng bụi thành CÂY (W-18).
+
+    Không thêm hạt giống mới, chỉ soi lại lưới đã có: ô nào **bốn phía đều cùng
+    loại với nó** thì nó nằm trong lõi, không nằm ở mép.
+
+    Cách này cho ba kiểu nước của đề bài mà không cần thêm loại địa hình nào:
+
+        ao   = mảng WATER nhỏ  -> không ô nào đủ bốn hàng xóm -> toàn nước nông
+        hồ   = mảng WATER vừa  -> một lõi DEEP nhỏ, viền WATER
+        biển = mảng WATER lớn  -> lõi DEEP lớn, viền WATER
+
+    Và nó **bảo đảm bờ bằng cấu trúc**, không bằng kỷ luật: một ô chỉ thành DEEP
+    khi bốn phía là nước, nên quanh mọi vùng DEEP luôn còn một viền WATER. Bờ
+    nước là ô DUY NHẤT mà tầng NƯỚC và tầng CẠN đứng cạnh nhau được (W-18 §7) —
+    mất bờ là ba tầng thành ba ván rời nhau.
+
+    **Chỉ nước, KHÔNG áp cho bụi.** Bản đầu cho lõi bụi thành CÂY — nghe hợp lý
+    (giữa rừng thì có tán) và nó **làm hỏng đúng bản đồ rừng**: chỗ bụi dày nhất
+    thành ô không vào được, sinh vật bị đẩy ra khoảng trống, và `RUNG_RAM` hoá ra
+    cho nhìn thấy nhau **nhiều hơn** `DONG_CO` (2,617 so với 2,534) — ngược hẳn
+    lý do bản đồ ấy tồn tại (Q2: giao tiếp đáng giá bao nhiêu).
+
+    Bài học đáng giữ: **độ sâu** là tính chất của lõi nên xói mòn là đúng; **cây**
+    là thứ MỌC LÊN nên nó phải được gieo hạt như mọi địa hình khác. Hai thứ khác
+    nhau về bản chất thì đừng dùng chung một cơ chế chỉ vì code gọn hơn.
+
+    Hàm này ở cấp module vì có **hai** đường dựng lưới — `World._generate_terrain`
+    và `maps.generate_terrain` — và bản đầu tôi chỉ sửa một. Đó là lần thứ chín
+    của cùng một họ lỗi trong dự án này, lần này tôi tự tay dựng ra nó. Hai đường
+    dựng lưới vẫn là một chỗ đáng gom nữa, nhưng gom chúng là một việc riêng.
+    """
+    out = [row[:] for row in grid]
+    core = {Terrain.WATER: Terrain.DEEP}
+    for y in range(h):
+        for x in range(w):
+            here = grid[y][x]
+            becomes = core.get(here)
+            if becomes is None:
+                continue
+            # Đọc từ `grid` (ảnh GỐC), ghi vào `out`. Đọc từ bản đang ghi thì ô
+            # duyệt trước ảnh hưởng ô duyệt sau và lưới phụ thuộc thứ tự quét —
+            # cùng họ với bẫy đồng thời của W-11.
+            if all(grid[(y + dy) % h][(x + dx) % w] == here
+                   for dx, dy in CARDINAL_OFFSETS):
+                out[y][x] = becomes
+    return out
 
 
 class World:
@@ -110,7 +194,7 @@ class World:
         # FIRE KHÔNG sinh tự nhiên: law_config.FIRE_BASE_SPREAD = False nên lửa chỉ
         # xuất hiện khi có luật SPREAD (L-02+). Sinh sẵn ô lửa trơ vừa vô nghĩa vừa
         # ăn mất ô PLAIN, làm lệch cân bằng đã tune ở W-12.
-        for terrain in (Terrain.WATER, Terrain.BUSH, Terrain.ROCK):
+        for terrain in SEEDED_TERRAINS:
             for _ in range(config.TERRAIN_SEEDS_PER_TYPE):
                 walkers.append((rng.randrange(self.w), rng.randrange(self.h), terrain))
 
@@ -128,7 +212,7 @@ class World:
                 new_walkers.append((nx, ny, terrain))
             walkers = new_walkers
 
-        return grid
+        return erode_cores(grid, self.w, self.h)
 
     def wrap(self, x: int, y: int) -> tuple[int, int]:
         """Wrap toạ độ vào biên lưới theo config.TOROIDAL."""
@@ -166,14 +250,34 @@ class World:
         return res
 
     def passable(self, pos: tuple[int, int], creature=None) -> bool:
-        """Kiểm tra ô có đi qua được không. ROCK không đi qua được.
+        """Ô này con vật NÀY đi được không.
+
+        `creature=None` nghĩa là "hỏi cho một sinh vật CẠN trung bình" — đường
+        cũ, giữ lại cho bộ sinh quần thể và cho mọi bài kiểm viết trước W-18.
+
+        Đây là đường **DUY NHẤT** trả lời câu "ai đi được đâu" (W-18 bất biến 2).
+        `reflex`, render, client, bộ sinh bản đồ đều phải hỏi qua đây. Dựng bảng
+        thứ hai ở chỗ khác là lặp lại đúng cái họ lỗi đã cắn tám lần: hai bản của
+        một khái niệm, rồi bản ít người nhìn hơn mục đi.
 
         Bẫy: PHẢI wrap trước khi lập chỉ mục. Không wrap thì `pos = (-1, -1)`
         lọt qua lập chỉ mục âm của Python và im lặng trả về ô ở góc đối diện,
         còn `(24, 24)` thì ném IndexError. Cả hai đều là bug ở mép bản đồ.
         """
+        from genesis.domain import Domain, can_enter, domain_of
+
         x, y = self.wrap(*pos)
-        return self.grid[y][x] != Terrain.ROCK
+        terrain = self.grid[y][x]
+        if creature is None:
+            return can_enter(Domain.CAN, terrain, None)
+        return can_enter(domain_of(creature.species), terrain, creature.traits)
+
+    def touchable(self, pos: tuple[int, int], creature) -> bool:
+        """Con vật này ĂN / UỐNG / ĐÁNH được ở ô này không (W-18 bất biến 3)."""
+        from genesis.domain import can_touch, domain_of
+
+        x, y = self.wrap(*pos)
+        return can_touch(domain_of(creature.species), self.grid[y][x], creature.traits)
 
     def eat_plant(self, pos: tuple[int, int]) -> float:
         """Ăn cây tại pos nếu có, trả về năng lượng. Phải wrap trước khi tra."""
@@ -239,9 +343,12 @@ def visible(obs: Creature, world: World, creatures: list[Creature]) -> list[Crea
         d = world.dist(obs.pos, other.pos)
         if d > sight_radius:
             continue
-        # Bẫy B6: Bụi rậm xét ô của con BỊ NHÌN, vô hình nếu d > 1
+        # Bẫy B6: Bụi rậm xét ô của con BỊ NHÌN, vô hình nếu d > 1.
+        # CÂY che khuất y như bụi (W-18) — và đó không phải chuyện cho đẹp: cây
+        # là ô mà chỉ loài biết trèo vào được, nên nếu nó không che thì "trốn lên
+        # cây" chỉ là đứng trên bục cho cả bản đồ nhìn. Chỗ trốn phải trốn được.
         ox, oy = world.wrap(*other.pos)
-        if world.grid[oy][ox] == Terrain.BUSH and d > 1:
+        if world.grid[oy][ox] in (Terrain.BUSH, Terrain.TREE) and d > 1:
             continue
         seen.append(other)
 

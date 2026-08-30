@@ -577,9 +577,14 @@ class MatchRunner:
     def terrain_rows(self) -> list[str] | None:
         if self.world is None:
             return None
-        return ["".join("PWBRF"[
-            ("PLAIN", "WATER", "BUSH", "ROCK", "FIRE").index(str(t))
-        ] for t in row) for row in self.world.grid]
+        # `TERRAIN_CODE`, không phải một chuỗi chép tay. Bản cũ giữ `"PWBRF"`
+        # cùng một tuple thứ tự song song, nên thêm một địa hình là ném
+        # `ValueError: tuple.index(x): x not in tuple` ngay giữa vòng phát khung
+        # — người xem mất hình, và lỗi hiện ra ở tầng trình bày chứ không ở chỗ
+        # thật sự thay đổi.
+        from genesis.world import TERRAIN_CODE
+
+        return ["".join(TERRAIN_CODE[t] for t in row) for row in self.world.grid]
 
     # ── N-08: tick không chờ ai ──────────────────────────────────────────
     def _write(self, kind: str, **fields: Any) -> None:

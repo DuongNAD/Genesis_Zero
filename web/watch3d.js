@@ -25,6 +25,8 @@
     B: { h: 0.45, c: 0x14532d },   // bụi rậm
     R: { h: 0.95, c: 0x57534e },   // đá — nhô lên
     F: { h: 0.16, c: 0xea580c },   // lửa
+    D: { h: 0.00, c: 0x0c2a6b },   // nước sâu — trũng hẳn, chỉ tầng NƯỚC (W-18)
+    T: { h: 1.40, c: 0x166534 },   // cây — cao nhất bản đồ, chỉ loài biết trèo
   };
 
   const el = (id) => document.getElementById(id);

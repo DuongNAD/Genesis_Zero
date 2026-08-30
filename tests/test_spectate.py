@@ -238,7 +238,8 @@ def test_11_khung_mang_dia_hinh_va_ten_ban_do(spectate_env):
     assert f0["map"] == r.world.map_name
     rows = f0["terrain"]
     assert len(rows) == r.world.h and all(len(x) == r.world.w for x in rows)
-    assert set("".join(rows)) <= set("PWBRF")
+    # D = nước sâu, T = cây (W-18). Mã lấy từ `world.TERRAIN_CODE`, một bảng.
+    assert set("".join(rows)) <= set("PWBRFDT")
     # Địa hình chỉ đi kèm tick 0: 24×24 mỗi tick sẽ chiếm gần hết băng thông.
     assert r.frame(5, [])["terrain"] is None
 

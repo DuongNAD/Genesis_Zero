@@ -49,7 +49,7 @@ class FakeModel:
 
 
 def _run(seed: int, ticks: int, model: FakeModel, ids: list[str] | None = None,
-         out=None, laws=None):
+         out=None, laws=None, on_tick=None):
     world, creatures, state, rng = build_match(seed=seed)
     if ids is None:
         ids = [c.id for c in creatures if c.species == "L1"]
@@ -57,6 +57,8 @@ def _run(seed: int, ticks: int, model: FakeModel, ids: list[str] | None = None,
     strat = LlmStrategist("http://model", ids, log=log, transport=model.transport())
     for t in range(ticks):
         tick(world, creatures, t, rng, state, log=log, laws=laws, strategist=strat)
+        if on_tick is not None:
+            on_tick(t, strat)
     if log is not None:
         log.close()
     return world, creatures, strat
@@ -157,9 +159,30 @@ def test_so_tay_duoc_nap_tu_su_kien_that():
     """Sổ tay rỗng thì agent không có gì để quy nạp, và cả v5 vô nghĩa."""
     from genesis.lawgen import generate_cached
     laws = generate_cached(44, arm="STANDARD")
-    _, _, strat = _run(44, 150, FakeModel(), ids=["L1:0"], laws=laws)
-    txt = strat.notes["L1:0"].render(20)
-    assert txt, "sổ tay trống sau 150 tick"
+
+    # Chụp sổ tay TRONG lúc chạy, không đọc ở đúng tick cuối.
+    #
+    # Bản cũ đọc `strat.notes[...]` sau vòng lặp, và nó đứng trên một sự trùng
+    # hợp: sổ tay CHẾT THEO ĐỜI (W-17), nên nếu con vật tình cờ chết ở vài tick
+    # cuối thì sổ rỗng và bài kiểm đỏ vì một lý do chẳng liên quan gì tới điều nó
+    # muốn khẳng định. Đã xảy ra thật khi W-18 xê dịch thế giới đi một chút —
+    # đo lại thì đời sống của quần thể **không đổi** (chết/ván 53 trước và sau),
+    # chỉ là con `L1:0` của seed 44 rơi sang bên kia lằn ranh.
+    #
+    # Điều bài này thật sự muốn nói là *"sổ tay CÓ được nạp từ sự kiện thật"*,
+    # và câu ấy phải đúng ở mọi tick, không riêng tick cuối.
+    seen: list[str] = []
+
+    def snap(t, strat):
+        n = strat.notes.get("L1:0")
+        if n is not None:
+            txt = n.render(20)
+            if txt:
+                seen.append(txt)
+
+    _, _, strat = _run(44, 150, FakeModel(), ids=["L1:0"], laws=laws, on_tick=snap)
+    assert seen, "sổ tay chưa bao giờ được nạp trong 150 tick"
+    txt = max(seen, key=len)
     # Tên hệ quả là đáp án. Sổ tay ghi CẢM GIÁC, không ghi tên.
     from genesis.lawdsl import EffectKind
     for e in EffectKind:

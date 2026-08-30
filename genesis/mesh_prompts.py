@@ -132,6 +132,8 @@ _TERRAIN: dict[Terrain, str] = {
     Terrain.BUSH: "một bụi cây rậm thấp, lá dày che kín bên trong, cành đan nhau",
     Terrain.ROCK: "một khối đá xám nứt nẻ, cạnh vỡ sắc, chân phủ rêu mỏng",
     Terrain.FIRE: "một mảng đất cháy đen, than đỏ âm ỉ, khói mỏng bốc lên",
+    Terrain.DEEP: "mặt nước sâu xanh thẫm, không thấy đáy, sóng lăn tăn chậm",
+    Terrain.TREE: "một thân cây to có tán lá rộng che kín ô, cành thấp vươn ngang",
 }
 
 

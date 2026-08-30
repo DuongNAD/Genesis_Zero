@@ -51,16 +51,26 @@ def test_tong_van_12_sau_moi_lan_dich():
 
 
 def test_huong_dich_do_llm_chon():
+    """Hướng dịch phải là hướng MODEL chọn, không phải giàn giáo if-else của W-12.
+
+    Dịch từ `stomach` chứ không từ `speed`, và lý do đáng ghi lại: một model giả
+    luôn trả cùng một câu **tự rút cạn cái kho nó đang rút**. Với `speed` thì sau
+    vài chục lượt cả đàn về `speed = 0`, `validate_shift` từ chối bằng
+    `SEMANTIC_SHIFT_AT_MIN`, và bài kiểm đỏ vì hết nguyên liệu chứ không vì cơ
+    chế sai — đo được 183–188 lượt trượt ở cả bản trước lẫn sau W-18. `stomach`
+    thì được đột biến-khi-chết bù lại (`CAUSE_BIAS["starve"]`), nên kho không cạn
+    và bài kiểm nói đúng về thứ nó định nói.
+    """
     world, creatures, state, rng = build_match(seed=80)
     strat = LlmStrategist("http://m", [c.id for c in creatures],
-                          transport=_model("speed", "brain"))
+                          transport=_model("stomach", "brain"))
     for t in range(300):
         tick(world, creatures, t, rng, state, strategist=strat)
     pairs = collections.Counter(
         tuple(p) for c in creatures for p in c.shift_log
     )
     assert pairs, "không ai dịch trait"
-    assert pairs.most_common(1)[0][0] == ("speed", "brain"), pairs
+    assert pairs.most_common(1)[0][0] == ("stomach", "brain"), pairs
 
 
 def test_dich_khong_hop_le_thi_bo_luot_khong_thu_lai():
