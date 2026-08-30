@@ -54,63 +54,54 @@ Ván mở tự chạy vòng `LOBBY → SEEDING → RUNNING → REVEAL → COOLDO
 
 ### ▶ Mai bắt đầu từ đây
 
-Ba việc của hôm qua **đã chạy xong cả ba**, và chúng đổi hẳn câu hỏi tiếp theo.
+**Cái máy đo đã xong và đã hiệu chỉnh. Phép đo thì chưa cho ra số nào.** Đó là
+câu tóm tắt trung thực nhất về trạng thái dự án, và nó không đổi bằng cách viết
+thêm code.
 
-**Việc 1 (chạy mẫu 7B) — đang chạy**, seed `55 26 32 9 3`. Hai seed đầu xong:
-`match = 0.000` cả hai, trên một nền đã sạch (0–2 `LLM_MISS` trên 300+ lời gọi,
-47/50 và 53/55 mục sổ được nhận).
+#### Đã loại khỏi danh sách nghi can — bằng bằng chứng, không bằng lập luận
 
-**Việc 2 (kiểm bộ chấm trước khi đổ lỗi cho model) — xong, bộ chấm KHÔNG hỏng.**
-Chế độ gian lận cho `match = 1.000`. Và tầng chấm thứ hai giờ cũng có bằng chứng
-riêng: đáp án hoàn hảo ăn **1.000**, toàn `None` ăn 0, **toàn hệ quả cũng ăn 0**
-(chuẩn hoá null chặn đúng lối đoán bừa).
+| nghi can | cách loại | số đo |
+|---|---|---|
+| bộ chấm | chế độ gian lận, chạy trong CI mỗi lần push | `match = 1.000` · oracle đáp án hoàn hảo `1.000` |
+| sổ tay nói dối | thêm từ vựng cho 5 trigger nó từng câm | dòng "bước vào…" **29,1% → 0,4%** |
+| định kiến chú ý | so 3 seed trước/sau | `EAT` trong Sổ Luật **83→71%**, **75→65%**, **82→76%** |
+| ngân sách token | đo token thật của từng loại lời gọi | oracle: dòng chấm được **15–21/45 → 56–60/60** |
+| cơ chế câm lặng | viết luật chơi ra prompt | `want_codex` 0/44→3/18 · `want_hunch` 1/85→6/38 |
+| ba nấc B-10 §3 | sổ tay nghèo · luật hiếm nổ · từ vựng rộng | **cả ba sạch** |
 
-**Việc 3 (`ever_stated` trước `found`) — vẫn đúng**, và giờ có nguyên nhân.
+Sau tất cả: **8 seed × 3 model (1.5B · 7B · 14B), `match = 0.000` không trừ một
+lần.** Câu *"Qwen-7B không quy nạp được trong thế giới này"* giờ mới có căn cứ.
 
-#### Chỗ hỏng KHÔNG phải "năng lực quy nạp". Nó là hai thứ, cả hai đo được.
+**Nhưng đọc cho đúng phạm vi.** Đó là kết luận về **một model**, không phải về
+mệnh đề trung tâm. Mệnh đề ấy — *model to hơn thành loài đỉnh vì quy nạp giỏi
+hơn* — **vẫn chưa được kiểm**, vì chưa model nào vượt vạch xuất phát. Không có
+kết quả âm nào ở đây nói rằng thiết kế sai; chúng nói rằng **cái vạch đặt cao
+hơn Qwen-7B**.
 
-**(1) Lỗ khoá 27 tick.** Sinh vật chết **4,4–4,9 lần một ván**; tuổi **trung vị
-lúc nó ghi Sổ Luật là 27 tick**. Sổ tay chết theo đời, nên lúc bị hỏi "ngươi tin
-luật nào" thì trong tay nó chỉ có 27 tick — trong khi luật thật nổ suốt cả ván.
+#### Ba việc, theo thứ tự lợi/công
 
-**(2) Định kiến chú ý.** Vào sổ tay `EAT` 45% · `ATTACK` 32% · `DRINK` 19%. Ra
-mục sổ `EAT` **85%** · `ATTACK` 4% · `DRINK` **2%**. Sổ tay cân đối; model
-khuếch đại chuyện ăn ~2 lần và bóp uống ~10 lần.
+**A — thử một model mạnh hơn hẳn.** Đây giờ mới là việc đúng, và phiếu
+[B-10](tasks/B-10-score.md) dặn *"đừng chẩn đoán bằng cách đổi model"* **đã được
+tôn trọng đủ lâu**: hai ngày liền, mỗi lần con số xấu thì nguyên nhân đều là hạ
+tầng của chính ta. Giờ hạ tầng sạch, nên đổi model không còn là né tránh chẩn
+đoán — nó **là** phép chẩn đoán còn lại. Cần một model đủ sức quy nạp; Qwen-14B
+đã thử và cũng 0.
 
-Đã kiểm và **bác bỏ** lời giải thích dễ chịu nhất cho (2) — *"`EAT` thắng vì nó
-giàu `arg`"*: `STEP_ON` cũng có 5 `arg` mà chỉ ăn 2%. Nên phần còn lại là định
-kiến ngữ nghĩa thật.
+**B — chạy lại X-09 sau khi Linh cảm được vá.** Lần chạy trước đo một cơ chế
+chưa hoạt động (23 ô, **3 lượt thử**). Hai luật chơi ẩn đã viết ra và đã kiểm
+bằng model thật (số điều kiện `1,2 → 0,71`; ô bị ghi đè `3–4 mỗi con → 1 cả
+ván`), nên giờ nó mới trả lời được câu nó định hỏi.
 
-#### Việc tiếp theo, theo thứ tự
+**C — phát biểu lại M1 cho thế giới nhiều tầng.** 16 cấu hình cho thấy điều kiện
+1 và 2 **đối nhau theo cấu tạo**, và điều kiện 2 không co giãn theo `N`. Đề xuất
+`≥ 95% cá thể chết ít nhất một lần`. **Quyết định của chủ dự án**, không phải của
+một lượt tune.
 
-**A — chờ phán quyết 5 seed.** Đừng đổi gì trước khi nó xong; đổi giữa chừng là
-tự bỏ mẫu.
+#### Đọc trước khi sửa bất cứ thứ gì
 
-**B — X-09, và nó nhắm đúng (1).** `--hunch` cho phép ghi giả thuyết mà không
-tốn ô Sổ Luật, và **bảng đếm sống qua cái chết** (co lại, không xoá) — tức là nó
-gỡ đúng cái lỗ khoá 27 tick.
-```bash
-python scripts/x09_hunch.py --seeds 5 --ticks 200 --llm-url http://127.0.0.1:8080
-```
-Nếu bảng đếm cộng dồn qua nhiều đời mà `match` **vẫn** 0 thì nút thắt không phải
-trí nhớ — và chỉ **lúc ấy** câu *"model không quy nạp được trong thế giới này"*
-mới có căn cứ.
-
-**C — prompt, cho (2).** Đây là chỗ duy nhất còn lại sau khi đã loại sổ tay, tần
-suất luật, độ giàu từ vựng và bộ chấm. Và dự án đã có tiền lệ đúng cỡ này: thêm
-**một câu** vào khối D nói thẳng `want_codex` là cánh cửa duy nhất đã kéo tỉ lệ
-xin ghi sổ từ **0/44 lên 3/18**. Đổi **một thứ một lúc**, đo lại bằng chính cột
-"chủ đề mục sổ".
-
-**D — đổi model là việc CUỐI.** Phiếu [B-10](tasks/B-10-score.md) dặn *đừng chẩn
-đoán bằng cách đổi model*, và hôm nay là ngày thứ hai lời dặn ấy đúng: hai lỗi
-tìm được (ngân sách oracle, tên sự kiện chưa khai) đều là lỗi hạ tầng đội lốt
-"model kém".
-
-**Còn nợ, không gấp:** ~~X-09~~ (đã thành việc B ở trên) · cột `n_answered` mới
-thêm sẽ trả lời `pred_acc = 0.000` là *trả lời sai* hay *im lặng* — seed 9 và 3
-chạy tiến trình riêng nên **đã nhận bản vá**, còn 55/26/32 thì không, thành một
-phép so trước/sau ngay trong cùng một lần chạy.
+[09-HO-LOI](09-HO-LOI.md) — bốn họ lỗi đã lặp đủ nhiều để không còn là tai nạn,
+và **không họ nào báo lỗi**. Riêng họ 4 (*phép đo hỏng trông y hệt phép đo cho
+kết quả âm*) đã tự chứng minh giá trị của nó ba lần trong hai ngày.
 
 ### Đang bị chặn vì thiếu tài nguyên ngoài
 
