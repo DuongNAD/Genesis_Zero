@@ -176,7 +176,7 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
         hunch_ready = (
             minds.hunch_enabled
             and c.id in minds.want_hunch
-            and current_tick - minds.hunch_of(c).last_write >= law_config.HUNCH_COOLDOWN
+            and current_tick - minds.hunch_last_write(c.id) >= law_config.HUNCH_COOLDOWN
         )
         if c.id in state.runner.strategist.want_shift:
             kind = "shift"

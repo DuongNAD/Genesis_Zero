@@ -100,6 +100,17 @@ class Minds:
             hb.resize(size)
         return hb
 
+    def hunch_last_write(self, cid: str) -> int:
+        """Lần ghi linh cảm gần nhất — TRA CỨU thuần, không tạo sổ.
+
+        `hunch_of` tạo sổ khi chưa có, nên gọi nó chỉ để hỏi hạn nguội sẽ dựng
+        một cuốn sổ rỗng cho MỌI cá thể ở MỌI lượt nghĩ. Không sai, nhưng nó làm
+        `self.hunches` đầy sổ rỗng và mất luôn tính chất "có mặt ở đây nghĩa là
+        đã từng nêu một linh cảm" — thứ mà cả log lẫn bài kiểm đều dựa vào.
+        """
+        hb = self.hunches.get(cid)
+        return hb.last_write if hb is not None else -law_config.HUNCH_COOLDOWN
+
     def rep_of(self, cid: str) -> speech.Reputation:
         r = self.reputation.get(cid)
         if r is None:

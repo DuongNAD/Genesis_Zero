@@ -906,7 +906,7 @@ class LlmStrategist:
             hunch_ready = (
                 self.minds.hunch_enabled
                 and c.id in self.minds.want_hunch
-                and tick_no - self.minds.hunch_of(c).last_write >= law_config.HUNCH_COOLDOWN
+                and tick_no - self.minds.hunch_last_write(c.id) >= law_config.HUNCH_COOLDOWN
             )
             if c.id in self.want_shift:
                 kind = "shift"

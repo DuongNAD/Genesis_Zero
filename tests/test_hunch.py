@@ -492,3 +492,20 @@ def test_linh_cam_KHONG_BAO_GIO_cuop_luot_ghi_so():
         encoding="utf-8")
     assert src_net.index('kind = "codex"') < src_net.index('kind = "hunch"'), \
         "đường mạng phải giữ CÙNG thứ tự ưu tiên với đường cục bộ"
+
+
+def test_hoi_han_nguoi_KHONG_dung_len_mot_cuon_so_rong():
+    """`hunches` có mặt = đã từng nêu một linh cảm. Đừng phá tính chất ấy.
+
+    `hunch_of` tạo sổ khi chưa có, nên gọi nó chỉ để hỏi hạn nguội sẽ dựng một
+    cuốn sổ rỗng cho MỌI cá thể ở MỌI lượt nghĩ — và cả log lẫn bài kiểm đều đọc
+    `hunches` như "ai đã nêu gì".
+    """
+    from genesis import law_config
+
+    m = Minds()
+    c = _creature("L1")
+    assert m.hunch_last_write(c.id) == -law_config.HUNCH_COOLDOWN
+    assert not m.hunches, "chỉ HỎI thôi mà đã dựng sổ"
+    m.hunch_of(c)
+    assert c.id in m.hunches
