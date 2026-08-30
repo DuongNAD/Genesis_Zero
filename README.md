@@ -154,4 +154,11 @@ Windows: xem bảng thay cho `make` trong [docs/CHAY-TREN-WINDOWS.md](docs/CHAY-
 
 ## Giấy phép
 
-Chưa chọn. Cứ đọc, chạy, và fork thoải mái; hỏi trước nếu muốn dùng thương mại.
+[Apache License 2.0](LICENSE). Đọc, chạy, fork, sửa, dùng thương mại — không
+cần hỏi. Chỉ cần giữ lại thông báo bản quyền và ghi rõ chỗ nào bạn đã sửa.
+
+*(Câu cũ ở đây viết "chưa chọn… hỏi trước nếu muốn dùng thương mại". Nó có hai
+vấn đề: không có file `LICENSE` thì luật mặc định là **không ai được phép dùng
+lại gì cả** — ngược hẳn ý định — và "cho dùng tự do trừ thương mại" không khớp
+giấy phép mã nguồn mở chuẩn nào. Apache-2.0 cho dùng thương mại thoải mái, nên
+điều kiện "hỏi trước" đã bỏ để tài liệu và giấy phép nói cùng một điều.)*
