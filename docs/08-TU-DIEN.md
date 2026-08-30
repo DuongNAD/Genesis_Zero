@@ -40,6 +40,7 @@
 | **lớp** (class) | Cái engine **biết**: `FRUIT_A`. Agent không bao giờ thấy chuỗi này. | |
 | **Sổ Luật** (codex) | Danh sách có số ô cố định chứa luật mà cá thể **tin**. Là thứ được chấm. | [03 §4.1](03-LUAT-AN-V5.md) |
 | **sổ tay** (field notes) | Vòng đệm sự kiện đã trải qua/chứng kiến, server dựng, đưa vào prompt. | [03 §7.1](03-LUAT-AN-V5.md) |
+| **linh cảm** (hunch) | Luật mà cá thể **nghi**, chưa tin. Nhiều ô hơn Sổ Luật, thế giới đếm hộ "đúng mấy / thử mấy", và **không bao giờ được chấm**. TẮT mặc định. | [B-14](tasks/B-14-linh-cam.md) |
 | **notepad** | 200 ký tự tự do agent tự viết, chứa giả thuyết dở dang. | [03 §7.3](03-LUAT-AN-V5.md) |
 | **REVEAL** | Công bố luật thật sau khi ván kết thúc. | [03 §1.2](03-LUAT-AN-V5.md) |
 

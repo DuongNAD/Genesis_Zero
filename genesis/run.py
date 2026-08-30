@@ -69,6 +69,10 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
                     help="dựng lại một ván có LLM từ log (B-06)")
     ap.add_argument("--truth", type=Path, default=None,
                     help="ghi bộ luật ẩn ra JSON cho bộ chấm (B-10)")
+    ap.add_argument("--hunch", action="store_true",
+                    help="bật LINH CẢM (B-14) — chỗ để đoán mà không phải tin. "
+                         "TẮT mặc định: bật lên là đổi luật chơi, nên con số của "
+                         "ván bật không so được với ván tắt")
     ap.add_argument("--no-laws", action="store_true",
                     help="chạy WORLD_FLAT: không sinh luật ẩn (nhánh đối chứng X-07)")
     args = ap.parse_args(argv)
@@ -170,6 +174,7 @@ def main(argv: list[str] | None = None) -> int:
         chosen = select_creatures(args.llm, creatures)
         if chosen:
             strategist = LlmStrategist(args.llm_url, chosen, log=None)
+            strategist.minds.hunch_enabled = bool(args.hunch)
 
     match_id = f"m_{args.seed:05d}"
     with LogWriter(args.out, match_id) as log:

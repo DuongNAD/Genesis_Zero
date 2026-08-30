@@ -21,7 +21,7 @@
 | Thắng thua | ✅ ba danh hiệu riêng: Nhà khoa học · Kẻ sống sót · Người đầu tiên |
 | Bản đồ | ✅ năm bản đồ, cổng khả giải chạy theo cặp (bản đồ, seed) |
 | Xem 3D | ✅ `web/watch3d.html` — three.js trong repo, không CDN |
-| Số việc xong / tổng | **66 / 67** |
+| Số việc xong / tổng | **67 / 69** |
 
 Chạy được: `python -m genesis.run --seed 21 --ticks 300` — **xem thế giới chạy** · `make test` · `python scripts/logview.py runs/*.jsonl` · `uvicorn net.server:app` rồi mở `web/watch.html`.
 Chưa có: một ván LLM thật (còn nợ tải `.gguf`, xem S-02). Cả tầng tâm trí đã dựng và kiểm
@@ -81,10 +81,9 @@ nhau: "chưa bao giờ tìm ra" và "tìm ra rồi đánh mất". `L5:1` hôm na
 thứ hai — brain 0 có đúng **một ô sổ**, nó tìm ra ở tick 99 rồi phải xoá ở tick
 148 để ghi thứ khác.
 
-**Còn nợ, không gấp:** cơ chế **Linh cảm** đã thiết kế xong, chưa viết — và
-**thiết kế ấy không nằm trong kho**: không tài liệu nào mô tả nó, nên dòng này
-là thứ duy nhất biết rằng nó tồn tại. Viết phiếu việc trước, đừng viết code
-trước.
+**Còn nợ, không gấp:** **X-09** — chạy phép đo của [B-14](tasks/B-14-linh-cam.md).
+Cơ chế đã viết và TẮT mặc định; mệnh đề *"linh cảm rút ngắn `t_discover`"* chưa
+được đo, và nó **được phép trả lời KHÔNG**.
 
 ### Đang bị chặn vì thiếu tài nguyên ngoài
 
@@ -235,6 +234,7 @@ Cột **Giao?**: `✅` giao được cho model rẻ · `⚠️` giao được ph
 | [B-11](tasks/B-11-noi-danh-tieng.md) | Kênh nói + danh tiếng | ✅ | ⚠️ | B-05 | v4 b24–25 |
 | [B-12](tasks/B-12-teach.md) | TEACH + provenance + đo nói dối | ✅ | ❌ | B-11, B-08 | v5 L13–16 |
 | [B-13](tasks/B-13-dich-trait-llm.md) | LLM tự chọn hướng dịch trait | ✅ | ✅ | B-05, W-12 | v4 b26 |
+| [B-14](tasks/B-14-linh-cam.md) | **Linh cảm** — chỗ để đoán mà không phải tin | ✅ | ❌ | B-07, B-08, L-02 |
 
 ### N · Thế giới mở
 
@@ -270,6 +270,7 @@ Cột **Giao?**: `✅` giao được cho model rẻ · `⚠️` giao được ph
 | X-06 | Báo cáo Q1–Q7 | ✅ | ❌ | X-02…X-05 |
 | X-07 | Đồ hoạ pygame (v4 M5) | ✅ | ✅ | W-12 |
 | X-08 | **Cẩm nang có thay được huấn luyện không?** | 🟨 | ❌ | W-16 |
+| X-09 | **Linh cảm có rút ngắn `t_discover` không?** | 🟨 | ❌ | B-14 |
 | [R-01](tasks/R-01-rollout.md) | Rollout headless song song | ✅ | ⚠️ | B-10 |
 | [R-02](tasks/R-02-mau.md) | Trajectory → (prompt, response, reward) | ✅ | ✅ | R-01 |
 | [R-03](tasks/R-03-grpo.md) | GRPO + LoRA | 🟨 | ❌ | R-02 |
@@ -295,6 +296,9 @@ Nếu lệnh nghiệm thu chưa pass thì trạng thái là `🟨`, không phả
 
 | Ngày | Việc | Ghi chú |
 |---|---|---|
+| 2026-08-30 | ✅ **B-14** Linh cảm · 🟨 **X-09** phép đo của nó | Thiết kế từ đầu (dòng "đã thiết kế xong" trong STATUS **không trỏ tới tài liệu nào** — nó là thứ duy nhất trong kho biết rằng cơ chế ấy từng tồn tại). Vấn đề thật: **Sổ Luật gánh hai việc** — vừa là chỗ ghi giả thuyết, vừa là chỗ nộp bài — nhưng brain 0 có đúng MỘT ô và mỗi lần ghi tốn `CLAIM_COOLDOWN = 25`. Nên *thử một khả năng* trả giá y hệt *tuyên bố đã biết*, và hai đầu của hậu quả đều đã đo được: `L5:1` tìm ra luật ở tick 99 rồi **phải xoá ở tick 148**; model viết **24/45 mục về ăn quả**, L1 viết 9 mục thì cả 9 về ăn quả. Linh cảm là ô nháp: nhiều ô hơn Sổ Luật, **không bao giờ được chấm**, và thế giới tự đếm hộ "đúng mấy trên thử mấy". Ba quyết định khó, mỗi cái là một bất biến: (1) **so ở mức `EffectKind`, KHÔNG so `mag`/`dur`** — con vật cảm được "máu tụt", không cảm được "DAMAGE mức MED"; so tới `mag`/`dur` là rò đáp án qua cửa sau và nó rò IM LẶNG, `match` chỉ nhích lên trông như model giỏi hơn. (2) **`tried` đếm cả lần trigger khớp mà KHÔNG có gì xảy ra** — bỏ những lần ấy thì mọi linh cảm đúng 100%; đây đúng là câu *"chuyện không xảy ra cũng là bằng chứng"* trong `SEED_LESSONS`, thứ sổ tay 6 dòng không nhớ nổi. (3) **TẮT mặc định** (`--hunch`), vì bật lên là đổi luật chơi và mọi con số cũ hết so được. Không làm: lệnh `PROMOTE` từ linh cảm sang Sổ Luật — nó thêm cơ chế mà không thêm năng lực, và xoá mất chi phí chép lại vốn là một phần của việc cam kết. |
+| 2026-08-30 | 🎲 **Mỗi ván một ĐỀ BÀI khác** — biến "gần như luôn" thành bảo đảm | Kiểm trước khi sửa: chế độ mở **đã** bốc seed mới mỗi ván nên luật đã khác nhau (6/6 ván khác đề khi đo). Nhưng đó là xác suất, không phải bảo đảm — hai ván liên tiếp *có thể* trùng đề, và một ván trùng đề biến điểm của nó thành **điểm trí nhớ**. Đúng thứ [W-16](tasks/W-16-cam-nang.md) cấm cẩm nang làm (chép đáp án sang ván sau), chỉ khác là ở đây chính thế giới phát lại đề cũ. Thêm cửa sổ nhớ `LAW_NOVELTY_WINDOW = 5` (bằng độ dài vòng xoay bản đồ) trên **chữ ký thô** (bộ cặp trigger–hệ quả, bỏ `mag`/`dur`) — thô là cố ý, khoá quá mịn thì cửa sổ không bao giờ chặn được gì, đúng lỗi [R-04](tasks/R-04-tach-tap.md) đã gặp. Bốc lại **có trần** rồi chấp nhận: vòng lặp không giới hạn ở đây là server treo im lặng khi không gian luật của một bản đồ hẹp hơn cửa sổ. Đo: 8 ván liên tiếp, 8 đề khác nhau, **0 lần phải bốc lại** — bảo đảm này gần như miễn phí, nhưng giờ nó là bảo đảm. |
+| 2026-08-30 | 🔴 **Ba tên sự kiện chưa khai, và 564 bài test không bài nào đỏ** | `LogWriter.write` **ném** với `kind` lạ. `SHIFT_OP` (viết trong lượt N-16) không có trong `EVENT_KINDS` — nghĩa là ván mở thật sẽ **gãy ở lượt đầu tiên có người gửi một quyết định dịch trait**. Bộ test không bắt được vì mọi bài chạy `log_dir=None`, nên `MatchRunner._write` không làm gì cả và mọi nhánh đều xanh. Đây là một họ lỗi mới đáng ghi: **test chạy với log tắt thì mọi lỗi ở tầng log đều vô hình**. Thêm `tests/test_seams.py::test_moi_ten_su_kien_duoc_GHI_deu_co_trong_EVENT_KINDS` quét nguồn tìm mọi `_write("TÊN"` và đối chiếu — bắt được cả `HUNCH_OP` và `LAW_REPEAT` viết cùng ngày. |
 | 2026-08-30 | 🧹 [N-02 §5](tasks/N-02-seam-registry.md) — **xoá** `genesis/registry.py` | Cái bẫy chờ sẵn đã gỡ: 100 dòng có test mà không file sản phẩm nào import, trùng khái niệm với `net.match.Registration`. Chọn **xoá** chứ không gộp, vì bất biến 1 của phiếu ("một lớp, hai nguồn") **chưa bao giờ thành hiện thực** — Lab mode đọc thẳng `config.POPULATION`, Open mode dựng `Registration` riêng, không đường nào đi qua `SpeciesRegistry`. Giữ một lớp không ai gọi không giữ được bất biến ấy, nó chỉ giữ ảo giác rằng bất biến ấy đang được thi hành. Gộp thì phải sửa `/join`, `sweep_health`, `reclaim`, `is_feral` — đường duy nhất người lạ đi vào — để đổi lấy đúng một lợi ích là ít đi một tên lớp, và `Registration` mang `token`/`last_heartbeat`/`feral_since` là trạng thái **phiên** chứ không phải đặc tả loài. Giữ lại phần còn giá trị: bài kiểm "thêm sinh vật giữa ván, vòng tick chạy tiếp" ([W-11](tasks/W-11-vong-tick.md) bất biến 3) viết lại không dùng registry. |
 | 2026-08-30 | ✅ **N-16** ngang bằng cục bộ / chế độ mở | Phiếu dặn **đừng vá từng cái nữa** sau bốn lần cùng một họ lỗi, nên lần này gom: toàn bộ trí nhớ và tầng xã hội về `genesis.minds.Minds`, `MatchRunner` sở hữu một bản, `net.routes_work` chỉ tra cứu vào `state.runner.minds`. Năm dict cấp module khoá theo `(match_id, creature_id)` biến mất. Ba việc còn nợ (dạy nhau + sổ ghi công, dịch trait, cẩm nang) đóng luôn theo. **Và việc gom tìm ra ba khoảng lệch mà đếm bằng mắt đã bỏ sót** — đó mới là lập luận cho việc gom: (1) trường `say` có trong schema mà `/decision` **không đọc**, nên ở một ván mở thuần **không sinh vật nào nói được câu nào**, và khối "nghe được" vừa vá xong hôm qua không bao giờ có gì để chứa; (2) ghi chú qua mạng chỉ `.strip()[:N]` chứ không `sanitize_free_text`, tức người lạ gõ chữ "HP" là giết được ván của mọi người — đúng lỗi đã sửa ở đường cục bộ, nhưng ở đây nó là một **nút bấm** chứ không phải tai nạn; (3) `max_tokens` chép tay cho `codex` **không cộng headroom**, tức client qua mạng gánh lại đúng lỗi "JSON đứt giữa trường `effect`" mà đường cục bộ đã đo và sửa xong. Thêm `tests/test_n16_ngang_bang.py`, mười ca, trong đó một ca không kiểm chức năng nào mà **canh chừng**: đỏ ngay lúc ai đó dựng lại một dict trí nhớ cấp module ở `routes_work`. Kèm theo: `tests/test_decision.py` chạy với `tick_ms=1` và vòng lặp nền của `lifespan` là một cuộc đua có thật (ván trôi ~1000 tick/giây giữa `/work` và `/decision`, thỉnh thoảng ra 410 WORK_EXPIRED); chặn nhịp lại thay vì sống chung với một bài kiểm chớp tắt. |
 | 2026-08-29 | ✅ **W-14** ba danh hiệu · ✅ **W-15** năm bản đồ · ✅ **N-14** trang xem 3D · ✅ **N-10b/c** nhiều client | Ba việc mới theo yêu cầu. **W-14**: không cộng ba danh hiệu thành một điểm — một trọng số duy nhất giữa "hiểu" và "sống" là một tuyên bố ta **chưa biết đúng**, và đó chính là câu hỏi Q7. Để riêng thì khoảng cách giữa ba bảng **là dữ liệu**. Thêm một dòng cảnh báo khi không ai tìm ra luật: lúc ấy `R = 0.1·R_survive` cho tất cả và bảng "Nhà khoa học" chỉ là bảng sinh tồn thu nhỏ — không nói thẳng thì có người đọc nó như một kết luận về quy nạp. **W-15**: cổng khả giải phải chạy theo cặp `(bản đồ, seed)`, và đo thẳng cho thấy vì sao — một luật `DRINK` kích hoạt **349** lần trên sa mạc so với **1880** trên quần đảo. Quét `plant_scale` 0,8→3,0 trên cả năm bản đồ và kết luận thẳng: **M1 là tính chất của ĐỒNG CỎ**; ở sa mạc và hẻm núi thêm thức ăn không cứu được vì chết ở đó đến từ chen chúc, không từ đói. **N-14**: three.js r128 UMD vendor trong `web/vendor/` (chạy được cả từ `file://`), địa hình gửi **một lần** mỗi ván dưới dạng chuỗi một ký tự mỗi ô — gửi mỗi tick thì 3 KB × 200 tick chiếm gần hết băng thông luồng xem. Phát hiện kèm: trang 2D đang vẽ **ô caro giả** cho mọi bản đồ, nên năm bản đồ trông giống hệt nhau — giờ nó cũng đọc địa hình từ khung. |

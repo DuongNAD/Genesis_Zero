@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any
 from genesis import law_config, speech
 from genesis.codex import Codex
 from genesis.fieldnotes import FieldNotes
+from genesis.hunch import HunchBook
 from genesis.lineage import forget_on_death
 from genesis.provenance import Ledger
 
@@ -52,6 +53,14 @@ class Minds:
         self.heard: dict[str, list[str]] = {}
         self.notepad: dict[str, str] = {}
         self.want_codex: set[str] = set()
+        # ── Linh cảm (B-14), TẮT mặc định ───────────────────────────────
+        # Bật lên là **đổi luật chơi**, nên mọi con số ghi trước đó không so
+        # được với con số sau đó. Nó là một nhánh thí nghiệm, đúng cách cẩm nang
+        # của W-16 được đối xử: mệnh đề "linh cảm rút ngắn t_discover" phải
+        # được ĐO, không được giả định.
+        self.hunch_enabled: bool = False
+        self.hunches: dict[str, HunchBook] = {}
+        self.want_hunch: set[str] = set()
         # Cẩm nang theo LOÀI, sống qua nhiều ván (W-16). Rỗng thì `system_block`
         # không thêm gì — mọi ván cũ chạy y hệt.
         self.handbooks: dict[str, str] = {}
@@ -80,6 +89,16 @@ class Minds:
         elif cx.size != size:
             cx.resize(size)
         return cx
+
+    def hunch_of(self, c: Creature) -> HunchBook:
+        hb = self.hunches.get(c.id)
+        size = law_config.HUNCH_BY_BRAIN[c.traits.brain]
+        if hb is None:
+            hb = HunchBook(size=size)
+            self.hunches[c.id] = hb
+        elif hb.size != size:
+            hb.resize(size)
+        return hb
 
     def rep_of(self, cid: str) -> speech.Reputation:
         r = self.reputation.get(cid)
@@ -140,7 +159,15 @@ class Minds:
 
     # ── vòng đời ────────────────────────────────────────────────────────
     def on_death(self, cid: str) -> int:
-        """Sang đời mới: sổ tay chết theo, Sổ Luật bớt chắc chắn (W-17)."""
+        """Sang đời mới: sổ tay chết theo, Sổ Luật bớt chắc chắn (W-17).
+
+        Linh cảm đi cùng SỔ TAY, không đi cùng Sổ Luật: nó là trạng thái *đang
+        điều tra*, và một cuộc điều tra dở dang không thừa kế được — người thừa
+        kế không có cuốn sổ tay đã sinh ra nó.
+        """
+        hb = self.hunches.get(cid)
+        if hb is not None:
+            hb.clear()
         return forget_on_death(self.notes.get(cid), self.codices.get(cid))
 
     def new_match(self) -> None:
@@ -156,9 +183,10 @@ class Minds:
         ván sau là một con khác hẳn do người khác điều khiển.
         """
         for d in (self.notes, self.codices, self.heard, self.notepad,
-                  self.reputation, self.offers):
+                  self.reputation, self.offers, self.hunches):
             d.clear()
         self.want_codex.clear()
+        self.want_hunch.clear()
         self.teach_events.clear()
         self.ledger = Ledger()
 

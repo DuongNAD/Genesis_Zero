@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import TYPE_CHECKING, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
 from genesis import config, law_config
 from genesis.lawdsl import CondKind, EffectKind, TriggerKind, to_vietnamese, vocab_for_brain
@@ -231,6 +231,7 @@ def user_block(
     heard: Sequence[str] = (),
     notepad: str = "",
     seen: Iterable[Creature] = (),
+    hunches: Any = None,
 ) -> str:
     """E1..E5 — toàn bộ phần biến động, luôn đứng SAU system_block."""
     sm = world.surface_map
@@ -296,7 +297,14 @@ def user_block(
     e4 = "[NGHE ĐƯỢC]\n" + ("\n".join(heard_clean) if heard_clean else "chưa nghe ai nói gì.")
     e5 = "[GHI CHÚ RIÊNG]\n" + (pad_clean or "trống.")
 
-    out = "\n\n".join(["\n".join(e1), e2, e3, e4, e5])
+    # E6 — linh cảm (B-14). Rỗng thì KHÔNG thêm khối nào: ván không bật linh
+    # cảm phải dựng ra đúng cùng một prompt như trước, tới từng ký tự, nếu không
+    # thì `prompt_hash` lệch và mọi log cũ mất giá trị huấn luyện.
+    e6 = hunches.render(sm) if hunches is not None else ""
+    blocks = ["\n".join(e1), e2, e3, e4, e5]
+    if e6:
+        blocks.insert(3, e6)      # ngay dưới Sổ Luật, trên [NGHE ĐƯỢC]
+    out = "\n\n".join(blocks)
     return _check_no_leak(out, "khối E")
 
 

@@ -208,6 +208,10 @@ class MatchRunner:
         self._laws: list = []          # RIÊNG TƯ. Xem bất biến 5.
         self.seed = 0
         self.map_name = net_config.MAP_ROTATION[0]
+        # Chữ ký "đề bài" của vài ván gần nhất. Xem `_seed_match`.
+        self._recent_law_sigs: collections.deque = collections.deque(
+            maxlen=net_config.LAW_NOVELTY_WINDOW
+        )
         self.victory = None          # điền ở REVEAL, xem `_close_log`
         self.stopped = False
 
@@ -321,13 +325,37 @@ class MatchRunner:
         self.map_name = net_config.MAP_ROTATION[
             (self.match_no - 1) % len(net_config.MAP_ROTATION)
         ]
-        self.world, self.creatures, self.state, self.rng = build_match(
-            self.seed, map_name=self.map_name
-        )
         # Bản đồ đi vào khoá đệm: sa mạc và quần đảo cho hai thế giới khác nhau,
         # nên cổng khả giải phải chạy theo cặp (bản đồ, seed) — trộn chung một
         # khoá là dùng lại một bộ luật đã được duyệt cho một thế giới khác.
-        self._laws = generate_cached(self.seed, arm=f"STANDARD@{self.map_name}")
+        #
+        # **Ván sau phải là một ĐỀ BÀI KHÁC.** Seed mới gần như luôn cho luật
+        # mới, nhưng "gần như" không đủ: cả dự án đứng trên chỗ người chơi phải
+        # TỰ TÌM ra luật, và một ván trùng đề với ván trước biến điểm của nó
+        # thành điểm trí nhớ. Đó đúng là điều [W-16] cấm cẩm nang làm — chép đáp
+        # án sang ván sau — chỉ khác là ở đây chính thế giới phát lại đề cũ.
+        #
+        # Chữ ký là bộ cặp (trigger, hệ quả): đó là "chủ đề" mà người chơi thật
+        # sự suy luận về, và hai bộ luật cùng chủ đề là cùng một câu hỏi dù
+        # `mag`/`dur` có khác. Bốc lại tối đa `LAW_NOVELTY_TRIES` lần rồi CHẤP
+        # NHẬN — vòng lặp không giới hạn ở đây nghĩa là server treo im lặng khi
+        # không gian luật của một bản đồ hẹp hơn cửa sổ, và một ván trùng đề tệ
+        # hơn nhiều so với một ván không bao giờ bắt đầu.
+        rerolls: list[int] = []
+        for attempt in range(net_config.LAW_NOVELTY_TRIES):
+            laws = generate_cached(self.seed, arm=f"STANDARD@{self.map_name}")
+            sig = self._law_signature(laws)
+            if sig not in self._recent_law_sigs:
+                break
+            # Gom lại, ghi SAU khi log của ván mới được mở. Ghi ngay ở đây là
+            # ghi vào `self.log` của ván TRƯỚC — mà `_close_log` đã đóng nó.
+            rerolls.append(self.seed)
+            self.seed = self._seed_source.randrange(1, 2**31 - 1)
+        self._recent_law_sigs.append(sig)
+        self._laws = laws
+        self.world, self.creatures, self.state, self.rng = build_match(
+            self.seed, map_name=self.map_name
+        )
         self.tick_no = 0
         self.frames.clear()
         self._frame_raw.clear()
@@ -338,6 +366,12 @@ class MatchRunner:
             self.log = LogWriter(self.log_dir / f"{self.match_id}.jsonl", self.match_id)
             self.log.write(0, "RUN_START", seed=self.seed, ticks=self.ticks_total,
                            arm="STANDARD", n_laws=len(self._laws))
+            for i, dropped in enumerate(rerolls):
+                # Đề trùng với một ván gần đây nên bốc lại. Đáng ghi: nếu dòng
+                # này xuất hiện đều thì không gian luật của bản đồ đó hẹp hơn
+                # `LAW_NOVELTY_WINDOW`, và cửa sổ mới là thứ phải sửa.
+                self.log.write(0, "LAW_REPEAT", seed=dropped,
+                               map=self.map_name, attempt=i + 1)
         # Bất biến 2: sảnh trống thì ván vẫn chạy — quần thể mặc định của
         # config.POPULATION đóng vai bot, và loài người thật cắm lên trên.
         #
@@ -379,6 +413,19 @@ class MatchRunner:
                 self.minds.handbooks[species_id] = text
             else:
                 self.minds.handbooks.pop(species_id, None)
+
+    @staticmethod
+    def _law_signature(laws: list) -> tuple:
+        """"Đề bài" của một ván: bộ cặp (trigger, hệ quả), không kể mag/dur.
+
+        Cố ý THÔ. Hai bộ luật chỉ khác cường độ là cùng một câu hỏi đối với
+        người đang đi tìm, và phân biệt chúng thì cửa sổ chống trùng gần như
+        không bao giờ chặn được gì — đúng lỗi mà [R-04] đã gặp một lần: khoá quá
+        mịn thì "chia theo bộ luật" chỉ là chia theo seed dưới một cái tên khác.
+        """
+        return tuple(sorted(
+            (l.trigger.kind.value, l.effect.kind.value) for l in laws
+        ))
 
     def _spawn_registered(self) -> None:
         from genesis.creature import Creature

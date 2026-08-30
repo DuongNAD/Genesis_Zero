@@ -26,7 +26,7 @@ from genesis.reflex import ActiveGoal, Goal, choose_goal
 from genesis.traits import Traits
 from genesis.reveal import law_from_surface_dict
 from genesis.validate import (ARG_DOMAIN, Verdict, validate_codex,
-                              validate_decide, validate_shift)
+                              validate_decide, validate_hunch, validate_shift)
 from genesis.world import phase_at
 
 if TYPE_CHECKING:
@@ -199,8 +199,14 @@ def _kind_arg_schema(names: list[str], sm, extra: dict) -> dict:
 
 
 def schema_for(traits: Traits, kind: str, targets: list[str] | None = None,
-               sm=None) -> dict:
-    """Trả về JSON Schema dict cho kind in {'decide', 'codex', 'oracle', 'shift'}.
+               sm=None, hunch: bool = False) -> dict:
+    """Trả về JSON Schema dict cho kind in {'decide', 'codex', 'oracle', 'shift', 'hunch'}.
+
+    `hunch=False` là mặc định và nó có nghĩa đen: schema `decide` **không có**
+    trường `want_hunch`, nên một ván không bật linh cảm sinh ra đúng cùng một
+    grammar như trước B-14. Đổi grammar là đổi phân phối đầu ra của model, và
+    một nhánh đối chứng dùng grammar khác nhánh thí nghiệm thì không đối chứng
+    được gì.
 
     `targets` là danh sách id mà con này ĐANG NHÌN THẤY. Đưa nó vào schema dưới
     dạng `enum` làm cho một mục tiêu không nhìn thấy trở nên **bất khả về cấu
@@ -239,6 +245,8 @@ def schema_for(traits: Traits, kind: str, targets: list[str] | None = None,
         # trông y hệt một ca "bị cắt" nên rất dễ chẩn đoán nhầm sang ngân sách.
         props["ttl"] = {"type": "integer", "minimum": 2, "maximum": 12}
         props["want_codex"] = {"type": "boolean"}
+        if hunch:
+            props["want_hunch"] = {"type": "boolean"}
         if has_note:
             # Nói tốn token của chính mình. Con 32-token (L5) không có chỗ cho
             # một câu nói, và đó là một sự thật của thế giới chứ không phải một
@@ -296,6 +304,41 @@ def schema_for(traits: Traits, kind: str, targets: list[str] | None = None,
                 "slot": {"type": "integer", "minimum": 0,
                          "maximum": max(0, law_config.CODEX_SIZE_BY_BRAIN[traits.brain] - 1)},
                 "conf": {"type": "integer", "minimum": 1, "maximum": 5},
+                "law": {
+                    "type": "object",
+                    "properties": {
+                        "trigger": trigger_schema,
+                        "conds": {
+                            "type": "array",
+                            "items": cond_schema,
+                            "maxItems": vocab.max_conds,
+                        },
+                        "effect": effect_schema,
+                    },
+                    "required": ["trigger", "conds", "effect"],
+                },
+            },
+            "required": ["op", "slot"],
+            "additionalProperties": False,
+        }
+
+    if kind == "hunch":
+        int_ = {"type": "integer"}
+        trigger_schema = _kind_arg_schema(
+            [t.value for t in vocab.triggers], sm, {"k": int_, "n": int_, "r": int_})
+        cond_schema = _kind_arg_schema(
+            [c.value for c in vocab.conds], sm,
+            {"k": int_, "op": {"type": "string", "enum": [">=", "<="]}, "n": int_, "r": int_})
+        effect_schema = _effect_schema([e.value for e in vocab.effects], sm)
+        return {
+            "type": "object",
+            "properties": {
+                # Không có `CONF`: một linh cảm không mang độ tin. Cả điểm của
+                # nó là ngươi CHƯA tin — bảng đếm mới là thứ nói nó đáng tin đến
+                # đâu, và bảng đếm do thế giới ghi chứ không do ngươi khai.
+                "op": {"type": "string", "enum": ["SET", "DROP"]},
+                "slot": {"type": "integer", "minimum": 0,
+                         "maximum": max(0, law_config.HUNCH_BY_BRAIN[traits.brain] - 1)},
                 "law": {
                     "type": "object",
                     "properties": {
@@ -596,6 +639,16 @@ _CLAIM_TAIL = {
         "thật, theo khuôn KHI ... THÌ ..., và chọn ô để ghi. Không ai nói cho ngươi "
         "biết đúng hay sai."
     ),
+    # Câu này phải nói rõ ba điều, vì cả ba đều trái trực giác: linh cảm KHÔNG
+    # được chấm, nó KHÔNG cần đúng, và thế giới sẽ ĐẾM HỘ. Thiếu điều thứ ba thì
+    # model coi ô linh cảm như một ô Sổ Luật hạng hai và chỉ ghi vào đó thứ nó
+    # đã tin — tức là xoá sạch lý do cơ chế này tồn tại.
+    "hunch": (
+        "\n\n[LINH CẢM]\nĐây KHÔNG phải Sổ Luật và nó không được chấm điểm. Hãy nêu "
+        "một điều ngươi NGHI, chưa cần tin. Từ giờ mỗi lần chuyện ấy đáng lẽ xảy "
+        "ra, ngươi sẽ được cho biết nó có xảy ra thật không — kể cả những lần "
+        "không có gì. Nghi sai không mất gì; nghi thứ ngươi đã chắc thì phí ô."
+    ),
 }
 
 
@@ -617,6 +670,12 @@ def _budget(traits: Traits, kind: str) -> int:
         # 106 token, `shift` 95, còn `codex` chạm đúng trần 200 và **đứt giữa
         # trường `effect`**. Đó là toàn bộ 3/13 lượt hỏng của ván thật — không
         # phải model kém, mà là cái kéo đặt sai chỗ.
+        base = law_config.CLAIM_BUDGET_BY_BRAIN[traits.brain]
+        return base + 3 * config.TOKEN_JSON_HEADROOM
+    if kind == "hunch":
+        # Cùng hình dạng JSON với `codex` (cây ba tầng), nên cùng headroom —
+        # thiếu nó thì linh cảm đứt giữa trường `effect` y hệt lỗi đã đo ở
+        # `codex`, và triệu chứng lại là "model không chịu nêu giả thuyết".
         base = law_config.CLAIM_BUDGET_BY_BRAIN[traits.brain]
         return base + 3 * config.TOKEN_JSON_HEADROOM
     if kind == "shift":
@@ -710,7 +769,7 @@ class LlmStrategist:
         self.teach_events: list = self.minds.teach_events
         self.stats: dict[str, int] = {
             "call": 0, "miss": 0, "semantic_fail": 0, "skipped_open": 0,
-            "codex_ok": 0, "codex_bad": 0,
+            "codex_ok": 0, "codex_bad": 0, "hunch_ok": 0, "hunch_bad": 0,
         }
 
     # ── bộ nhớ mỗi cá thể ────────────────────────────────────────────────
@@ -760,6 +819,7 @@ class LlmStrategist:
             heard=self.heard.get(c.id, ()),
             notepad=self.notepad.get(c.id, ""),
             seen=seen,
+            hunches=self.minds.hunches.get(c.id) if self.minds.hunch_enabled else None,
         )
         return system, user
 
@@ -829,10 +889,19 @@ class LlmStrategist:
             # xin ghi: 397/582 lời gọi ghi sổ bị nguội từ chối, tức hai phần ba
             # ngân sách suy nghĩ đổ vào một câu trả lời đã biết trước là hỏng.
             ready = tick_no - self.codex_of(c).last_claim >= law_config.CLAIM_COOLDOWN
+            hunch_ready = (
+                self.minds.hunch_enabled
+                and c.id in self.minds.want_hunch
+                and tick_no - self.minds.hunch_of(c).last_write >= law_config.HUNCH_COOLDOWN
+            )
             if c.id in self.want_shift:
                 kind = "shift"
             elif c.id in self._want_codex and ready:
                 kind = "codex"
+            elif hunch_ready:
+                # SAU `codex`: một kết luận đáng giá hơn một giả thuyết khi cả
+                # hai cùng chờ, và Sổ Luật mới là thứ được chấm.
+                kind = "hunch"
             else:
                 kind = "decide"
             jobs.append((c, kind, system, user, prompt_hash(system, user),
@@ -885,7 +954,8 @@ class LlmStrategist:
                         self.base_url, self.slots[c.id] % n,
                         system, user + _CLAIM_TAIL[kind],
                         _budget(c.traits, kind),
-                        schema_for(c.traits, kind, targets=tg, sm=world.surface_map),
+                        schema_for(c.traits, kind, targets=tg, sm=world.surface_map,
+                                   hunch=self.minds.hunch_enabled),
                         client=client,
                     )
 
@@ -909,6 +979,9 @@ class LlmStrategist:
             elif kind == "codex":
                 self._want_codex.discard(c.id)
                 self._absorb_codex(c, world, tick_no, phash, r, elapsed_ms)
+            elif kind == "hunch":
+                self.minds.want_hunch.discard(c.id)
+                self._absorb_hunch(c, world, tick_no, phash, r, elapsed_ms)
             else:
                 self._absorb(c, world, creatures, tick_no, phash, r, elapsed_ms)
 
@@ -968,6 +1041,8 @@ class LlmStrategist:
             )
         if r["json"].get("want_codex"):
             self._want_codex.add(c.id)
+        if r["json"].get("want_hunch"):
+            self.minds.want_hunch.add(c.id)
         say = speech.Say.parse(r["json"].get("say"))
         if say is not None:
             self._pending_say[c.id] = say
@@ -1030,6 +1105,55 @@ class LlmStrategist:
             # Ghi luật bằng LỚP, không bằng bề mặt: bộ chấm so với luật thật, mà
             # luật thật viết bằng lớp. Ghi bề mặt thì mỗi ván một cách viết khác
             # và không so được ván này với ván kia.
+            law=to_json(law) if law is not None else None,
+        )
+
+    def _absorb_hunch(self, c, world, tick_no, phash, r, elapsed_ms) -> None:
+        """Ghi một linh cảm (B-14). Không `Ledger`, không điểm, không danh tiếng.
+
+        Cố ý thiếu ba thứ mà `_absorb_codex` có, và mỗi thứ thiếu là một bất biến:
+        không `ledger.award` (linh cảm không phải tri thức, không có công để
+        chia), không `CODEX_OP` (bộ chấm không được nhìn thấy nó), và chi phí chỉ
+        là token — không `COST_CLAIM`, vì nêu một nghi vấn phải rẻ hơn hẳn tuyên
+        bố một kết luận, nếu không thì cơ chế này không mua được gì.
+        """
+        if r is None:
+            self.breaker.record(False, tick_no)
+            self.stats["miss"] += 1
+            self._write(tick_no, "LLM_MISS", c, prompt_hash=phash, ms=elapsed_ms,
+                        kind_asked="hunch")
+            return
+        self.breaker.record(True, tick_no)
+        tokens = int(r["n"])
+        cost = round(tokens / config.TOKENS_PER_ENERGY, 4)
+        c.energy -= cost
+        self.stats["call"] += 1
+        self._write(
+            tick_no, "LLM_CALL", c, prompt_hash=phash, raw=r["raw"],
+            tokens_used=tokens, cost_think=cost, ms=elapsed_ms, kind_asked="hunch",
+            think_interval=c.traits.think_interval, offset=self.offset_of(c),
+        )
+
+        payload = r["json"]
+        hb = self.minds.hunch_of(c)
+        verdict = validate_hunch(payload, c, world.surface_map, tick_no, hb.last_write)
+        law = None
+        if verdict.ok and payload.get("law") is not None:
+            try:
+                law = law_from_surface_dict(payload["law"], world.surface_map)
+            except (KeyError, ValueError, TypeError) as exc:
+                verdict = Verdict(ok=False, reason=f"HUNCH_MALFORMED_LAW:{type(exc).__name__}")
+        if verdict.ok:
+            verdict = hb.apply(payload.get("op", "SET"), int(payload.get("slot", 0)),
+                               law, tick_no)
+        self.stats["hunch_ok" if verdict.ok else "hunch_bad"] += 1
+        # `HUNCH_OP` chứ không `CODEX_OP`: `score.py` gom theo `kind`, nên trộn
+        # tên là để linh cảm chảy thẳng vào bộ chấm — vi phạm bất biến 1 của
+        # B-14 bằng đúng một chữ.
+        self._write(
+            tick_no, "HUNCH_OP", c,
+            ok=verdict.ok, reason=verdict.reason,
+            op=payload.get("op"), slot=payload.get("slot"),
             law=to_json(law) if law is not None else None,
         )
 

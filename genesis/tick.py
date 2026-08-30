@@ -337,7 +337,15 @@ def tick(
 
     # 4. LUẬT ẨN — thu hết (cá thể, hệ quả) rồi mới áp dụng, giữ tính đồng thời của W-11.
     law_events: list[dict] = []
-    if laws:
+    _minds = getattr(strat, "minds", None)
+    # Linh cảm (B-14) cần chính bộ `LawEvent` mà pha này dựng, nên pha phải chạy
+    # cả khi KHÔNG có luật nào. Và ca ấy không phải ca hiếm — nó là `WORLD_FLAT`,
+    # nhánh đối chứng của X-02. Ở đó mọi linh cảm đều `đúng 0 / thử N`, và đó là
+    # thông tin thật: thế giới ấy không có gì để tìm. Bỏ qua pha này khi
+    # `laws` rỗng thì `WORLD_FLAT` cho ra bảng đếm TRỐNG, trông y hệt "chưa thử"
+    # thay vì "đã thử và không có gì".
+    _hunch_on = _minds is not None and getattr(_minds, "hunch_enabled", False)
+    if laws or _hunch_on:
         ate = {e["creature_id"] for e in eat_events}
         drank = {e["creature_id"] for e in drink_events}
         attacked = {a.attacker_id for a in attacks}
@@ -403,13 +411,28 @@ def tick(
                 pairs.append((c, LawEvent(kind=kind, arg=arg, ctx=ctx)))
 
         crng = creature_rng(state.match_seed, tick_no, "LAW")
-        for c, eff, law_idx in collect_law_effects(list(laws), pairs):
+        # Cái gì THẬT SỰ giáng xuống từng con trong tick này. Linh cảm (B-14)
+        # được chấm trên tập này chứ không trên hệ quả của riêng luật nó đoán —
+        # nên bảng đếm có nhiễu, và đó đúng là sự lẫn lộn nhân quả mà một nhà
+        # khoa học thật phải gỡ.
+        happened: dict[str, set] = {}
+        for c, eff, law_idx in collect_law_effects(list(laws or ()), pairs):
             name = apply_creature_effect(c, eff, crng, world)
             if name is not None:
+                happened.setdefault(c.id, set()).add(eff.kind)
                 law_events.append({
                     "creature_id": c.id, "species_id": c.species,
                     "law_id": f"L{law_idx}", "effect": name, "pos": list(c.pos),
                 })
+
+        # Đếm linh cảm SAU khi đã áp xong hết hệ quả, không phải trong lúc áp:
+        # đếm giữa chừng thì con duyệt trước thấy một thế giới khác con duyệt
+        # sau, và đó là đúng thứ tính đồng thời mà W-11 dựng cả pha 4 để giữ.
+        if _hunch_on:
+            for c, ev in pairs:
+                hb = _minds.hunches.get(c.id)
+                if hb is not None:
+                    hb.observe(ev, frozenset(happened.get(c.id, ())))
 
     # 5. CHẾT / HỒI SINH: hp<=0 -> kill(cause) ; reset_body(c) ; try_respawn
     deaths_by_cause: dict[str, int] = {}

@@ -192,6 +192,59 @@ def validate_codex(
     return Verdict(ok=True)
 
 
+def validate_hunch(
+    payload: dict,
+    c: Creature,
+    sm: SurfaceMap | None,
+    tick: int,
+    last_write: int,
+) -> Verdict:
+    """Xác thực thao tác linh cảm (kind='hunch') — B-14.
+
+    Dùng LẠI `validate_codex` cho phần luật: một linh cảm và một mục Sổ Luật có
+    cùng hình dạng, chỉ khác chỗ chứa và khác giá. Viết bản kiểm thứ hai ở đây
+    là dựng lại đúng cái mẫu lỗi mà [N-16] vừa dọn xong — hai bản của một khái
+    niệm, rồi một bản mục.
+
+    Chỉ hai thứ khác: trần ô lấy từ `HUNCH_BY_BRAIN`, và cooldown là
+    `HUNCH_COOLDOWN` (riêng — dùng chung với `CLAIM_COOLDOWN` thì nêu một giả
+    thuyết lại cạnh tranh với ghi một kết luận, đúng thứ B-14 dựng lên để gỡ).
+    """
+    size = law_config.HUNCH_BY_BRAIN.get(c.traits.brain, 1)
+    slot = payload.get("slot")
+    if (
+        slot is None
+        or isinstance(slot, bool)
+        or not isinstance(slot, int)
+        or slot < 0
+        or slot >= size
+    ):
+        return Verdict(ok=False, reason="HUNCH_BAD_SLOT")
+
+    if tick - last_write < law_config.HUNCH_COOLDOWN:
+        return Verdict(ok=False, reason="HUNCH_COOLDOWN")
+
+    op = payload.get("op")
+    if op not in ("SET", "DROP"):
+        return Verdict(ok=False, reason="HUNCH_UNKNOWN_OP")
+    # `SET` mà không kèm luật là một lượt nghĩ đổ đi. `HunchBook.apply` cũng bắt
+    # ca này, nhưng bắt ở đây thì model nhận đúng mã lỗi thay vì một `ok=True`
+    # rồi hỏng ở tầng dưới với một lý do khác.
+    if op == "SET" and payload.get("law") is None:
+        return Verdict(ok=False, reason="HUNCH_MISSING_LAW")
+
+    # Phần luật: mượn nguyên bộ kiểm của Sổ Luật, rồi đổi tên mã lỗi. Truyền
+    # `last_claim` bằng một giá trị đã qua cooldown vì cooldown đã kiểm ở trên,
+    # và truyền `slot=0` vì trần ô cũng đã kiểm ở trên.
+    borrowed = validate_codex(
+        {"law": payload.get("law"), "slot": 0},
+        c, sm, tick, tick - law_config.CLAIM_COOLDOWN,
+    )
+    if not borrowed.ok:
+        return Verdict(ok=False, reason=borrowed.reason.replace("CODEX_", "HUNCH_", 1))
+    return Verdict(ok=True)
+
+
 def validate_shift(payload: dict, c: Creature) -> Verdict:
     """Xác thực dịch chuyển trait (kind='shift')."""
     frm = payload.get("from")

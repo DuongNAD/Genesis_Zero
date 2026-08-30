@@ -64,6 +64,15 @@ DEFAULT_PER_MIN = 240
 # vi phạm trần "lượt/phút" nào cả vì nó chỉ gọi vài lần rồi giữ.
 MAX_CONCURRENT_HOLDS = 4
 
+# ─── Đề bài mỗi ván phải KHÁC (N-04) ────────────────────────────────────────
+# Số ván gần nhất mà bộ luật mới không được trùng "chủ đề" với. Bằng độ dài vòng
+# xoay bản đồ: đi hết một vòng bản đồ rồi mới có thể gặp lại một đề bài, nên
+# không ai chơi hai ván liên tiếp cùng một câu hỏi.
+LAW_NOVELTY_WINDOW = 5
+# Bốc lại tối đa bấy nhiêu lần rồi CHẤP NHẬN trùng. Vòng lặp không giới hạn ở
+# đây là server treo im lặng khi không gian luật của một bản đồ hẹp hơn cửa sổ.
+LAW_NOVELTY_TRIES = 12
+
 # Vòng xoay bản đồ ở chế độ mở (W-15). Theo `match_no`, không bốc ngẫu nhiên:
 # "ván sau là bản đồ nào" nên đoán được, để người chơi biết mình đang chờ gì.
 MAP_ROTATION = ("DONG_CO", "RUNG_RAM", "HOANG_MAC", "QUAN_DAO", "HEM_NUI")

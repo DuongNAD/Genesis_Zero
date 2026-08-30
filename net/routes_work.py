@@ -172,10 +172,18 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
         # Ba loại chứ không phải một schema gộp, y như CLAIM hai pha của B-08:
         # nhồi cả ba vào schema quyết định thường thì con 32 token (L5) không
         # bao giờ tham gia được vào phần được chấm.
+        minds = _minds()
+        hunch_ready = (
+            minds.hunch_enabled
+            and c.id in minds.want_hunch
+            and current_tick - minds.hunch_of(c).last_write >= law_config.HUNCH_COOLDOWN
+        )
         if c.id in state.runner.strategist.want_shift:
             kind = "shift"
         elif want and ready:
             kind = "codex"
+        elif hunch_ready:
+            kind = "hunch"
         else:
             kind = "decide"
 
@@ -196,6 +204,7 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
             heard=tuple(_minds().heard.get(c.id, ())),
             notepad=notepad,
             seen=seen,
+            hunches=minds.hunches.get(c.id) if minds.hunch_enabled else None,
         )
 
         # `_budget`, không phải một biểu thức chép tay. Bản chép tay ở đây cho
@@ -207,6 +216,8 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
         max_tokens = _budget(c.traits, kind)
         if kind == "shift":
             state.runner.strategist.want_shift.discard(c.id)
+        elif kind == "hunch":
+            minds.want_hunch.discard(c.id)
         # `targets` VÀ `sm` — cả hai, y như đường chạy cục bộ ở
         # `strategist.think`. Thiếu chúng thì client qua mạng chơi một trò khác
         # hẳn với client chạy cục bộ:
@@ -224,6 +235,7 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
             c.traits, kind,
             targets=[o.id for o in seen],
             sm=state.runner.world.surface_map,
+            hunch=minds.hunch_enabled,
         )
 
         # Cùng `prompt_cache` mà `/match/brief` dùng, nên băm ở đây đúng bằng

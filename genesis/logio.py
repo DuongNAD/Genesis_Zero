@@ -34,6 +34,15 @@ EVENT_KINDS: frozenset[str] = frozenset({
     "LLM_CALL", "LLM_MISS", "LLM_SEMANTIC_FAIL", "PREFIX_INVALIDATED",
     # luật ẩn
     "LAW_FIRED", "CODEX_OP", "ORACLE",
+    # linh cảm (B-14) — TÊN RIÊNG, không dùng lại "CODEX_OP": `score.py` gom
+    # theo `kind`, nên trộn tên là để linh cảm chảy thẳng vào bộ chấm và phá
+    # bất biến 1 của B-14 bằng đúng một chữ.
+    "HUNCH_OP",
+    # dịch trait qua mạng (B-13 ở chế độ mở, N-16)
+    "SHIFT_OP",
+    # đề bài trùng ván gần đây nên bốc lại seed (N-04). Xuất hiện đều = không
+    # gian luật của bản đồ ấy hẹp hơn `LAW_NOVELTY_WINDOW`.
+    "LAW_REPEAT",
     # mạng
     "NODE_DOWN", "DECISION_LATE", "THINK_LATENCY", "TICK_RATE",
     # gỡ lỗi

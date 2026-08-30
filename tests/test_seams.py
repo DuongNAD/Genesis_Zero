@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import random
+import re
 
 import pytest
 
@@ -129,3 +130,27 @@ def test_log_fields_and_event_kinds(tmp_path: Path) -> None:
         row = json.loads(line)
         for field in COMMON_FIELDS:
             assert field in row, f"Trường {field} thiếu trong dòng log: {row}"
+
+
+def test_moi_ten_su_kien_duoc_GHI_deu_co_trong_EVENT_KINDS() -> None:
+    """`LogWriter.write` NÉM với `kind` lạ — nên một tên chưa khai là ván gãy.
+
+    Và nó gãy đúng ở chỗ khó thấy nhất: bộ test chạy với `log_dir=None`, nên
+    `MatchRunner._write` không làm gì cả và mọi bài đều xanh. Lỗi chỉ nổ trên
+    server thật, ở lượt đầu tiên có người gửi đúng loại quyết định ấy.
+
+    Đã xảy ra thật: `SHIFT_OP` (N-16) được ghi ở `net/routes_decision.py` suốt
+    một lượt sửa mà không có trong `EVENT_KINDS`, và 564 bài test không bài nào
+    đỏ. Bài này quét nguồn thay vì chờ một ván thật đi qua nhánh đó.
+    """
+    root = Path(__file__).resolve().parent.parent
+    pat = re.compile(r'_write\(\s*(?:tick_no\s*,\s*)?"([A-Z][A-Z0-9_]*)"')
+    seen = 0
+    for path in sorted(list((root / "genesis").glob("*.py"))
+                       + list((root / "net").glob("*.py"))):
+        for name in pat.findall(path.read_text(encoding="utf-8")):
+            seen += 1
+            assert name in EVENT_KINDS, (
+                f"{path.name} ghi {name!r} mà EVENT_KINDS chưa có — "
+                f"LogWriter sẽ NÉM ở ván thật")
+    assert seen > 5, "regex không bắt được gì, bài kiểm này đang tự lừa mình"

@@ -86,6 +86,17 @@ CODEX_SIZE_BY_BRAIN   = {0:1, 1:1, 2:2, 3:3, 4:3, 5:4}
 EVENTS_BY_BRAIN       = {0:6, 1:8, 2:12, 3:16, 4:20, 5:24}
 CLAIM_BUDGET_BY_BRAIN = {0:24, 1:44, 2:64, 3:84, 4:104, 5:124}
 CLAIM_COOLDOWN        = 25
+
+# ─── Linh cảm (B-14) ────────────────────────────────────────────────────────
+# Nhiều ô hơn Sổ Luật — đó là cả điểm của cơ chế: chỗ để ĐOÁN mà không phải
+# TIN. Nhưng vẫn ít, và vẫn theo `brain`: miễn phí thì chiến lược đúng là đăng
+# ký hết mọi luật có thể rồi đọc bảng đếm, và `match` sẽ đo tốc độ vét cạn chứ
+# không đo năng lực quy nạp.
+HUNCH_BY_BRAIN        = {0:2, 1:2, 2:3, 3:4, 4:5, 5:6}
+# Riêng, KHÔNG dùng chung `CLAIM_COOLDOWN`. Dùng chung thì nêu một giả thuyết
+# cạnh tranh trực tiếp với việc ghi một kết luận, và ta vừa dựng cơ chế này lên
+# đúng để hai việc ấy thôi cạnh tranh nhau.
+HUNCH_COOLDOWN        = 10
 COST_CLAIM            = 4.0
 NOTEPAD_MAX_CHARS     = 200
 # Trần số dòng ở khối "NGHE ĐƯỢC". Không chặn thì một loài ồn ào đẩy hết sổ tay

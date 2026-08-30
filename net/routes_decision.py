@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse
 from genesis import law_config, speech
 from genesis.reveal import law_from_surface_dict
 from genesis.strategist import payload_to_goal
-from genesis.validate import Verdict, validate_codex, validate_decide, validate_shift
+from genesis.validate import (Verdict, validate_codex, validate_decide,
+                              validate_hunch, validate_shift)
 from genesis.world import visible
 import net_config
 from net.match import Phase
@@ -155,6 +156,9 @@ async def decision(
         if payload.get("want_codex"):
             set_creature_want_codex(creature.id, True)
 
+        if payload.get("want_hunch"):
+            state.runner.minds.want_hunch.add(creature.id)
+
         # Nói và DẠY (B-11, B-12). Trước N-16 trường `say` có trong schema mà
         # `/decision` không đọc: client qua mạng gửi lên rồi rơi vào hư không,
         # nên ở chế độ mở **không ai nói được câu nào**. Cả câu hỏi Q2 của dự án
@@ -211,6 +215,56 @@ async def decision(
         # Ghi CODEX_OP dù ok hay không: `score.py` chỉ tính op THÀNH CÔNG, nhưng
         # tỉ lệ op hỏng theo lý do là chỉ số chẩn đoán chính của B-08.
         _log_codex(state.runner, creature, payload, verdict, law)
+
+        if not verdict.ok:
+            resp = {"accepted": False, "reason": verdict.reason}
+            work_record.processed = True
+            work_record.cached_response = resp
+            return JSONResponse(status_code=200, content=resp)
+
+        latency = current_tick - work_record.issued_tick
+        state.runner.on_decision(work_record.issued_tick, work_id, lambda: None)
+        resp = {
+            "accepted": True,
+            "applied_at_tick": current_tick,
+            "latency_ticks": latency,
+        }
+        work_record.processed = True
+        work_record.applied_at_tick = current_tick
+        work_record.latency_ticks = latency
+        work_record.cached_response = resp
+        return JSONResponse(status_code=200, content=resp)
+
+    elif work_record.kind == "hunch":
+        # B-14 ở chế độ mở. KHÔNG ghi `CODEX_OP` và không đụng `Ledger`: linh
+        # cảm không được chấm, và một dòng log sai tên là đủ để nó chảy vào bộ
+        # chấm — bất biến 1 của B-14 vỡ bằng đúng một chữ.
+        hb = state.runner.minds.hunch_of(creature)
+        verdict = validate_hunch(
+            payload, creature, state.runner.world.surface_map, current_tick, hb.last_write,
+        )
+        law = None
+        if verdict.ok and payload.get("law") is not None:
+            try:
+                law = law_from_surface_dict(
+                    payload["law"], state.runner.world.surface_map,
+                )
+            except (KeyError, ValueError, TypeError) as exc:
+                verdict = Verdict(
+                    ok=False, reason=f"HUNCH_MALFORMED_LAW:{type(exc).__name__}",
+                )
+        if verdict.ok:
+            verdict = hb.apply(
+                payload.get("op", "SET"), int(payload.get("slot", 0)), law, current_tick,
+            )
+
+        state.runner._write(
+            "HUNCH_OP",
+            creature_id=creature.id, species_id=creature.species,
+            ok=verdict.ok, reason=verdict.reason,
+            op=payload.get("op"), slot=payload.get("slot"),
+            law=to_json(law) if law is not None else None,
+        )
 
         if not verdict.ok:
             resp = {"accepted": False, "reason": verdict.reason}
