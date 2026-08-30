@@ -56,6 +56,25 @@ SPECIES_DOMAIN: dict[str, str] = {
 #   không trèo: L1 (2) · L2 (1) · L4 (1)
 #   băng lửa  : L4 (armor 5) · chỉ mình nó
 # Nên ổ sinh thái xuất hiện NGAY với năm loài sẵn có, không cần thêm loài nào.
+# Đêm rút ngắn tầm nhìn bấy nhiêu ô (tối thiểu còn 1). `MAT_DEM` xoá hẳn khoản
+# này — đó là toàn bộ giá trị của đặc điểm ấy.
+#
+# **0 = TẮT, và đó là mặc định.** Cơ chế đã dựng xong nhưng chưa bật, vì nó phá
+# M1 và số đo nói rõ mức giá (5 seed × 400 tick, seed 1–5):
+#
+#   phạt 0 ô -> chết nhiều nhất 8 ✅ · chưa từng chết 0/75 ✅ · dịch min 2 ✅
+#   phạt 1 ô -> chết nhiều nhất 8 ✅ · chưa từng chết 2/75 ❌
+#   phạt 2 ô -> chết nhiều nhất 9 ❌ · chưa từng chết 3/75 ❌
+#
+# `plant_scale` KHÔNG cứu được: quét 0,90–1,00 không dịch nổi con số 2/75, vì hai
+# con sống sót ấy không chết đói — chúng là cái đuôi cấu trúc mà [01-STATUS] đã
+# ghi từ trước, không phải một vấn đề cân bằng thức ăn.
+#
+# Nên theo đúng kỷ luật đã dùng cho W-18 bất biến 5 và B-14 bất biến 6: cơ chế
+# vào thế giới trước, bật lên sau, và có phép đo ở giữa. Bật bằng cách đặt lại
+# hằng số này; `MAT_DEM` nằm im cho tới lúc ấy, và điều đó được nói thẳng ở
+# `tests/test_features.py` thay vì giấu đi.
+NIGHT_SIGHT_PENALTY = 0
 CLIMB_SPEED = 3
 FIRE_ARMOR = 3
 TRAIT_SUM = 12         # bất biến: tổng 6 trait luôn bằng con số này

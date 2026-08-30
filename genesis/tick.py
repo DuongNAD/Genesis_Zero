@@ -196,6 +196,8 @@ def tick(
     """Một bước thời gian. Sáu pha, đúng thứ tự."""
     strat = _DEFAULT_STRATEGIST if strategist is None else strategist
 
+    world.phase = phase_at(tick_no)
+
     # 0. NGHĨ — bắn cả đàn một lượt rồi CHỜ HẾT, trước khi thu intent.
     # Bẫy B-05 §3: áp goal ngay lúc nó về, giữa pha thu intent, là phá bất biến
     # đồng thời của W-11 — hai con cùng tick sẽ thấy hai thế giới khác nhau.

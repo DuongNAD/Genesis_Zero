@@ -228,3 +228,105 @@ def test_khong_co_khoa_nao_trong_kho():
             continue
         m = hinh_dang_khoa.search(txt)
         assert m is None, f"{rel} chứa khoá API thật (…{m.group(0)[-6:]})"
+
+
+def test_luong_cu_THAT_SU_xuong_nuoc_duoc():
+    """Hồi quy: `LUONG_CU` từng là đặc điểm thuần TRANG TRÍ.
+
+    `kit_of` gom `domains` vào `extra_domains`, nhưng `can_enter` chỉ đọc
+    `extra_terrain` — nên con vật được tả là có chân màng và da trơn ẩm bóng
+    trong prompt 3D mà **không xuống nước được một ô nào**. Hình nói dối, đúng
+    thứ W-19 dựng lên để chặn.
+
+    Nó lọt vì bài kiểm cũ chỉ soi `extra_terrain`; chỉ tới lúc in `look` và
+    `effect` cạnh nhau trong `creature_design.py` mới lộ ra: L1 mang "lưỡng cư"
+    mà cột cơ chế không nhắc gì tới nước.
+    """
+    k = kit_of((BY_KEY["LUONG_CU"],))
+    assert Domain.NUOC in k.extra_domains
+    assert can_enter(Domain.CAN, Terrain.DEEP, None, k) is True, \
+        "lưỡng cư phải xuống được nước sâu"
+    assert can_enter(Domain.CAN, Terrain.DEEP, None, None) is False
+
+
+def test_moi_dac_diem_deu_DOI_MOT_THU_GI_DO():
+    """Bài canh chừng cho bất biến trung tâm của W-19: hai mặt phải khớp.
+
+    Một đặc điểm có `look` mà không đổi gì trong vòng tick là một lời hứa suông
+    với người nhìn hình. `RAU_CAM_UNG` là ngoại lệ DUY NHẤT được phép — nó mô tả
+    một giác quan mà vòng tick chưa mô hình hoá, và nó được nêu tên ở đây để lần
+    sau ai thêm đặc điểm rỗng thì phải sửa chính dòng này.
+    """
+    # Hai ngoại lệ, và cả hai được NÊU TÊN chứ không giấu:
+    #
+    # · `RAU_CAM_UNG` — tả một giác quan vòng tick chưa mô hình hoá.
+    # · `MAT_DEM` — cơ chế ĐÃ dựng (đêm rút ngắn tầm nhìn) nhưng
+    #   `NIGHT_SIGHT_PENALTY = 0` nên nó đang tắt: bật lên thì M1 vỡ, và số đo
+    #   nằm ngay trong `config.py`. Nó sẽ tự hết ngoại lệ khi hằng số ấy > 0.
+    #
+    # Nêu tên để lần sau ai thêm một đặc điểm rỗng thì phải sửa chính dòng này —
+    # một danh sách ngoại lệ phải khó nới ra, nếu không nó thành cái thùng rác.
+    chua_noi_co_che = {"RAU_CAM_UNG", "MAT_DEM"}
+    for f in FEATURES:
+        if f.key in chua_noi_co_che:
+            continue
+        k = kit_of((f,))
+        doi = (k.extra_terrain or k.extra_domains or k.climb_bonus or k.thorns
+               or k.night_sight
+               or abs(k.upkeep_mult - 1) > 1e-9 or abs(k.damage_mult - 1) > 1e-9
+               or abs(k.dmg_taken_mult - 1) > 1e-9)
+        assert doi, f"{f.key} có `look` mà không đổi gì trong vòng tick"
+
+
+def test_dem_lam_ngan_tam_nhin_va_MAT_DEM_xoa_khoan_do():
+    """Hồi quy thứ hai của cùng một họ: `MAT_DEM` từng hứa suông.
+
+    Trước W-19, ngày và đêm khác nhau đúng một chuỗi trong prompt và một trigger
+    `PHASE_ENTER` — **không đổi một hành vi nào**. Nên "mắt đêm" là lợi thế chống
+    lại một bất lợi không tồn tại: hình 3D tả đôi mắt to chiếm nửa khuôn mặt, và
+    trong vòng tick nó chẳng để làm gì.
+
+    Sửa bằng cách cho ĐÊM một cái giá, không phải bằng cách bỏ đặc điểm — cả chu
+    kỳ ngày/đêm nhờ thế mới thành một biến số thật.
+    """
+    from genesis import config
+    from genesis.world import visible
+    from genesis.tick import build_match
+
+    w, cs, st, rng = build_match(21)
+    obs = cs[0]
+    r_ngay = obs.traits.sight_radius
+
+    assert kit_of((BY_KEY["MAT_DEM"],)).night_sight is True
+    assert kit_of((BY_KEY["LONG_DAI"],)).night_sight is False
+
+    # Kiểm cơ chế bằng cách BẬT nó lên trong phạm vi bài này, dù mặc định là tắt
+    # — cơ chế phải đúng ngay cả khi hằng số đang bằng 0, nếu không thì hôm bật
+    # lên ta mới phát hiện nó sai.
+    cu = config.NIGHT_SIGHT_PENALTY
+    try:
+        config.NIGHT_SIGHT_PENALTY = 2
+        w.phase = "NIGHT"
+        w.kits[obs.species] = kit_of((BY_KEY["MAT_DEM"],))
+        co_mat_dem = len(visible(obs, w, cs))
+        w.kits[obs.species] = kit_of((BY_KEY["LONG_DAI"],))
+        khong = len(visible(obs, w, cs))
+        assert co_mat_dem >= khong, "mắt đêm phải nhìn được ít nhất bằng kẻ không có"
+
+        w.phase = "DAY"
+        assert len(visible(obs, w, cs)) >= khong, "ban ngày không được kém hơn đêm"
+    finally:
+        config.NIGHT_SIGHT_PENALTY = cu
+    assert r_ngay > 0
+
+
+def test_ban_ngay_khong_bi_phat():
+    from genesis.world import visible
+    from genesis.tick import build_match
+
+    w, cs, st, rng = build_match(21)
+    w.phase = "DAY"
+    a = len(visible(cs[0], w, cs))
+    w.phase = "NIGHT"
+    b = len(visible(cs[0], w, cs))
+    assert b <= a, "đêm không được cho nhìn XA HƠN ngày"

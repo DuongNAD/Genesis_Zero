@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv()
 
     from genesis import config
-    from genesis.domain import domain_of
+    from genesis.domain import _BASE, domain_of
     from genesis.features import kit_of, roll_for_species
     from genesis.genai import keys, rewrite
     from genesis.mesh_prompts import creature_prompt
@@ -83,8 +83,28 @@ def main(argv: list[str] | None = None) -> int:
             "features_vn": [f.vn for f in feats],
             "prompt_goc": goc, "prompt": text, "nguon": src,
         })
+        # In CẢ HAI mặt của đặc điểm, không chỉ mặt ngoại hình. Đó là cả điểm
+        # của W-19: `look` và `effect` phải khớp nhau, và cách duy nhất người
+        # đọc kiểm được điều đó là nhìn thấy chúng cạnh nhau.
+        co_che = []
+        vao_them = {t.value for t in kit.extra_terrain}
+        for d in kit.extra_domains:
+            vao_them |= {t.value for t in _BASE[d]}
+        vao_them -= {t.value for t in _BASE[dom]}
+        if vao_them:
+            co_che.append("vào thêm " + "/".join(sorted(vao_them)))
+        if kit.climb_bonus:
+            co_che.append(f"trèo +{kit.climb_bonus}")
+        for ten, giatri in (("hao sức", kit.upkeep_mult), ("đòn", kit.damage_mult),
+                            ("chịu đòn", kit.dmg_taken_mult)):
+            if abs(giatri - 1.0) > 1e-9:
+                co_che.append(f"{ten} ×{giatri:.2f}")
+        if kit.thorns:
+            co_che.append(f"gai {kit.thorns:g}")
+
         print(f"── {sp} · {dom.value} · {' · '.join(f.vn for f in feats)}  [{src}]")
-        print(f"   {text}\n")
+        print(f"   cơ chế: {' · '.join(co_che) or 'không đổi gì'}")
+        print(f"   hình:   {text}\n")
 
     if a.out is not None:
         a.out.parent.mkdir(parents=True, exist_ok=True)

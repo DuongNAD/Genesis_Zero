@@ -184,6 +184,10 @@ class World:
         self.fruits: dict[tuple[int, int], str] = {}
         self.corpses: dict[tuple[int, int], int] = {}
         self.wind: str = rng.choice(law_config.WIND_DIRS)
+        # Pha hiện tại. `phase_at` là hàm thuần của tick, nên đây chỉ là bản ghi
+        # nhớ để `visible` khỏi phải nhận thêm tham số ở cả 14 chỗ gọi. `tick`
+        # cập nhật mỗi lượt; mặc định DAY để mọi bài kiểm cũ chạy y hệt.
+        self.phase: str = "DAY"
         self.surface_map: SurfaceMap = (
             surface_map if surface_map is not None else roll_surface_map(rng)
         )
@@ -348,7 +352,17 @@ def visible(obs: Creature, world: World, creatures: list[Creature]) -> list[Crea
     from genesis.creature import creature_sort_key
 
     # Bẫy B1: Bán kính nhìn lấy từ người quan sát (obs), không phải từ con bị nhìn
+    # ĐÊM LÀM NGẮN TẦM NHÌN (W-19). Trước đó ngày và đêm khác nhau đúng một
+    # chuỗi trong prompt và một trigger `PHASE_ENTER` — nó không đổi một hành vi
+    # nào. Nên đặc điểm "mắt đêm" hứa một lợi thế chống lại **một bất lợi không
+    # tồn tại**, tức là hình 3D nói dối. Cho đêm một cái giá là cách rẻ nhất để
+    # cả chu kỳ ngày/đêm thành một biến số thật, và để một ổ sinh thái ăn đêm
+    # trở nên đáng chọn.
     sight_radius = obs.traits.sight_radius
+    if world.phase == "NIGHT":
+        kit = world.kits.get(obs.species)
+        if not (kit is not None and getattr(kit, "night_sight", False)):
+            sight_radius = max(1, sight_radius - config.NIGHT_SIGHT_PENALTY)
     seen: list[Creature] = []
     for other in creatures:
         # Bẫy B2: Con chết không xuất hiện; không tự thấy chính mình

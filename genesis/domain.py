@@ -95,8 +95,17 @@ def can_enter(domain: Domain, terrain: Terrain, traits=None, kit=None) -> bool:
     """
     if terrain in _BASE[domain]:
         return True
-    if kit is not None and terrain in getattr(kit, "extra_terrain", ()):
-        return True
+    if kit is not None:
+        if terrain in getattr(kit, "extra_terrain", ()):
+            return True
+        # TẦNG cộng thêm — đây là `LUONG_CU`. Thiếu nhánh này thì "lưỡng cư" là
+        # một đặc điểm thuần TRANG TRÍ: nó tả chân màng và da trơn trong prompt
+        # 3D mà không đổi một ô nào trong vòng tick, tức là **hình nói dối**.
+        # Đó đúng là điều W-19 dựng lên để chặn (`look` và `effect` phải khớp),
+        # và tôi vẫn quên nó cho tới lúc in hai mặt cạnh nhau mới thấy.
+        for d in getattr(kit, "extra_domains", ()):
+            if terrain in _BASE[d]:
+                return True
     if domain is not Domain.CAN:
         return False
     gate = _GATED.get(terrain)

@@ -52,7 +52,7 @@ class Feature:
     extra_terrain: frozenset[Terrain] = frozenset()   # ô đi thêm được
     domains: frozenset[Domain] = frozenset()          # tầng CỘNG THÊM (lưỡng cư)
     upkeep_mult: float = 1.0
-    sight_night_mult: float = 1.0
+    night_sight: bool = False
     damage_mult: float = 1.0
     dmg_taken_mult: float = 1.0
     thorns: float = 0.0             # đòn phản lại kẻ tấn công
@@ -123,8 +123,8 @@ FEATURES: tuple[Feature, ...] = (
     Feature(
         "MAT_DEM", "mắt đêm",
         "hai mắt to tròn chiếm phần lớn khuôn mặt, đồng tử rộng, không có mí trên",
-        "ban đêm nhìn không kém ban ngày",
-        sight_night_mult=1.0,
+        "ban đêm nhìn không kém ban ngày — xoá hẳn khoản phạt tầm nhìn của đêm",
+        night_sight=True,
     ),
     Feature(
         "RAU_CAM_UNG", "râu cảm ứng",
@@ -187,6 +187,7 @@ class Kit:
     dmg_taken_mult: float = 1.0
     thorns: float = 0.0
     climb_bonus: int = 0
+    night_sight: bool = False
     keys: tuple[str, ...] = field(default_factory=tuple)
 
     def has(self, key: str) -> bool:
@@ -205,6 +206,7 @@ def kit_of(features: tuple[Feature, ...]) -> Kit:
         k.dmg_taken_mult *= f.dmg_taken_mult
         k.thorns += f.thorns
         k.climb_bonus += f.climb_bonus
+        k.night_sight = k.night_sight or f.night_sight
     return k
 
 
