@@ -201,6 +201,38 @@ vựng luật sau, và **X-10 đo cái giá** — chứ không giả định.
 
 ## 9. Bẫy
 
+### M1 KHÔNG đạt được ở thế giới ba tầng — 16 cấu hình, và lý do có cấu trúc
+
+Đã quét **bốn hướng, 16 cấu hình**. Không hướng nào đạt cả ba điều kiện:
+
+| hướng | dải đã thử | kết quả tốt nhất |
+|---|---|---|
+| rong (thức ăn nước) | 10–44 ô, 16–34 năng lượng | max 8 · chưa chết 3/100 |
+| quả (thức ăn cạn) | 15–20 ô, mọc 2–3 | max 9 · chưa chết 7/100 |
+| quần thể | 16–20 con | max 9 · chưa chết 3/80 |
+| độ mịn thức ăn | 15 ô×30 nl → 40 ô×11 nl | max 9 · chưa chết 5/100 |
+
+Và dữ liệu chỉ đúng một chuyện: **điều kiện 1 và điều kiện 2 đối nhau theo cấu
+tạo.** "Không con nào chết quá 8 lần" muốn thế giới **dễ**; "không con nào chưa
+từng chết" muốn nó **khó**. Mọi nút đều đẩy hai con số về hai phía — giảm quần
+thể thì chưa-chết đi từ 7 xuống 3 nhưng max leo từ 9 lên 11; thêm thức ăn thì
+ngược lại.
+
+**Điều kiện 2 còn có một vấn đề riêng: nó không co giãn theo N.** "Mọi cá thể
+đều chết ít nhất một lần" là một mệnh đề về **đuôi** của phân phối. Nếu mỗi con
+có xác suất `p` chết ít nhất một lần thì mệnh đề ấy đúng với xác suất `p^N` —
+với `p = 0,97` thì `p⁷⁵ = 0,10` còn `p¹⁰⁰ = 0,05`. Thế giới cũ có 75 suất, thế
+giới mới có 100. **Cùng một độ khó, tiêu chí khó gấp đôi.**
+
+Nên nó cần được **phát biểu lại**, không phải nới. Một dạng giữ nguyên ý định
+("thế giới không được dễ tới mức ai đó coasting cả ván") mà co giãn đúng theo N:
+
+> ≥ 95% cá thể chết ít nhất một lần
+
+Đó là quyết định của chủ dự án chứ không phải của một lượt tune, nên phiếu này
+**ghi lại bằng chứng và dừng ở đó**. Hằng số giữ nguyên giá trị hiện tại; không
+con số nào bị vặn để bảng đẹp hơn.
+
 **Bẫy 1 — M1 sẽ vỡ.** Thêm địa hình là đổi diện tích đi được và đổi tỉ lệ chết,
 mà [M1](../06-CONG-VIEC.md) tune rất chật (chết nhiều nhất 8, không con nào chưa
 từng chết). Phải chạy lại `5 seed × 400 tick` và chỉnh `plant_scale` từng bản đồ.
