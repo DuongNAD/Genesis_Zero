@@ -123,6 +123,7 @@ kiểm điều đó từ ngoài.
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
 | Model 7B thật | ghi sổ đều, **`match` vẫn 0.000** — xem dưới |
+| Đã loại khỏi nghi can | bộ chấm · sổ tay · ngân sách token · ba cơ chế từng câm lặng |
 
 ### Kết quả trung thực nhất tới giờ
 

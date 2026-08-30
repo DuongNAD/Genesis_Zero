@@ -284,4 +284,15 @@ CODEX_CONF_DECAY_PER_GEN = 1
 # Token cho MỘT đáp án oracle. Đo bằng cách in thật một đáp án đầy đủ
 # `{"q": 0, "effect": {"kind", "mag", "dur"}}` có xuống dòng và thụt lề: 90 ký
 # tự, ~30 token. Nhân `ORACLE_QUERIES` ra ngân sách của cả lượt hỏi.
-TOKEN_PER_ORACLE_ANSWER = 42
+#
+# 42 → 56 sau khi ĐO LẠI trên ván thật. Trần 432 (= 8 × 42 + 96) đã kéo số dòng
+# chấm được từ 15–21/45 lên **56–60/60**, nhưng vẫn còn **4 lượt đứt** ở đúng
+# con số ấy trong ba ván. Lý do là thứ chỉ thấy được khi đọc log thật: model
+# **không phải lúc nào cũng in gọn** — nó nhả ra hàng chục ký tự tab và xuống
+# dòng giữa cây JSON, và khoảng trắng ăn token thật. Đây là lần thứ hai đúng
+# nguyên nhân ấy làm đứt một lượt gọi (lần đầu ở `codex`, xem `_budget`).
+#
+# 56 cho trần 544. Rộng tay là đúng ở đây: một lượt đứt mất TRẮNG cả câu trả
+# lời, còn một trần rộng chỉ tốn phần token thật sự sinh ra — `cost_think` tính
+# theo token THỰC SINH chứ không theo trần (B-05 bất biến 3).
+TOKEN_PER_ORACLE_ANSWER = 56
