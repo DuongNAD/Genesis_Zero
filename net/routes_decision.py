@@ -8,13 +8,20 @@ from typing import Any
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+import net_config
 from genesis import law_config, speech
+from genesis.lawdsl import to_json
 from genesis.reveal import law_from_surface_dict
 from genesis.strategist import payload_to_goal
-from genesis.validate import (Verdict, validate_codex, validate_decide,
-                              validate_hunch, validate_shift)
+from genesis.validate import (
+    Verdict,
+    validate_codex,
+    validate_decide,
+    validate_hunch,
+    validate_shift,
+)
 from genesis.world import visible
-import net_config
+from net import state
 from net.match import Phase
 from net.routes_work import (
     _issued_works,
@@ -24,8 +31,6 @@ from net.routes_work import (
     set_creature_notepad,
     set_creature_want_codex,
 )
-from genesis.lawdsl import to_json
-from net import state
 
 router = APIRouter(prefix="/v1", tags=["decision"])
 

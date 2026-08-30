@@ -23,11 +23,10 @@ một client chỉ cần nói đúng chữ "POISON" là làm gãy ván của ng�
 from __future__ import annotations
 
 import collections
-from dataclasses import dataclass, field
 import re
 import unicodedata
+from dataclasses import dataclass, field
 
-from genesis import config
 from genesis.lawdsl import CondKind, EffectKind, TriggerKind
 
 TEXT_MAX = 60
@@ -80,7 +79,7 @@ class Say:
     teach: int | None = None      # ô Sổ Luật muốn dạy -> B-12
 
     @staticmethod
-    def parse(payload: object) -> "Say | None":
+    def parse(payload: object) -> Say | None:
         if not isinstance(payload, dict):
             return None
         signal = payload.get("signal")

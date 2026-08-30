@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
 import random
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from genesis import config, law_config

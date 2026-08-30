@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import ast
 import asyncio
-import sys
 import json
+import sys
 from pathlib import Path
-from typing import Any
 
 import httpx
 import pytest
@@ -15,13 +14,13 @@ import pytest
 # Client là gói ĐỘC LẬP ở client/, không phải module trong genesis/ — xem
 # docstring của client/genesis_client.py. Test phải nạp nó đúng như người lạ nạp.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "client"))
-from genesis_client import run  # noqa: E402
+from genesis_client import run
+
 from genesis.reflex import Goal
+from net import server, state
 from net.match import MatchRunner, Phase
 from net.routes_join import clear_rate_limits
 from net.routes_work import clear_work_state
-from net import state
-import net.server as server
 
 
 @pytest.fixture(autouse=True)

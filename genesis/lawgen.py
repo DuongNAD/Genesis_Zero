@@ -2,19 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
-from pathlib import Path
 import random
 import statistics
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from pathlib import Path
 
 from genesis import config
 from genesis import law_config as lc
-from genesis.lawdsl import Cond, CondKind, Law, TriggerKind, random_law, from_json, to_json
-
-if TYPE_CHECKING:
-    pass
+from genesis.lawdsl import (
+    Cond,
+    CondKind,
+    Law,
+    TriggerKind,
+    from_json,
+    random_law,
+    to_json,
+)
 
 
 @dataclass(frozen=True)
@@ -368,12 +372,12 @@ def live_fire_counts(laws: list[Law], seed: int, ticks: int,
     3/15 luật chết trong khi để lọt 5/15 — tức là tệ hơn không có cổng.
     Sim chỉ mất ~0.19 s cho 400 tick nên chạy ván thật rẻ hơn nhiều so với sai lầm.
     """
-    from genesis.tick import build_match, tick as run_tick   # nhập trong thân: tránh vòng
+    from genesis.tick import build_match  # nhập trong thân: tránh vòng
+    from genesis.tick import tick as run_tick
 
     world, creatures, state, rng = build_match(seed=seed, map_name=map_name)
     counts = [0] * len(laws)
     for t in range(ticks):
-        before = _FIRE_PROBE.copy()
         run_tick(world, creatures, t, rng, state, laws=laws, log=_ProbeLog(counts))
     return counts
 

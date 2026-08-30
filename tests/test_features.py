@@ -7,8 +7,15 @@ import random
 
 from genesis import config
 from genesis.domain import Domain, can_enter
-from genesis.features import (BY_KEY, FEATURES, N_FEATURES, describe, kit_of,
-                              roll, roll_for_species)
+from genesis.features import (
+    BY_KEY,
+    FEATURES,
+    N_FEATURES,
+    describe,
+    kit_of,
+    roll,
+    roll_for_species,
+)
 from genesis.tick import build_match
 from genesis.world import Terrain
 
@@ -211,7 +218,6 @@ def test_khong_co_khoa_nao_trong_kho():
     """
     import re
     import subprocess
-
     from pathlib import Path
 
     root = Path(__file__).resolve().parent.parent
@@ -293,9 +299,8 @@ def test_dem_lam_ngan_tam_nhin_va_MAT_DEM_xoa_khoan_do():
     Sửa bằng cách cho ĐÊM một cái giá, không phải bằng cách bỏ đặc điểm — cả chu
     kỳ ngày/đêm nhờ thế mới thành một biến số thật.
     """
-    from genesis import config
-    from genesis.world import visible
     from genesis.tick import build_match
+    from genesis.world import visible
 
     w, cs, st, rng = build_match(21)
     obs = cs[0]
@@ -325,8 +330,8 @@ def test_dem_lam_ngan_tam_nhin_va_MAT_DEM_xoa_khoan_do():
 
 
 def test_ban_ngay_khong_bi_phat():
-    from genesis.world import visible
     from genesis.tick import build_match
+    from genesis.world import visible
 
     w, cs, st, rng = build_match(21)
     w.phase = "DAY"

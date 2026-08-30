@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
-import pytest
 
 # KHÔNG `importorskip` ở mức module. Đặt nó ở đây thì **cả file** bị bỏ qua khi
 # máy không có pygame — kể cả những bài không hề cần nó, và chúng là phần lớn.
@@ -109,9 +108,11 @@ def test_kich_thuoc_suy_tu_trait_hien_tai():
     import sys
 
     sys.path.insert(0, str(_get_x07_path().parent))
-    from x07_pygame import get_creature_visuals
-    from genesis.tick import build_match
     import dataclasses
+
+    from x07_pygame import get_creature_visuals
+
+    from genesis.tick import build_match
 
     _, creatures, _, _ = build_match(seed=9)
     c = creatures[0]

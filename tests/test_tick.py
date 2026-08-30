@@ -4,20 +4,18 @@ from __future__ import annotations
 
 import collections
 import inspect
-from pathlib import Path
+import json
 import random
 import subprocess
 import sys
-import json
+from pathlib import Path
 
-import pytest
-
+import genesis.tick as T
 from genesis import config
 from genesis.creature import Creature
 from genesis.reflex import Intent
 from genesis.run import main
 from genesis.tick import SimState, build_match, creature_rng, tick
-import genesis.tick as T
 from genesis.traits import founder_traits
 from genesis.world import World
 

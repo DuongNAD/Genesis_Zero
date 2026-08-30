@@ -13,10 +13,12 @@ import random
 
 import pytest
 
-from genesis.lawdsl import to_vietnamese
 from genesis.lawgen import generate_cached
 from genesis.prior import (
-    ARMS, DANGER_ORDER, NEUTRAL_SURFACES, fruit_valence, prior_surface_map,
+    DANGER_ORDER,
+    NEUTRAL_SURFACES,
+    fruit_valence,
+    prior_surface_map,
 )
 from genesis.tick import build_match
 

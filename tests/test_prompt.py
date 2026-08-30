@@ -13,7 +13,7 @@ import re
 
 import pytest
 
-from genesis import config, law_config
+from genesis import law_config
 from genesis.creature import Creature
 from genesis.prompt import (
     BLOCK_A,
@@ -23,9 +23,9 @@ from genesis.prompt import (
     system_block,
     user_block,
 )
-from genesis.surface import SurfaceMap, roll_surface_map
+from genesis.surface import SurfaceMap
 from genesis.tick import build_match, tick
-from genesis.traits import Traits, founder_traits
+from genesis.traits import Traits
 from genesis.world import visible
 
 PERSONA = "Đi thành bầy, chia phần cho con yếu."

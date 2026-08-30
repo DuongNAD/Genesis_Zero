@@ -44,3 +44,60 @@ filterwarnings = [
     "ignore::starlette.exceptions.StarletteDeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+
+# ─── ruff ───────────────────────────────────────────────────────────────────
+# Cấu hình này tồn tại để `make lint` NÓI ĐƯỢC MỘT ĐIỀU GÌ ĐÓ.
+#
+# Bản không cấu hình báo 403 lỗi, phần lớn là lựa chọn phong cách mà kho này cố
+# ý làm khác (unpack rồi bỏ một biến cho dễ đọc, `if` lồng nhau để giữ chú thích
+# cạnh điều kiện nó giải thích). Một danh sách 137 dòng không ai sửa thì cũng
+# hỏng như cái `make lint` từng in "ruff chưa cài" trong lúc ruff tìm ra 403 lỗi:
+# cả hai đều dạy người ta thôi đọc.
+#
+# Nên: bật những luật BẮT ĐƯỢC LỖI THẬT, tắt những luật chỉ nêu sở thích, và
+# **ghi lý do cho từng cái tắt**.
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "SIM", "PERF", "RUF"]
+ignore = [
+    # Kho này unpack đủ bộ rồi chỉ dùng vài biến, vì tên biến LÀ tài liệu:
+    # `w, cs, st, rng = build_match(...)` đọc rõ hơn `w, cs, _, _`.
+    "RUF059",
+    # `if` lồng nhau được giữ để chú thích đứng cạnh đúng điều kiện nó giải
+    # thích. Gộp lại thì chú thích mất chỗ bám.
+    "SIM102",
+    # Script có shebang mà không +x là chuyện của git, không phải của linter.
+    "EXE001",
+    # `int(...)` trên giá trị đã là int: giữ vì nó khẳng định kiểu ở ranh giới
+    # nhận dữ liệu ngoài (payload JSON của client).
+    "RUF046",
+    # `except Exception` ở tầng gọi mạng là CÓ CHỦ Ý — bất biến 3 của B-03:
+    # lỗi model không được làm gãy vòng tick. Xem chú thích tại chỗ.
+    "BLE001",
+    # `pytest.raises(Exception)` trong test: một số chỗ chỉ cần biết "có ném".
+    "B017",
+    # E501: độ dài dòng đã có `line-length`, và văn xuôi tiếng Việt trong
+    # docstring không nên bị bẻ giữa câu.
+    "E501",
+    # RUF001/2/3 "ký tự unicode mơ hồ" bắn thẳng vào TIẾNG VIỆT — 101 lỗi, toàn
+    # bộ là dấu thanh và chữ đ. Kho này viết bằng tiếng Việt; một luật coi tiếng
+    # Việt là đáng ngờ thì không dùng được ở đây.
+    "RUF001", "RUF002", "RUF003",
+    # `l` là tên gọi của một LUẬT trong cả kho (`for l in laws`). Đổi hết thành
+    # `law` là một lượt sửa lớn không đổi được gì về chất lượng.
+    "E741",
+    # `a; b` trên một dòng: dùng trong script đo và trong test để giữ một ý trên
+    # một dòng. Không phải code sản phẩm.
+    "E702",
+    # `zip(..., strict=)` — kho hỗ trợ 3.11+, nhưng thêm `strict` vào 10 chỗ
+    # đang đúng thì chỉ là ồn; nơi nào độ dài LỆCH được thì đã có assert riêng.
+    "B905",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test được phép giữ biến trung gian để đặt tên cho ý đồ của phép kiểm.
+"tests/*" = ["F841"]
+

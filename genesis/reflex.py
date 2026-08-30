@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from enum import StrEnum
-import random
 
 from genesis import config
 from genesis.creature import Creature, creature_sort_key

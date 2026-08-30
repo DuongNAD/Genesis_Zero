@@ -5,13 +5,13 @@ from __future__ import annotations
 import collections
 import inspect
 import json
-from pathlib import Path
 import random
+from pathlib import Path
 
+import genesis.reflex as R
 from genesis import config
-from genesis.creature import Creature, creature_sort_key
+from genesis.creature import Creature
 from genesis.reflex import (
-    ENERGY_FULL_RATIO,
     GOAL_TTL_MAX,
     GOAL_TTL_MIN,
     HP_LOW_RATIO,
@@ -22,7 +22,6 @@ from genesis.reflex import (
     choose_goal,
     reflex_step,
 )
-import genesis.reflex as R
 from genesis.run import main
 from genesis.traits import founder_traits
 from genesis.world import Terrain, World, visible

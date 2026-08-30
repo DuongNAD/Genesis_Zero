@@ -13,9 +13,9 @@ Sử dụng:
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
 import time
+from pathlib import Path
 
 repo_root = Path(__file__).resolve().parent.parent
 if str(repo_root) not in sys.path:

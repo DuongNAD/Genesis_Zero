@@ -10,7 +10,7 @@ import random
 from typing import TYPE_CHECKING
 
 from genesis import lawdsl as _lawdsl
-from genesis.lawdsl import Effect, Law, Trigger, TriggerKind
+from genesis.lawdsl import Effect, Law, Trigger
 from genesis.laweval import Ctx
 from genesis.situations import Situation, sample_situations
 from genesis.surface import SurfaceMap

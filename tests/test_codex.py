@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import ast
 
-import pytest
-
 from genesis import law_config as lc
 from genesis.adapt import reset_body
-from genesis.codex import Codex, CodexEntry
+from genesis.codex import Codex
 from genesis.creature import Creature
 from genesis.lawdsl import (
     Dur,

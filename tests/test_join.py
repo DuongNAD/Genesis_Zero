@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import random
-from fastapi.testclient import TestClient
+
 import pytest
+from fastapi.testclient import TestClient
 
 from genesis import config
+from net import server, state
 from net.match import MatchRunner, Phase
 from net.routes_join import allocate_traits, clear_rate_limits
-from net import state
-import net.server as server
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +22,18 @@ def reset_limits():
 
 @pytest.fixture
 def client(monkeypatch):
-    r = MatchRunner(seed=1, ticks=5, tick_ms=1, log_dir=None)
+    # Đồng hồ CHẶN LẠI. `ticks` nhỏ cộng `tick_ms=1` cộng vòng lặp nền của
+    # `lifespan` là một cuộc đua: cả ván dài vài mili-giây, nên khi máy bận thì
+    # nó trôi sang pha khác trước lúc yêu cầu HTTP tới nơi. Đã làm `test_work.py`
+    # đỏ ngẫu nhiên (`assert 204 == 200`), và một bài đỏ ngẫu nhiên tệ hơn một
+    # bài đỏ hẳn — nó dạy người ta "chạy lại là được".
+    #
+    # Không bài nào ở đây cần đồng hồ TỰ chạy: bài nào cần đổi pha thì gọi
+    # `advance_phase()`, cần một tick cụ thể thì gán `r.tick_no`, cần quét sức
+    # khoẻ thì gọi `sweep_health()`. Chặn nhịp lại thì chúng vẫn làm được hết,
+    # chỉ khác là kết quả không còn phụ thuộc máy nhanh hay chậm.
+    r = MatchRunner(seed=1, ticks=200, tick_ms=10_000, log_dir=None)
+    monkeypatch.setattr(r, "step", lambda: None)
     monkeypatch.setattr(state, "runner", r)
     with TestClient(server.app) as c:
         yield c, r

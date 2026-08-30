@@ -14,18 +14,17 @@ from __future__ import annotations
 
 import random
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from genesis import config
 from genesis.handbook import Handbook
 from genesis.lawdsl import random_law, vocab_for_brain
 from genesis.teach import law_key
+from net import server, state
 from net.match import MatchRunner
 from net.routes_join import clear_rate_limits
 from net.routes_work import clear_work_state
-from net import state
-import net.server as server
 
 
 @pytest.fixture(autouse=True)

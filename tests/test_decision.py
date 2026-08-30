@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
-from genesis.reflex import Goal
 import net_config
+from genesis.reflex import Goal
+from net import server, state
 from net.match import MatchRunner, Phase
 from net.routes_join import clear_rate_limits
 from net.routes_work import clear_work_state
-from net import state
-import net.server as server
 
 
 @pytest.fixture(autouse=True)

@@ -28,9 +28,8 @@ và thế thì ta đo lại chính hàm reward của mình.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-import json
 import random
+from dataclasses import dataclass
 
 from genesis import law_config
 from genesis.lawdsl import Law, from_json, to_json, to_vietnamese

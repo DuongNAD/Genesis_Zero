@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 import random
-import pytest
 
-from genesis import config, law_config
+from genesis import config
 from genesis.creature import Creature
 from genesis.surface import SurfaceMap
 from genesis.traits import founder_traits
 from genesis.validate import (
-    Verdict,
     validate_codex,
     validate_decide,
     validate_shift,

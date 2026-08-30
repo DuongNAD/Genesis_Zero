@@ -10,7 +10,16 @@ from __future__ import annotations
 import random
 
 from genesis.lawdsl import (
-    Cond, CondKind, Dur, Effect, EffectKind, Law, Mag, Trigger, TriggerKind, random_law,
+    Cond,
+    CondKind,
+    Dur,
+    Effect,
+    EffectKind,
+    Law,
+    Mag,
+    Trigger,
+    TriggerKind,
+    random_law,
 )
 from genesis.situations import sample_situations
 from genesis.verify import ADJACENT_BUCKET_SCORE, agree, match

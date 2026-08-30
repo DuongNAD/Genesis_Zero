@@ -101,7 +101,7 @@ class LogWriter:
             self._fh.flush()
             self._fh.close()
 
-    def __enter__(self) -> "LogWriter":
+    def __enter__(self) -> LogWriter:
         return self
 
     def __exit__(self, *exc: object) -> None:

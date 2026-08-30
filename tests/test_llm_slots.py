@@ -6,7 +6,6 @@ import asyncio
 import json
 
 import httpx
-import pytest
 
 from genesis import law_config
 from genesis.strategist import LlmStrategist
@@ -165,7 +164,6 @@ def test_han_cho_tu_hieu_chinh_theo_model():
     lần** — đọc vội thì thành "14B cũng không quy nạp được", trong khi nó gần
     như chưa được nghĩ lần nào.
     """
-    import asyncio
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/props":

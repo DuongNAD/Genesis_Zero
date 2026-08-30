@@ -5,11 +5,12 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+
 import pytest
 
 from genesis.analyze import load_scores, summarize
 from genesis.score import FIELDS
-from scripts.x06_report import build_q_report, generate_report
+from scripts.x06_report import generate_report
 
 
 @pytest.fixture

@@ -7,17 +7,15 @@ import random
 from genesis import config
 from genesis.combat import (
     Attack,
-    CombatResult,
     apply_combat,
     resolve_combat,
     tick_poison,
     tick_regen,
 )
 from genesis.creature import Creature, try_respawn
-from genesis.reflex import ActiveGoal, Goal, Intent, reflex_step
+from genesis.reflex import ActiveGoal, Goal, reflex_step
 from genesis.traits import founder_traits
 from genesis.world import World
-
 
 _W = World(24, 24, random.Random(0))
 

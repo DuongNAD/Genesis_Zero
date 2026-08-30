@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import collections
 import json
-from pathlib import Path
 import random
+from pathlib import Path
 
 import pytest
 
@@ -252,7 +252,7 @@ def test_id_sort_key_survives_double_digits(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert [c.id for c in cs] == [f"Sw:{i}" for i in range(12)]
     # và sắp bằng chuỗi thì KHÔNG cho kết quả đó -> test này có ý nghĩa
-    assert sorted((c.id for c in cs)) != [f"Sw:{i}" for i in range(12)]
+    assert sorted(c.id for c in cs) != [f"Sw:{i}" for i in range(12)]
     # khoá dùng được cho hai loài lẫn nhau
     dummy_traits = founder_traits("Ax")
     assert creature_sort_key(Creature("Ax:2", "Ax", dummy_traits, (0, 0), 1.0, 1.0)) == ("Ax", 2)

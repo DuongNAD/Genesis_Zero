@@ -11,9 +11,9 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+import net_config
 from genesis import config
 from genesis.traits import Traits, register_founder
-import net_config
 from net.match import JOINABLE, Registration
 
 router = APIRouter(prefix="/v1", tags=["join"])

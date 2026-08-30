@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import random
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from genesis import config
 from genesis.adapt import reset_body
@@ -15,10 +15,9 @@ from genesis.traits import (
     founder_traits,
     register_founder,
 )
+from net import server, state
 from net.match import MatchRunner
 from net.routes_join import allocate_traits, clear_rate_limits
-from net import state
-import net.server as server
 
 
 @pytest.fixture(autouse=True)

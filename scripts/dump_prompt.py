@@ -15,7 +15,6 @@ import sys
 import httpx
 
 from genesis.lawgen import generate_cached
-from genesis.prompt import system_block
 from genesis.strategist import LlmStrategist
 from genesis.tick import build_match, tick
 from genesis.world import visible

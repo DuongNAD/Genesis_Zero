@@ -7,7 +7,16 @@ from typing import TYPE_CHECKING, Any
 
 from rich.table import Table
 
-from genesis.lawdsl import Cond, Dur, Effect, Law, Mag, Trigger, from_json, to_vietnamese
+from genesis.lawdsl import (
+    Cond,
+    Dur,
+    Effect,
+    Law,
+    Mag,
+    Trigger,
+    from_json,
+    to_vietnamese,
+)
 from genesis.surface import SurfaceMap
 
 if TYPE_CHECKING:

@@ -33,8 +33,8 @@ rộng gấp mấy lần, mà quy nạp thì đang hỏng sẵn.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import random
+from dataclasses import dataclass, field
 
 from genesis.domain import Domain
 from genesis.world import Terrain
@@ -52,12 +52,15 @@ class Feature:
     extra_terrain: frozenset[Terrain] = frozenset()   # ô đi thêm được
     domains: frozenset[Domain] = frozenset()          # tầng CỘNG THÊM (lưỡng cư)
     upkeep_mult: float = 1.0
-    night_sight: bool = False
     damage_mult: float = 1.0
     dmg_taken_mult: float = 1.0
     thorns: float = 0.0             # đòn phản lại kẻ tấn công
     # Loài mang đặc điểm này thì ngưỡng trèo cây hạ xuống bấy nhiêu điểm speed.
     climb_bonus: int = 0
+    # Xoá được khoản phạt tầm nhìn ban đêm. KHAI ĐÚNG MỘT LẦN — bản trước khai
+    # hai lần trong cùng dataclass, và Python im lặng lấy dòng sau. Hôm nay vô
+    # hại vì hai dòng giống hệt; ngày ai đó sửa một dòng thì dòng kia âm thầm
+    # thắng, và cái thắng là dòng người sửa KHÔNG nhìn vào.
     night_sight: bool = False
     # Bán kính CẢM được kẻ nấp trong bụi / trên cây. 0 = không có râu.
     feel_radius: int = 0

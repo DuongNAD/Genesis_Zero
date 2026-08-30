@@ -10,16 +10,12 @@ from __future__ import annotations
 
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
-import json
-from pathlib import Path
-import random
 from typing import Any
 
-from genesis import config, law_config
 from genesis.creature import creature_sort_key
 from genesis.lawgen import generate_cached
-from genesis.traits import founder_traits
 from genesis.tick import build_match, tick
+from genesis.traits import founder_traits
 
 
 @dataclass(frozen=True)

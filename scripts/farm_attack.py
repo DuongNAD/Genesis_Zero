@@ -23,7 +23,17 @@ from __future__ import annotations
 import argparse
 import sys
 
-from genesis.lawdsl import Cond, CondKind, Dur, Effect, EffectKind, Law, Mag, Trigger, TriggerKind
+from genesis.lawdsl import (
+    Cond,
+    CondKind,
+    Dur,
+    Effect,
+    EffectKind,
+    Law,
+    Mag,
+    Trigger,
+    TriggerKind,
+)
 from genesis.provenance import Ledger, law_key
 
 LAW = Law(

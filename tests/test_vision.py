@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import ast
-from pathlib import Path
 import random
-
-import pytest
+from pathlib import Path
 
 from genesis import config
 from genesis.creature import Creature, creature_sort_key

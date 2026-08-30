@@ -10,12 +10,19 @@ from __future__ import annotations
 import random
 
 from genesis import config, law_config
-from genesis.codex import Codex
 from genesis.creature import Creature
-from genesis.fieldnotes import FieldNotes, Note
+from genesis.fieldnotes import Note
 from genesis.hunch import HunchBook
 from genesis.lawdsl import (
-    Cond, CondKind, Dur, Effect, EffectKind, Law, Mag, Trigger, TriggerKind,
+    Cond,
+    CondKind,
+    Dur,
+    Effect,
+    EffectKind,
+    Law,
+    Mag,
+    Trigger,
+    TriggerKind,
 )
 from genesis.laweval import Ctx, LawEvent
 from genesis.minds import Minds
@@ -355,11 +362,10 @@ def test_linh_cam_chay_o_che_do_mo():
     """
     from fastapi.testclient import TestClient
 
+    from net import server, state
     from net.match import MatchRunner
     from net.routes_join import clear_rate_limits
     from net.routes_work import clear_work_state
-    from net import state
-    import net.server as server
 
     clear_rate_limits()
     r = MatchRunner(seed=1, ticks=10, tick_ms=10_000, log_dir=None)
@@ -405,11 +411,10 @@ def test_che_do_mo_tat_linh_cam_thi_khong_phat_viec_hunch():
     """Bất biến 6 ở đường mạng: tắt là tắt, kể cả khi có cờ `want_hunch` sót lại."""
     from fastapi.testclient import TestClient
 
+    from net import server, state
     from net.match import MatchRunner
     from net.routes_join import clear_rate_limits
     from net.routes_work import clear_work_state
-    from net import state
-    import net.server as server
 
     clear_rate_limits()
     r = MatchRunner(seed=1, ticks=10, tick_ms=10_000, log_dir=None)

@@ -127,7 +127,7 @@ def test_cong_kha_giai_chay_tren_DUNG_ban_do():
     """Sa mạc gần như không có ô nước, nên một luật `DRINK` được duyệt trên đồng
     cỏ sẽ là câu đố **không có lời giải** ở đó — hệt một cond không quan sát được.
     Cổng khả giải chạy một ván THẬT, nên nó phải chạy trên đúng bản đồ sẽ dùng."""
-    from genesis.lawgen import generate_cached, split_arm
+    from genesis.lawgen import split_arm
 
     assert split_arm("STANDARD@RUNG_RAM") == ("STANDARD", "RUNG_RAM")
     assert split_arm("STANDARD") == ("STANDARD", None)

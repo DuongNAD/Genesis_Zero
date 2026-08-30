@@ -12,7 +12,6 @@ Tầng chấm thứ hai trả lời câu *nó hiểu, hay nó vừa may?* — S�
 from __future__ import annotations
 
 import asyncio
-import json
 import random
 from typing import Any
 
@@ -20,7 +19,7 @@ import httpx
 
 from genesis import law_config
 from genesis.creature import creature_sort_key
-from genesis.lawdsl import Effect, EffectKind, Dur, Law, Mag
+from genesis.lawdsl import Dur, Effect, EffectKind, Law, Mag
 from genesis.llm_client import ask
 from genesis.oracle import build_queries, score_answers
 from genesis.situations import sample_situations

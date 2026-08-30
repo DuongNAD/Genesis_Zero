@@ -15,14 +15,14 @@ import asyncio
 import hashlib
 import json
 import logging
-from pathlib import Path
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
 
-from genesis.mesh_prompts import creature_prompt
 import net_config
+from genesis.mesh_prompts import creature_prompt
 
 if TYPE_CHECKING:
     from genesis.traits import Traits

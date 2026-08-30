@@ -19,13 +19,11 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
-import statistics
 import sys
+from pathlib import Path
 
 from genesis.lawdsl import to_vietnamese
 from genesis.lawgen import generate_cached
-from genesis.prior import ARMS, fruit_valence
 from genesis.tick import build_match
 
 PRIOR_ARMS = ("PRIOR_ALIGNED", "PRIOR_INVERTED", "PRIOR_NEUTRAL")

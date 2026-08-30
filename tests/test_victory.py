@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from genesis import law_config
 from genesis.victory import TITLES, decide
 
 

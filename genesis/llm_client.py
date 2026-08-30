@@ -19,9 +19,9 @@ import json
 import logging
 from typing import Any
 
-from genesis import law_config
-
 import httpx
+
+from genesis import law_config
 
 logger = logging.getLogger(__name__)
 

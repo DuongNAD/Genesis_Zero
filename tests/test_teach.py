@@ -8,12 +8,25 @@ này chạy nó như một bài test để nó không mục đi.
 from __future__ import annotations
 
 from genesis.lawdsl import (
-    Cond, CondKind, Dur, Effect, EffectKind, Law, Mag, Trigger, TriggerKind, to_json,
+    Cond,
+    CondKind,
+    Dur,
+    Effect,
+    EffectKind,
+    Law,
+    Mag,
+    Trigger,
+    TriggerKind,
 )
 from genesis.provenance import Ledger, law_key
 from genesis.teach import (
-    DECEPTION_MATCH_MAX, TeachEvent, apply_teach, deception_rate, hide_effect,
-    measure_deception, render_offer,
+    DECEPTION_MATCH_MAX,
+    TeachEvent,
+    apply_teach,
+    deception_rate,
+    hide_effect,
+    measure_deception,
+    render_offer,
 )
 from genesis.tick import build_match
 from scripts import deception_probe, farm_attack

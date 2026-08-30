@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import collections
-import random
-
 import pytest
 
 from genesis import config
@@ -12,7 +9,7 @@ from genesis.creature import Creature
 from genesis.domain import Domain, can_enter, can_touch, domain_of
 from genesis.tick import build_match
 from genesis.traits import founder_traits
-from genesis.world import CARDINAL_OFFSETS, SEEDED_TERRAINS, Terrain, World
+from genesis.world import CARDINAL_OFFSETS, SEEDED_TERRAINS, Terrain
 
 MAPS = ("DONG_CO", "RUNG_RAM", "QUAN_DAO", "HOANG_MAC", "HEM_NUI")
 

@@ -40,18 +40,16 @@ from __future__ import annotations
 
 import argparse
 import collections
-from pathlib import Path
 import sys
 from typing import Any
 
-from genesis.lawdsl import Law, TriggerKind
+from genesis.creature import Creature
+from genesis.lawdsl import Law
 from genesis.lawgen import generate_cached
 from genesis.prompt import _TERRAIN_VN
 from genesis.strategist import LlmStrategist, ReflexStrategist
 from genesis.tick import build_match, tick
-from genesis.creature import Creature
 from genesis.world import World
-
 
 ACTION_EXPECTED_TRIGGER: dict[str, str] = {
     "step_on": "STEP_ON",

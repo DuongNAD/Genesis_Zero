@@ -6,8 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import net_config
-import net.server as server
-from net import state
+from net import server, state
 from net.match import MatchRunner, Phase
 from net.ratelimit import BAN_SECONDS, STRIKES_BEFORE_BAN, RateLimiter, reset
 from scripts.hostile_client import run as hostile_run

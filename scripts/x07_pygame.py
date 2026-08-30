@@ -20,12 +20,9 @@ from __future__ import annotations
 import argparse
 import colorsys
 import hashlib
-from pathlib import Path
-import random
 import sys
 from typing import Any
 
-from genesis import config, law_config
 from genesis.lawdsl import to_vietnamese
 from genesis.lawgen import generate_cached
 from genesis.tick import build_match, tick

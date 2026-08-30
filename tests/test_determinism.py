@@ -15,7 +15,6 @@ import pytest
 
 from genesis.run import main
 
-
 # ── 1. Hai lần chạy cùng seed cho file GIỐNG HỆT ────────────────────────
 
 def assert_runs_identical(seed: int, ticks: int, tmp_path: Path) -> None:

@@ -24,8 +24,8 @@ File này **không import vòng chạy**, cùng lý do với `score.py`: nó đ�
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 

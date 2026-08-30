@@ -10,11 +10,11 @@ from __future__ import annotations
 
 import random
 
-from genesis import config, law_config
+from genesis import config
 from genesis.creature import Creature
-from genesis.lawdsl import EffectKind, Law, Mag, TriggerKind
+from genesis.lawdsl import EffectKind, Law, Mag
 from genesis.laweval import Ctx, LawEvent, evaluate
-from genesis.world import Terrain, World, phase_at
+from genesis.world import World, phase_at
 
 # Độ lớn rổ -> con số thật. Agent không đo được con số nên chỉ cần nhất quán.
 _MAG_VALUE: dict[Mag | None, float] = {Mag.SMALL: 3.0, Mag.MED: 10.0, Mag.BIG: 22.0, None: 10.0}

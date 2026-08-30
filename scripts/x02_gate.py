@@ -24,11 +24,10 @@ số đó trước khi quy công cho model.
 from __future__ import annotations
 
 import argparse
-import csv
 import json
-from pathlib import Path
 import statistics
 import sys
+from pathlib import Path
 
 from genesis.batch import Run, run_many
 

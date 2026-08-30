@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import time
-from fastapi.testclient import TestClient
+
 import pytest
+from fastapi.testclient import TestClient
 
 import net_config
+from net import server, state
 from net.match import MatchRunner, Phase
 from net.routes_join import clear_rate_limits
 from net.routes_work import clear_work_state
-from net import state
-import net.server as server
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +25,20 @@ def reset_state():
 
 @pytest.fixture
 def client(monkeypatch):
-    r = MatchRunner(seed=1, ticks=5, tick_ms=1, log_dir=None)
+    # `ticks=5, tick_ms=1` cộng vòng lặp nền của `lifespan` là một cuộc đua có
+    # thật, và nó đã đỏ NGẪU NHIÊN: cả ván dài đúng **5 mili-giây**, nên khi máy
+    # bận thì ván trôi hết sang REVEAL trước lúc yêu cầu HTTP tới nơi và `/work`
+    # trả `204` thay vì `200`.
+    #
+    # Đây là loại lỗi tệ hơn một bài đỏ hẳn: nó dạy người ta "chạy lại là được",
+    # và rồi CI đỏ thật cũng bị bỏ qua.
+    #
+    # Không bài nào ở đây CẦN đồng hồ chạy — bài nào muốn một tick cụ thể thì tự
+    # gán `r.tick_no`, bài nào muốn đổi pha thì gọi `advance_phase()`. Nên chặn
+    # nhịp lại: nhịp chậm cộng `step` rỗng cho một ván đứng yên, và một bài kiểm
+    # đứng yên là bài kiểm đọc được. Cùng cách đã dùng ở `tests/test_decision.py`.
+    r = MatchRunner(seed=1, ticks=200, tick_ms=10_000, log_dir=None)
+    monkeypatch.setattr(r, "step", lambda: None)
     monkeypatch.setattr(state, "runner", r)
     with TestClient(server.app) as c:
         yield c, r

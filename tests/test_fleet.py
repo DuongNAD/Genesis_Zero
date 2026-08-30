@@ -14,16 +14,18 @@ from pathlib import Path
 
 import httpx
 import pytest
-from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "client"))
 
-from genesis_client import run  # noqa: E402
-from net import state  # noqa: E402
-from net.match import MatchRunner, Phase  # noqa: E402
-from net.ratelimit import reset  # noqa: E402
-import net.server as server  # noqa: E402
-import net_config  # noqa: E402
+from genesis_client import run
+
+import net_config
+from net import (
+    server,
+    state,
+)
+from net.match import MatchRunner
+from net.ratelimit import reset
 
 
 def _model_transport(seen: list) -> httpx.MockTransport:
@@ -118,7 +120,6 @@ async def test_mot_client_chet_khong_keo_theo_ca_dan(_clean):
 def test_client_node_khong_phu_thuoc_gi():
     """Tài liệu khẳng định *"viết client cho ngôn ngữ khác là chuyện một buổi
     chiều"*. File Node tồn tại để câu đó được KIỂM, không chỉ được nói."""
-    import re
     import shutil
     import subprocess
 

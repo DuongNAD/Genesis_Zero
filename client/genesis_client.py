@@ -93,7 +93,7 @@ async def heartbeat_loop(srv: httpx.AsyncClient, headers: dict, stop: asyncio.Ev
             logger.warning("heartbeat hỏng: %s", exc)
         try:
             await asyncio.wait_for(stop.wait(), timeout=HEARTBEAT_SECONDS)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pass
 
 

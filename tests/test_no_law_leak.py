@@ -22,13 +22,12 @@ from __future__ import annotations
 
 import re
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from genesis.lawdsl import to_vietnamese
+from net import server, state
 from net.match import MatchRunner, Phase
-from net import state
-import net.server as server
 
 ALWAYS_FORBIDDEN = re.compile(r"law_id|FRUIT_[A-D]|match_seed")
 

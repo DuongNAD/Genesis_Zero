@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import collections
 import json
-from pathlib import Path
 import random
+from pathlib import Path
 
-import pytest
-
-from genesis import config, law_config
+from genesis import law_config
 from genesis.creature import Creature
 from genesis.run import main
 from genesis.surface import SurfaceMap, roll_surface_map
-from genesis.tick import SimState, build_match, tick
+from genesis.tick import SimState, tick
 from genesis.world import Terrain, World, phase_at
 
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -52,9 +51,8 @@ def test_key_order_stable_regardless_of_insertion_order(tmp_path: Path) -> None:
 
 
 def test_unknown_kind_rejected(tmp_path: Path) -> None:
-    with LogWriter(tmp_path / "a.jsonl", "m") as log:
-        with pytest.raises(ValueError):
-            log.write(1, "KHONG_CO_LOAI_NAY")
+    with LogWriter(tmp_path / "a.jsonl", "m") as log, pytest.raises(ValueError):
+        log.write(1, "KHONG_CO_LOAI_NAY")
 
 
 def test_event_kinds_cover_the_docs() -> None:

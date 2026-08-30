@@ -26,12 +26,11 @@ làm quan sát gián tiếp khó hơn, vừa làm kênh nói ngắn lại. Đó 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import random
+from dataclasses import dataclass
 
 from genesis import config
-from genesis.world import (CARDINAL_OFFSETS, SEEDED_TERRAINS, Terrain,
-                           erode_cores)
+from genesis.world import CARDINAL_OFFSETS, SEEDED_TERRAINS, Terrain, erode_cores
 
 
 @dataclass(frozen=True)

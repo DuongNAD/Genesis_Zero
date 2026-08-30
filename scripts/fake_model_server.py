@@ -15,8 +15,8 @@ không ở model. Đừng bao giờ báo cáo số đo từ chế độ này nh�
 from __future__ import annotations
 
 import argparse
-import json
 import hashlib
+import json
 import random
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -31,7 +31,7 @@ class Handler(BaseHTTPRequestHandler):
     # "linh cảm làm đổi kết quả" khỏi "hai ván vốn đã khác nhau".
     hunch_rate: float = 0.35
 
-    def do_POST(self) -> None:  # noqa: N802 (tên do BaseHTTPRequestHandler quy định)
+    def do_POST(self) -> None:
         n = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(n) or b"{}")
         prompt = body.get("prompt", "")

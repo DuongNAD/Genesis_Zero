@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import random
 import re
-
-import pytest
+from pathlib import Path
 
 from genesis import config
 from genesis.creature import Creature
@@ -19,7 +17,7 @@ from genesis.strategist import (
     RemoteClientStrategist,
     Strategist,
 )
-from genesis.tick import SimState, build_match, tick
+from genesis.tick import build_match, tick
 
 
 def test_strategist_protocol_and_classes() -> None:

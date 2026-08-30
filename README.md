@@ -90,7 +90,7 @@ kiểm điều đó từ ngoài.
 
 | | |
 |---|---|
-| Test | **554 mục, xanh** |
+| Test | **640 mục, xanh** |
 | Phiếu việc | 62, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
@@ -143,7 +143,7 @@ bất biến, cách nghiệm thu, và — quan trọng nhất — **những lỗ
 
 ```bash
 make preflight    # máy này chạy được một ván thật chưa?
-make test         # 554 test
+make test         # 640 test
 make serve        # server ván, cổng 8000
 make hostile      # kiểm cửa chống lạm dụng — chạy TRƯỚC khi phơi ra internet
 make expose       # mở tunnel ngrok

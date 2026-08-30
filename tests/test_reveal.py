@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import ast
 import json
-from pathlib import Path
 import random
-import pytest
+from pathlib import Path
 
 from rich.table import Table
 
 from genesis.lawdsl import (
-    Cond,
-    CondKind,
     Dur,
     Effect,
     EffectKind,

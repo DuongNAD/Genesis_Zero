@@ -12,15 +12,14 @@ Các bài kiểm bắt buộc:
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import re
+from pathlib import Path
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
+from net import server, state
 from net.match import MatchRunner, Phase
-import net.server as server
-from net import state
 
 FORBIDDEN_RUNNING_PATTERN = re.compile(r"law_id|POISON|DAMAGE|HEAL|SPREAD|FRUIT_[A-D]")
 
@@ -75,18 +74,17 @@ def test_2_spectate_reveal_has_full_laws(monkeypatch):
     while r.phase is not Phase.REVEAL:
         r.advance_phase()
 
-    with TestClient(server.app) as c:
-        with c.websocket_connect("/v1/spectate") as ws:
-            law_fired_count = 0
-            for _ in range(50):
-                frame = ws.receive_json()
-                for ev in frame.get("events", []):
-                    if ev.get("k") == "LAW_FIRED":
-                        law_fired_count += 1
-                        assert ev.get("law") != "?", "Ở pha REVEAL, law không được là '?'"
-                        assert isinstance(ev.get("law"), str) and len(ev.get("law")) > 0
+    with TestClient(server.app) as c, c.websocket_connect("/v1/spectate") as ws:
+        law_fired_count = 0
+        for _ in range(50):
+            frame = ws.receive_json()
+            for ev in frame.get("events", []):
+                if ev.get("k") == "LAW_FIRED":
+                    law_fired_count += 1
+                    assert ev.get("law") != "?", "Ở pha REVEAL, law không được là '?'"
+                    assert isinstance(ev.get("law"), str) and len(ev.get("law")) > 0
 
-            assert law_fired_count > 0, "Phải có sự kiện LAW_FIRED ở pha REVEAL để kiểm tra"
+        assert law_fired_count > 0, "Phải có sự kiện LAW_FIRED ở pha REVEAL để kiểm tra"
 
 
 def test_3_spectate_frame_schema(spectate_env):
@@ -180,10 +178,9 @@ def test_7_xem_khong_cham_vao_sim(monkeypatch):
             # thì nó chạy tick song song với vòng `r.step()` bên dưới và ta đo
             # nhầm hai độ dài ván khác nhau chứ không đo ảnh hưởng của người xem.
             r.stopped = True
-            with TestClient(server.app) as c:
-                with c.websocket_connect("/v1/spectate"):
-                    for _ in range(30):
-                        r.step()
+            with TestClient(server.app) as c, c.websocket_connect("/v1/spectate"):
+                for _ in range(30):
+                    r.step()
         else:
             for _ in range(30):
                 r.step()

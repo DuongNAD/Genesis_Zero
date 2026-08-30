@@ -23,7 +23,6 @@ from genesis.lawdsl import (
 )
 from genesis.laweval import (
     Ctx,
-    LawEvent,
     cond_holds,
     evaluate,
     trigger_matches,

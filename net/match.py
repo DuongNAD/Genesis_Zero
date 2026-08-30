@@ -26,27 +26,26 @@ from __future__ import annotations
 
 import asyncio
 import collections
-from dataclasses import dataclass, field
-from enum import StrEnum
+import json
 import random
 import time
+from dataclasses import astuple, dataclass, field
+from enum import StrEnum
+from pathlib import Path
 from typing import Any
 
-import json
-from pathlib import Path
-
 import net_config
-from genesis import config, law_config
-from dataclasses import astuple
+from genesis import config
 from genesis.creature import Creature, creature_sort_key
-from genesis.lawdsl import to_json, to_vietnamese
-from genesis.logio import LogWriter
-from genesis.lawgen import generate_cached
 from genesis.features import kit_of, roll_for_species
 from genesis.handbook import Handbook
+from genesis.lawdsl import to_json, to_vietnamese
+from genesis.lawgen import generate_cached
+from genesis.logio import LogWriter
 from genesis.minds import Minds
 from genesis.strategist import RemoteClientStrategist
-from genesis.tick import build_match, tick as run_tick
+from genesis.tick import build_match
+from genesis.tick import tick as run_tick
 
 
 class _FrameCollector:

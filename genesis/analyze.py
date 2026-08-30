@@ -20,16 +20,15 @@ from __future__ import annotations
 
 import argparse
 import csv
-from pathlib import Path
 import statistics
+from pathlib import Path
 from typing import Any
 
 import matplotlib
+
 matplotlib.use("Agg")
 matplotlib.rcParams["svg.hashsalt"] = "genesis"
 import matplotlib.pyplot as plt
-
-from genesis import law_config
 
 
 def load_scores(paths: list[Path]) -> list[dict]:

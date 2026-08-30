@@ -7,10 +7,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from collections.abc import Callable
 import json
 import random
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from rich.live import Live
@@ -18,30 +18,20 @@ from rich.live import Live
 from genesis import config
 from genesis.creature import (
     Creature,
-    creature_sort_key,
-    kill,
-    random_step,
-    resolve_eat,
-    spawn_population,
-    try_respawn,
-    upkeep_and_check_death,
 )
 from genesis.lawdsl import to_json
 from genesis.lawgen import generate_cached
 from genesis.logio import LogWriter
 from genesis.oracle_run import run_oracle
-from genesis.replay import ReplayStrategist
 from genesis.render import render_frame
+from genesis.replay import ReplayStrategist
 from genesis.strategist import LlmStrategist
-from genesis.tick import SimState, _resolve_eating, build_match, tick
+from genesis.tick import SimState, build_match, tick
 from genesis.world import (
-    CORPSE_GLYPH,
     PLANT_GLYPH,
     TERRAIN_GLYPHS,
     World,
-    decay_corpses,
     spawn_plants,
-    visible,
 )
 
 DEBUG_RNG_SAMPLES = 20

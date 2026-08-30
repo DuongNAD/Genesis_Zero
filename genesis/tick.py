@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import astuple, dataclass, field
 import hashlib
 import random
+from dataclasses import astuple, dataclass, field
 from typing import TYPE_CHECKING
 
 from genesis import config, law_config
 from genesis.adapt import award_adapt, maybe_shift, reset_body
-from genesis.lineage import rebirth
 from genesis.combat import (
     MELEE_RANGE,
     Attack,
@@ -27,6 +26,10 @@ from genesis.creature import (
     try_respawn,
     upkeep_and_check_death,
 )
+from genesis.lawdsl import TriggerKind
+from genesis.laweval import LawEvent
+from genesis.lawhook import apply_creature_effect, build_ctx, collect_law_effects
+from genesis.lineage import rebirth
 from genesis.reflex import (
     ActiveGoal,
     Intent,
@@ -36,9 +39,6 @@ from genesis.reflex import (
 )
 from genesis.speech import COST_SPEAK, hearers
 from genesis.strategist import ReflexStrategist, Strategist
-from genesis.lawdsl import Law, TriggerKind
-from genesis.lawhook import apply_creature_effect, build_ctx, collect_law_effects
-from genesis.laweval import LawEvent
 from genesis.surface import roll_surface_map
 from genesis.world import (
     Terrain,
@@ -420,8 +420,6 @@ def tick(
     if laws or _hunch_on:
         ate = {e["creature_id"] for e in eat_events}
         drank = {e["creature_id"] for e in drink_events}
-        attacked = {a.attacker_id for a in attacks}
-        was_hit = {a.defender_id for a in attacks}
         rested = {it.creature_id for it in intents if not it.path}
         moved_to = {it.creature_id: (it.path[-1] if it.path else None) for it in intents}
 

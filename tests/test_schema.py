@@ -8,7 +8,7 @@ import pytest
 
 from genesis import config
 from genesis.strategist import schema_for
-from genesis.traits import Traits, founder_traits
+from genesis.traits import founder_traits
 
 
 def test_decide_schema_invariants() -> None:
@@ -131,7 +131,7 @@ def test_arg_cua_luat_bi_khoa_vao_enum_hop_le():
     Enum làm điều đó bất khả về cấu trúc: grammar không sinh ra nổi một chuỗi
     ngoài danh sách.
     """
-    from genesis.strategist import ARG_DOMAIN, legal_args
+    from genesis.strategist import legal_args
     from genesis.tick import build_match
 
     world, _, _, _ = build_match(55)

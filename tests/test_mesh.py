@@ -18,8 +18,8 @@ from __future__ import annotations
 import ast
 import asyncio
 import inspect
-from pathlib import Path
 import time
+from pathlib import Path
 
 import httpx
 import pytest

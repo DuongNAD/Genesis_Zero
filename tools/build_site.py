@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Dựng docs/site.html từ toàn bộ bộ tài liệu. Chạy lại sau mỗi lần sửa .md."""
-import re, html, json, pathlib, sys
+import html
+import json
+import pathlib
+import re
+import sys
+
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import md as MD
 
@@ -97,7 +102,7 @@ bodies, tocs = {}, {}
 for sid, kind, code, title, sub, txt in sections:
     cur_dir = ROOT if sid == "overview" else (TASKS if kind == "task" else DOCS)
     body = re.sub(r"^#\s.*\n", "", txt, count=1)          # bỏ h1, đã có ở header
-    body = re.sub(r"^>\s*\[00 Bản đồ\].*\n", "", body, flags=re.M)  # bỏ dải nav .md
+    body = re.sub(r"^>\s*\[00 Bản đồ\].*\n", "", body, flags=re.MULTILINE)  # bỏ dải nav .md
     h, heads = MD.render(body, make_linkfn(cur_dir), idprefix=sid)
     bodies[sid] = h
     tocs[sid] = [(s, t) for lvl, s, t in heads if lvl == 2]

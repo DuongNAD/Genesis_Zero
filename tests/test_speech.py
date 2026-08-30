@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from genesis.speech import (
-    COST_SPEAK,
     SIGNAL_RANGE_MULT,
     TEXT_MAX,
     Reputation,

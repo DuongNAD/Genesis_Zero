@@ -47,9 +47,9 @@ from __future__ import annotations
 import argparse
 import collections
 import json
-from pathlib import Path
 import statistics
 import sys
+from pathlib import Path
 from typing import Any
 
 MIN_GROUP = 2
@@ -160,7 +160,7 @@ def train(prepared: list[dict[str, Any]], a: argparse.Namespace) -> int:
         [p for p in model.parameters() if p.requires_grad], lr=a.lr
     )
 
-    def logprob(sample: dict, use_adapter: bool) -> "torch.Tensor":
+    def logprob(sample: dict, use_adapter: bool) -> torch.Tensor:
         """log π(response | prompt), tổng trên các token của response.
 
         Chỉ tính trên phần **response**: prompt bị che bằng -100. Không che thì

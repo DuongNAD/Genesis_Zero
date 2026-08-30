@@ -4,19 +4,17 @@ from __future__ import annotations
 
 import copy
 import inspect
-import json
-from pathlib import Path
 import random
 import subprocess
 import sys
 import unicodedata
+from pathlib import Path
 
-import pytest
 from rich.style import Style
 
+import genesis.render as R
 from genesis import config
 from genesis.creature import Creature, spawn_population
-from genesis.traits import founder_traits
 from genesis.render import (
     GLYPH_POOL,
     glyph_of,
@@ -24,13 +22,12 @@ from genesis.render import (
     render_frame,
     style_of,
 )
-import genesis.render as R
 from genesis.run import _m0_loop, main, parse
+from genesis.traits import founder_traits
 from genesis.world import (
     CORPSE_GLYPH,
     PLANT_GLYPH,
     TERRAIN_GLYPHS,
-    Terrain,
     World,
 )
 

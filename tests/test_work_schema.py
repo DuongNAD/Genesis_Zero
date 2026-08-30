@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 from genesis.strategist import schema_for
 from genesis.tick import build_match
-from genesis.traits import founder_traits
 
 
 def test_duong_mang_va_duong_cuc_bo_dung_cung_mot_schema():
@@ -102,8 +99,9 @@ def test_van_mo_ghi_prompt_hash():
     — mà ván mở chính là chỗ dữ liệu thật sẽ đến từ đó. Thiếu trường này nghĩa
     là toàn bộ dữ liệu quý nhất của dự án không dùng để huấn luyện được.
     """
-    from net.routes_work import WorkRecord
     import dataclasses
+
+    from net.routes_work import WorkRecord
 
     names = {f.name for f in dataclasses.fields(WorkRecord)}
     assert "prompt_hash" in names

@@ -41,7 +41,6 @@ from genesis.provenance import Ledger
 
 if TYPE_CHECKING:
     from genesis.creature import Creature
-    from genesis.lawdsl import Law
 
 
 class Minds:

@@ -25,11 +25,19 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import TYPE_CHECKING, Any, Iterable, Sequence
+from collections.abc import Iterable, Sequence
+from typing import TYPE_CHECKING, Any
 
 from genesis import config, law_config
-from genesis.lawdsl import CondKind, EffectKind, TriggerKind, to_vietnamese, vocab_for_brain
+from genesis.lawdsl import (
+    CondKind,
+    EffectKind,
+    TriggerKind,
+    to_vietnamese,
+    vocab_for_brain,
+)
 from genesis.surface import SurfaceMap
+from genesis.traits import Traits
 from genesis.world import Terrain, phase_at
 
 if TYPE_CHECKING:
@@ -42,7 +50,7 @@ if TYPE_CHECKING:
 def prompt_hash(system: str, user: str) -> str:
     """md5 của prompt đầy đủ. Chỉ hash này đi vào log, không bao giờ prompt gốc —
     ghi cả prompt thì log phình gấp ~20 lần (B-06 bất biến 1)."""
-    return hashlib.md5(f"{system}\x00{user}".encode("utf-8")).hexdigest()
+    return hashlib.md5(f"{system}\x00{user}".encode()).hexdigest()
 
 
 class PromptLeak(RuntimeError):

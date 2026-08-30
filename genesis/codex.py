@@ -3,14 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from genesis import law_config
 from genesis.lawdsl import Law
 from genesis.validate import Verdict
-
-if TYPE_CHECKING:
-    from genesis.surface import SurfaceMap
 
 
 @dataclass

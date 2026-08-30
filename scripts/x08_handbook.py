@@ -30,9 +30,9 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import statistics
 import sys
+from pathlib import Path
 
 from genesis.handbook import SEED_LESSONS, Handbook
 from genesis.lawgen import generate_cached

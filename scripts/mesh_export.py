@@ -21,17 +21,17 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import net_config
 from genesis import config
 from genesis.domain import domain_of
 from genesis.features import roll_for_species
 from genesis.mesh_prompts import all_static_prompts, creature_prompt, meshy_payload
 from genesis.traits import founder_traits
-import net_config
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "meshy"
 

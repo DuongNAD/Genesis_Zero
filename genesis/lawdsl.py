@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from enum import StrEnum
-import random
+
 from genesis import law_config
 from genesis.surface import SurfaceMap
-
 
 # ─── 1. StrEnum: Từ vựng §2.3 ────────────────────────────────────────────────
 

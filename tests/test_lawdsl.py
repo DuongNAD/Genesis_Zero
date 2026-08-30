@@ -19,7 +19,6 @@ from genesis.lawdsl import (
     Mag,
     Trigger,
     TriggerKind,
-    Vocab,
     from_json,
     random_law,
     to_gbnf,

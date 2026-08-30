@@ -3,25 +3,23 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 
-from genesis import config, law_config
+import net_config
+from genesis import law_config
 from genesis.codex import Codex
-from genesis.creature import Creature, creature_sort_key
+from genesis.creature import Creature
 from genesis.fieldnotes import FieldNotes
 from genesis.prompt import PromptCache, prompt_hash, user_block
 from genesis.strategist import _budget, schema_for
-from genesis.traits import founder_traits
 from genesis.world import visible
-import net_config
-from net.match import Phase, Registration
-from net.routes_join import allocate_traits
 from net import state
+from net.match import Phase, Registration
 
 _holds: dict[str, int] = {}
 

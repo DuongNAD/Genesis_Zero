@@ -100,7 +100,7 @@ def resolve_combat(
     results: list[CombatResult] = []
     for target_id in all_targets:
         dmg = dmg_by_target.get(target_id, 0.0)
-        poison_from = poison_by_target.get(target_id, None)
+        poison_from = poison_by_target.get(target_id)
         results.append(CombatResult(
             target_id=target_id, dmg=dmg, poison_from=poison_from,
             # Sắp xếp để log tái lập được: cùng seed phải cho cùng một file.

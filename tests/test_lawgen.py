@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import random
+
 import pytest
 
-from genesis import config
 from genesis import law_config as lc
 from genesis.lawdsl import (
     Cond,

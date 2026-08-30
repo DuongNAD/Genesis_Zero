@@ -25,9 +25,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from pathlib import Path
 import random
 import sys
+from pathlib import Path
 from typing import Any
 
 from genesis import law_config

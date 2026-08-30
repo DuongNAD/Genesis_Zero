@@ -50,7 +50,7 @@ async def one(client: httpx.AsyncClient, url: str, slot: int, state: str) -> tup
         obj = json.loads(body["content"])
         ok = set(obj) <= {"note", "goal", "ttl"} and obj["goal"] in SCHEMA["properties"]["goal"]["enum"]
         n = body.get("tokens_predicted", 0)
-    except Exception as exc:                       # noqa: BLE001 — báo, không nuốt
+    except Exception as exc:
         print(f"  lỗi: {type(exc).__name__}: {exc}", file=sys.stderr)
         return False, time.monotonic() - t0, 0
     return ok, time.monotonic() - t0, n

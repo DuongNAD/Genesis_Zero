@@ -7,7 +7,15 @@ import time
 
 from genesis import law_config as lc
 from genesis.lawdsl import (
-    Cond, CondKind, Dur, Effect, EffectKind, Law, Mag, Trigger, TriggerKind,
+    Cond,
+    CondKind,
+    Dur,
+    Effect,
+    EffectKind,
+    Law,
+    Mag,
+    Trigger,
+    TriggerKind,
 )
 from genesis.lawgen import gate_b, gate_c, generate, measure
 
@@ -98,7 +106,8 @@ def test_live_gate_b_eliminates_dead_laws() -> None:
     import pathlib
 
     from genesis.logio import LogWriter
-    from genesis.tick import build_match, tick as run_tick
+    from genesis.tick import build_match
+    from genesis.tick import tick as run_tick
 
     def dead_laws(check: bool, seeds=(7, 11)) -> tuple[int, int]:
         dead = total = 0

@@ -12,7 +12,12 @@ import pytest
 
 from genesis import law_config
 from genesis.handbook import (
-    MAX_CHARS, MAX_LESSONS, SEED_LESSONS, Handbook, LessonRejected, sanitize_lesson,
+    MAX_CHARS,
+    MAX_LESSONS,
+    SEED_LESSONS,
+    Handbook,
+    LessonRejected,
+    sanitize_lesson,
 )
 
 

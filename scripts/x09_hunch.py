@@ -31,9 +31,9 @@ from __future__ import annotations
 import argparse
 import collections
 import json
-from pathlib import Path
 import statistics
 import sys
+from pathlib import Path
 
 from genesis.lawdsl import to_json
 from genesis.lawgen import generate_cached

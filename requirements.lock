@@ -1,0 +1,43 @@
+# Genesis Zero — phiên bản ĐÃ GHIM. Sinh bằng `make lock`.
+#
+#     pip install -r requirements.lock
+#
+# ## Vì sao một dự án nhỏ lại cần lock file
+#
+# Đây KHÔNG phải chuyện đóng gói, nó là chuyện **khoa học**. Kết luận trung tâm
+# của kho này (`match = 0.000` trên Qwen 1.5B / 7B / 14B) là một phép đo, và một
+# phép đo chỉ có nghĩa nếu chạy lại được. `requirements.txt` ghi `fastapi>=0.115`
+# nghĩa là ván chạy năm sau dùng một FastAPI khác, một `httpx` khác — và `httpx`
+# nằm ngay trên đường gọi model, chỗ mà hạn chờ và cách gom lỗi quyết định bao
+# nhiêu lượt nghĩ bị mất.
+#
+# Đã có tiền lệ trong chính kho này: một hằng số hạn chờ đúng cho MỘT model làm
+# 20/41 lời gọi của Qwen-14B trượt, và đọc vội thì thành "14B không quy nạp
+# được". Một bản `httpx` khác có thể làm đúng như thế mà không ai đổi dòng code
+# nào.
+#
+# `requirements.txt` giữ nguyên `>=` cho người chỉ muốn chạy thử. File này dành
+# cho lúc **đo**: dựng lại đúng môi trường đã cho ra con số.
+#
+# Ghim ngày 2026-08-30, Python 3.11.8.
+
+annotated-types==0.7.0
+anyio==4.14.1
+certifi==2026.6.17
+click==8.4.2
+fastapi==0.141.1
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.18
+markdown-it-py==4.2.0
+mdurl==0.1.2
+pydantic==2.13.4
+pydantic_core==2.46.4
+Pygments==2.20.0
+rich==15.0.0
+sniffio==1.3.1
+starlette==1.6.0
+typing_extensions==4.15.0
+typing-inspection==0.4.2
+uvicorn==0.51.0

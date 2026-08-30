@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, astuple
+
 import pytest
 
 from genesis import config

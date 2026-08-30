@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from genesis_client import run  # noqa: E402
+from genesis_client import run
 
 logger = logging.getLogger("fleet")
 

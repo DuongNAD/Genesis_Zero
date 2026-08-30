@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections import Counter
 import random
+from collections import Counter
 
 import pytest
 
 from genesis import config
-from genesis.world import NEIGHBOR_OFFSETS, TERRAIN_GLYPHS, Terrain, World
+from genesis.world import TERRAIN_GLYPHS, Terrain, World
 
 # Ba loại địa hình được bộ sinh rải; FIRE chỉ đến từ luật SPREAD.
 GENERATED_TERRAINS = (Terrain.PLAIN, Terrain.WATER, Terrain.BUSH, Terrain.ROCK)

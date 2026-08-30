@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 from genesis.lawdsl import EffectKind
-
 
 _EFFECT_NAMES = [e.value for e in EffectKind]
 _FORBIDDEN_PATTERN = re.compile(

@@ -26,8 +26,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
 def load_dotenv(path: Path = Path(".env")) -> int:

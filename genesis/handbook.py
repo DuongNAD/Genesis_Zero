@@ -31,10 +31,10 @@ hoá, không phải điều kiện cần. Đó là một mệnh đề **đo đư
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import json
-from pathlib import Path
 import re
+from dataclasses import dataclass, field
+from pathlib import Path
 
 from genesis import law_config
 from genesis.lawdsl import CondKind, EffectKind, TriggerKind
@@ -113,7 +113,7 @@ class Handbook:
 
     # ── đĩa ──────────────────────────────────────────────────────────────
     @classmethod
-    def load(cls, species_id: str, d: Path) -> "Handbook":
+    def load(cls, species_id: str, d: Path) -> Handbook:
         p = Path(d) / f"{species_id}.json"
         if not p.exists():
             return cls(species_id=species_id)

@@ -16,13 +16,12 @@ In bảng: nhánh × (alive_ratio trung bình, số chết, match cao nhất n�
 from __future__ import annotations
 
 import argparse
-from concurrent.futures import ProcessPoolExecutor
 import hashlib
 import json
-from pathlib import Path
 import random
 import statistics
-import sys
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -167,8 +166,7 @@ def run_arm_one(arm: str, seed: int, ticks: int) -> dict[str, Any]:
                 if entry is not None:
                     for i, l in enumerate(laws):
                         m = match(entry.law, l, sits[i])
-                        if m > max_match:
-                            max_match = m
+                        max_match = max(max_match, m)
 
     avg_alive_ratio = sum(alive_ticks[c.id] / ticks for c in creatures) / len(creatures)
     total_deaths = sum(deaths.values())
@@ -235,7 +233,7 @@ def print_table(data: dict[str, Any]) -> None:
     summary = data["summary"]
 
     print("=" * 72)
-    print(f"KẾT QUẢ SO SÁNH 4 NHÁNH ĐỐI CHỨNG (X-04)")
+    print("KẾT QUẢ SO SÁNH 4 NHÁNH ĐỐI CHỨNG (X-04)")
     print(f"Số seeds: {seeds} | Ticks mỗi ván: {ticks}")
     print("=" * 72)
     print(f"{'Nhánh':<12} | {'alive_ratio TB':>15} | {'Tổng số chết':>14} | {'Match cao nhất':>15}")

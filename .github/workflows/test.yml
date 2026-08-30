@@ -1,0 +1,54 @@
+# CI cho Genesis Zero.
+#
+# Vì sao nó tồn tại, nói thẳng: kho này có 640 bài kiểm và **đã có hai bài rung**
+# (`test_work.py` đỏ ngẫu nhiên khi máy bận, xanh khi chạy lại). Một bài rung mà
+# không có CI thì không ai phát hiện — nó chỉ đỏ trên máy người khác, và người ấy
+# sẽ học được rằng "chạy lại là được". CI biến chuyện đó thành một tín hiệu thấy
+# được thay vì một thói quen.
+#
+# Ba việc, theo đúng thứ tự đắt dần: lint (giây), test (phút), demo đầu-cuối.
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  kiem-tra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Cài phụ thuộc
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest
+
+      - name: Lint
+        run: ruff check genesis net tests scripts client tools
+
+      - name: Test
+        # `-p no:randomly` KHÔNG dùng: thứ tự ngẫu nhiên là thứ bắt được test
+        # phụ thuộc lẫn nhau, và kho này đã có một ca như thế (`test_decision`
+        # hỏng khi chạy chung, xanh khi chạy riêng).
+        run: pytest -q
+
+      - name: Đường ống đầu-cuối, không cần model
+        # Chạy thật một ván qua HTTP với model giả BIẾT TRƯỚC đáp án, rồi đòi
+        # bộ chấm cho `match = 1.000`. Đây là bài canh quan trọng nhất của kho:
+        # nó chứng minh bộ chấm BẮT ĐƯỢC lời giải đúng. Không có nó thì một
+        # `match = 0` từ model thật không phân biệt được với một bộ chấm hỏng.
+        #
+        # Để trong một script chứ không phải heredoc lồng trong YAML: heredoc
+        # lồng là chỗ hỏng mà không ai thấy cho tới lúc CI chạy, và nó không
+        # chạy thử được ở máy.
+        run: python scripts/ci_smoke.py

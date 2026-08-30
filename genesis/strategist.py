@@ -7,26 +7,31 @@ import collections
 import queue
 import random
 import time
-from typing import TYPE_CHECKING, Any, Iterable, Protocol, runtime_checkable
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 import httpx
 
-from genesis import config, law_config, law_config
+from genesis import config, law_config, speech
 from genesis.codex import Codex
 from genesis.fieldnotes import FieldNotes, Note
-from genesis.lawdsl import Dur, Mag, vocab_for_brain
+from genesis.lawdsl import Dur, Law, Mag, to_json, vocab_for_brain
 from genesis.lineage import forget_on_death
-from genesis.minds import Minds
 from genesis.llm_client import CircuitBreaker, ask
-from genesis.lawdsl import Law, to_json
-from genesis.prompt import PromptCache, _PHASE_VN, _TERRAIN_VN, prompt_hash, user_block
-from genesis.provenance import Ledger, law_key
-from genesis import speech
+from genesis.minds import Minds
+from genesis.prompt import _TERRAIN_VN, PromptCache, prompt_hash, user_block
+from genesis.provenance import law_key
 from genesis.reflex import ActiveGoal, Goal, choose_goal
-from genesis.traits import Traits
 from genesis.reveal import law_from_surface_dict
-from genesis.validate import (ARG_DOMAIN, Verdict, validate_codex,
-                              validate_decide, validate_hunch, validate_shift)
+from genesis.traits import Traits
+from genesis.validate import (
+    ARG_DOMAIN,
+    Verdict,
+    validate_codex,
+    validate_decide,
+    validate_hunch,
+    validate_shift,
+)
 from genesis.world import phase_at
 
 if TYPE_CHECKING:
@@ -496,7 +501,7 @@ class RemoteClientStrategist:
         # có ai để hỏi hướng dịch, nên chúng phải rơi về W-12.
         self.slots: dict[str, int] = {}
 
-    def take_says(self) -> dict[str, "speech.Say"]:
+    def take_says(self) -> dict[str, speech.Say]:
         """Lấy VÀ xoá hàng chờ nói. Một câu nói là của MỘT tick."""
         out, self.pending_say = self.pending_say, {}
         return out
@@ -790,7 +795,7 @@ class LlmStrategist:
     # Uỷ quyền sang `Minds`. Giữ nguyên tên cũ để không phải sửa 550 bài test —
     # và quan trọng hơn: để không có BẢN SAO nào, chỉ có một chỗ giữ sự thật.
     @property
-    def notes(self) -> dict[str, "FieldNotes"]:
+    def notes(self) -> dict[str, FieldNotes]:
         return self.minds.notes
 
     @property

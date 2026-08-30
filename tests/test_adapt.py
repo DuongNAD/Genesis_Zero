@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import astuple
-import inspect
 import json
-from pathlib import Path
 import random
+from dataclasses import astuple
+from pathlib import Path
 
 import pytest
 
-from genesis import config
 import genesis.adapt as A
+from genesis import config
 from genesis.adapt import award_adapt, maybe_shift, reset_body
 from genesis.creature import Creature
 from genesis.run import main

@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import collections
 import json
-from pathlib import Path
 import random
-
-import pytest
+from pathlib import Path
 
 from genesis import config
 from genesis.creature import (
@@ -18,7 +16,12 @@ from genesis.creature import (
     spawn_population,
     try_respawn,
 )
-from genesis.run import _resolve_eating, main
+
+# `_resolve_eating` sống ở `genesis.tick`. Bản cũ nhập nó qua `genesis.run` —
+# chạy được, vì `run` tình cờ có nhập nó — nhưng đó là một re-export tình cờ,
+# và `ruff --fix` xoá đúng nó vì `run` không dùng tới. Nhập từ chỗ nó thật sự ở.
+from genesis.run import main
+from genesis.tick import _resolve_eating
 from genesis.traits import founder_traits
 from genesis.world import (
     CORPSE_GLYPH,

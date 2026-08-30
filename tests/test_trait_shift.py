@@ -12,7 +12,6 @@ import json
 import logging
 
 import httpx
-import pytest
 
 from genesis import config
 from genesis.adapt import maybe_shift
@@ -99,8 +98,10 @@ def test_dich_cham_bien_thi_bo_qua_khong_nem():
 def test_log_ghi_ai_quyet_dinh():
     """`by` tách hai nguồn: giàn giáo W-12 và lựa chọn của model. Không tách thì
     số liệu B-13 trộn lẫn với số liệu W-12."""
+    import pathlib
+    import tempfile
+
     from genesis.logio import LogWriter, read_log
-    import tempfile, pathlib
 
     with tempfile.TemporaryDirectory() as d:
         out = pathlib.Path(d) / "b13.jsonl"

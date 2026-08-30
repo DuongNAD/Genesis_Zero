@@ -1,5 +1,7 @@
 """Markdown -> HTML tối giản, đủ cho bộ tài liệu Genesis Zero."""
-import re, html, unicodedata
+import html
+import re
+
 
 def slug(text):
     t = re.sub(r'<[^>]+>', '', text)
@@ -123,8 +125,8 @@ def render(md, linkfn, idprefix=''):
             para = flush_para(para)
             def cells(row):
                 r = row.strip()
-                if r.startswith('|'): r = r[1:]
-                if r.endswith('|'): r = r[:-1]
+                r = r.removeprefix('|')
+                r = r.removesuffix('|')
                 return [c.strip() for c in r.split('|')]
             head = cells(L)
             aligns = []

@@ -11,15 +11,14 @@ from __future__ import annotations
 import ast
 import json
 from pathlib import Path
-import random
 
 import httpx
 import pytest
 
 from genesis import law_config
-from genesis.lawdsl import to_json, to_vietnamese
+from genesis.lawdsl import to_json
 from genesis.lawgen import generate_cached
-from genesis.logio import LogWriter, read_log
+from genesis.logio import LogWriter
 from genesis.reveal import _law_to_surface_dict
 from genesis.score import score_match, total_reward
 from genesis.strategist import LlmStrategist

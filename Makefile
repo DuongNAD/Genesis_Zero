@@ -1,4 +1,4 @@
-.PHONY: test run serve expose preflight preflight-full demo model-check hostile lint clean site
+.PHONY: test run serve expose preflight preflight-full demo model-check hostile lint lint-fix lock clean site
 
 test:
 	pytest
@@ -44,8 +44,27 @@ expose:
 hostile:
 	python scripts/hostile_client.py --server http://127.0.0.1:8000
 
+# `2>/dev/null || echo "chưa cài"` là một lời nói dối có cấu trúc: `ruff check`
+# thoát khác 0 khi nó TÌM RA LỖI, không chỉ khi thiếu lệnh. Bản cũ nuốt luôn
+# stderr rồi in "ruff chưa cài — bỏ qua" trong khi ruff có cài và vừa tìm ra 403
+# lỗi. Một lệnh kiểm báo cáo sai còn tệ hơn không có lệnh kiểm: nó dạy người ta
+# tin vào một dòng chữ xanh.
+#
+# Quét CẢ kho, không chỉ `genesis tests` — `net/`, `scripts/`, `client/`,
+# `tools/` cũng là code chạy thật.
+# Ghim lại phiên bản đang chạy. Chạy khi môi trường đo đã ổn định, không phải
+# mỗi lần cài thêm gói.
+lock:
+	@python -m pip freeze | grep -iE "^(rich|httpx|fastapi|uvicorn|pydantic|starlette|anyio|h11|httpcore|certifi|idna|sniffio|annotated-types|pydantic-core|typing-extensions|markdown-it-py|mdurl|pygments|click|typing-inspection)==" | sort > /tmp/gz.lock
+	@echo "xem /tmp/gz.lock rồi chép phần thân vào requirements.lock"
+
 lint:
-	@ruff check genesis tests 2>/dev/null || echo "(ruff chưa cài — bỏ qua)"
+	@command -v ruff >/dev/null 2>&1 || { echo "ruff chưa cài: pip install ruff"; exit 1; }
+	ruff check genesis net tests scripts client tools
+
+lint-fix:
+	@command -v ruff >/dev/null 2>&1 || { echo "ruff chưa cài: pip install ruff"; exit 1; }
+	ruff check --fix genesis net tests scripts client tools
 
 site:
 	python tools/build_site.py

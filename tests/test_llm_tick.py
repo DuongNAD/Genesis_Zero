@@ -16,7 +16,6 @@ import pytest
 from genesis import config
 from genesis.creature import creature_sort_key
 from genesis.logio import LogWriter, read_log
-from genesis.reflex import Goal
 from genesis.replay import ReplayMismatch, ReplayStrategist
 from genesis.strategist import LlmStrategist
 from genesis.tick import build_match, tick

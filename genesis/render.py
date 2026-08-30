@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import colorsys
 import hashlib
-from functools import lru_cache
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from functools import lru_cache
 
 from rich.console import RenderableType
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from genesis import config
 from genesis.creature import Creature, creature_sort_key
 from genesis.world import (
     CORPSE_GLYPH,

@@ -18,7 +18,17 @@ from __future__ import annotations
 
 import sys
 
-from genesis.lawdsl import Cond, CondKind, Dur, Effect, EffectKind, Law, Mag, Trigger, TriggerKind
+from genesis.lawdsl import (
+    Cond,
+    CondKind,
+    Dur,
+    Effect,
+    EffectKind,
+    Law,
+    Mag,
+    Trigger,
+    TriggerKind,
+)
 from genesis.provenance import law_key
 from genesis.teach import TeachEvent, measure_deception
 

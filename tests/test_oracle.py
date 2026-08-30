@@ -312,8 +312,8 @@ def test_dap_an_hoan_hao_an_1_va_doan_bua_an_0():
     import random
 
     from genesis import law_config
-    from genesis.lawgen import generate_cached
     from genesis.laweval import evaluate
+    from genesis.lawgen import generate_cached
     from genesis.oracle import score_answers
     from genesis.situations import sample_situations
 
