@@ -144,7 +144,7 @@ def body_line(tr: Traits) -> str:
 # ─── SYSTEM ──────────────────────────────────────────────────────────────────
 
 def system_block(c: Creature, persona: str, sm: SurfaceMap,
-                 handbook: str = "") -> str:
+                 handbook: str = "", hunch: bool = False) -> str:
     """A + A2 + B + C + D — bất biến cả ván với cùng một cá thể.
 
     Chỉ đổi khi `c.traits.brain` đổi (B-13 dịch trait). Người gọi phải phát
@@ -200,6 +200,26 @@ def system_block(c: Creature, persona: str, sm: SurfaceMap,
         "hỏi RIÊNG để phát biểu một luật và chọn ô ghi. Ghi sổ tốn sức, và sổ "
         "chỉ có vài ô — đầy thì muốn ghi mới phải xoá cũ."
     )
+    # Cùng bài học, lần thứ hai — và lần này tôi đã biết trước mà vẫn quên.
+    #
+    # B-14 dựng cả cơ chế Linh cảm rồi thêm `want_hunch` vào schema, nhưng KHÔNG
+    # nói ở đâu rằng nó là cánh cửa. Chạy thật (Qwen-7B, X-09, hai ván): model
+    # nhắc tới `want_hunch` đúng **1 lần trên hơn 85 lời gọi**, và **`HUNCH_OP`
+    # bằng 0** ở cả hai ván. Nhánh thí nghiệm của X-09 **không bao giờ chạy** —
+    # tôi suýt để nó đo hai tiếng một thứ không xảy ra.
+    #
+    # Đúng nguyên văn chuyện đã xảy ra với `want_codex` (0/44 lượt, xem khối chú
+    # thích ngay trên). Bài học không phải "nhớ thêm câu giải thích" mà là:
+    # **một trường trong schema không tự nói nó dùng để làm gì.**
+    if hunch:
+        lines.append(
+            "Muốn nêu một LINH CẢM thì đặt want_hunch = true. Lượt sau ngươi sẽ "
+            "được hỏi RIÊNG để nói ra một điều ngươi NGHI — chưa cần tin. Linh "
+            "cảm KHÔNG phải Sổ Luật: nó không được chấm điểm, không tốn ô sổ, và "
+            "từ lúc nêu ra thì mỗi lần chuyện ấy đáng lẽ xảy ra ngươi sẽ được cho "
+            "biết nó có xảy ra thật không — kể cả những lần không có gì. Nghi sai "
+            "không mất gì."
+        )
     block_d = "\n".join(lines)
 
     _check_no_leak(BLOCK_A, "khối A")
@@ -330,8 +350,9 @@ class PromptCache:
         tick_no: int = 0,
         log=None,
         handbook: str = "",
+        hunch: bool = False,
     ) -> str:
-        text = system_block(c, persona, sm, handbook=handbook)
+        text = system_block(c, persona, sm, handbook=handbook, hunch=hunch)
         old = self._cache.get(c.id)
         if old is not None and old != text:
             self.invalidations += 1

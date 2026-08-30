@@ -26,6 +26,15 @@ class CombatResult:
     target_id: str
     dmg: float
     poison_from: str | None = None
+    # AI đã ra đòn. Một TUPLE, không phải một id: giữ đúng tính đồng thời của
+    # W-11 — hai con cùng đánh một con trong một tick thì cả hai đều có mặt.
+    #
+    # Thiếu trường này thì log `ATTACK` ghi nạn nhân hai lần (`creature_id` và
+    # `target_id` bằng nhau) và **không thể trả lời "ai giết ai"** — mà đó đúng
+    # là câu hỏi cả thiết kế ba tầng của W-18 (kẻ săn · con mồi · chỗ trốn) dựng
+    # lên để hỏi. Tìm ra khi muốn biết cái gì săn cá và phát hiện log không nói
+    # được.
+    attackers: tuple[str, ...] = ()
 
 
 def resolve_combat(
@@ -43,6 +52,7 @@ def resolve_combat(
     """
     dmg_by_target: dict[str, float] = {}
     poison_by_target: dict[str, str] = {}
+    attackers_by_target: dict[str, set[str]] = {}
 
     for att in attacks:
         attacker = creatures.get(att.attacker_id)
@@ -62,6 +72,7 @@ def resolve_combat(
         # cứng / vỏ sò của kẻ đỡ.
         ka = world.kits.get(attacker.species)
         kd = world.kits.get(defender.species)
+        attackers_by_target.setdefault(defender.id, set()).add(attacker.id)
         dmg = (attacker.traits.damage * defender.traits.dmg_taken_mult
                * (getattr(ka, "damage_mult", 1.0) if ka else 1.0)
                * (getattr(kd, "dmg_taken_mult", 1.0) if kd else 1.0))
@@ -72,6 +83,8 @@ def resolve_combat(
         thorns = getattr(kd, "thorns", 0.0) if kd else 0.0
         if thorns > 0.0:
             dmg_by_target[attacker.id] = dmg_by_target.get(attacker.id, 0.0) + thorns
+            # Gai là của kẻ BỊ đánh, nên nó là "kẻ ra đòn" của cú phản này.
+            attackers_by_target.setdefault(attacker.id, set()).add(defender.id)
 
         # Độc phản lại mọi kẻ tấn công L5 trong tick đó
         if defender.species in POISON_SPECIES:
@@ -88,7 +101,11 @@ def resolve_combat(
     for target_id in all_targets:
         dmg = dmg_by_target.get(target_id, 0.0)
         poison_from = poison_by_target.get(target_id, None)
-        results.append(CombatResult(target_id=target_id, dmg=dmg, poison_from=poison_from))
+        results.append(CombatResult(
+            target_id=target_id, dmg=dmg, poison_from=poison_from,
+            # Sắp xếp để log tái lập được: cùng seed phải cho cùng một file.
+            attackers=tuple(sorted(attackers_by_target.get(target_id, ()))),
+        ))
 
     # Sắp xếp kết quả tất định theo creature_sort_key của target
     results.sort(key=lambda r: creature_sort_key(creatures[r.target_id]))

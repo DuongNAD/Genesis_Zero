@@ -294,6 +294,9 @@ def tick(
             "creature_id": target.id,
             "species_id": target.species,
             "target_id": res.target_id,
+            # `creature_id` và `target_id` là NẠN NHÂN (giữ nguyên để mọi thứ
+            # đọc log cũ không gãy); `attackers` mới là thứ trả lời "ai ra đòn".
+            "attackers": list(res.attackers),
             "dmg": res.dmg,
             "poison_from": res.poison_from,
             "pos": list(target.pos),

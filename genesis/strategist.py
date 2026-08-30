@@ -826,6 +826,7 @@ class LlmStrategist:
         system = self.cache.get(
             c, self.personas.get(c.species, ""), world.surface_map, tick_no, self.log,
             handbook=self.handbooks.get(c.species, ""),
+            hunch=self.minds.hunch_enabled,
         )
         user = user_block(
             c, world, tick_no,
