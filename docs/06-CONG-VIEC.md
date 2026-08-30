@@ -25,7 +25,7 @@ S-01 ─┬─ S-03
       └─ W-01 ─ W-02 ─┬─ W-03 │
                       └─ W-04 ─ W-05 ─ W-06 ✦M0
                            │
-                      W-07 ─┬─ W-08 ─ W-09 ─┬─ W-11 ─ W-12 ✦M1 ─ W-13
+                      W-07 ─┬─ W-08 ─ W-09 ─┬─ W-11 ─ W-12 ✦M1 ─ W-13 ─ W-15
                             └─ W-10 ────────┘        │           │
 S-02 ──────────────────────────────────────┐         │      L-01 ┼─ L-02
                                            │         │           ├─ L-03 ─┐
@@ -34,15 +34,26 @@ S-02 ─────────────────────────
                                                      │           └─ L-07
                             B-01 ─ B-02 ─┬─ B-05 ─ B-06 ✦M2
                             B-03 ────────┤            │
-                            B-04 ────────┘       B-07 ─ B-08 ─┬─ B-09
+                            B-04 ────────┘       B-07 ─ B-08 ─┬─ B-09 ── B-14 ─ X-09
                                                               └─ B-10 ✦ĐO ĐƯỢC
-                                                 B-11 ─ B-12
-                                                 B-13
-    N-04 ─ N-05 ─ N-06 ─ N-07 ─ N-08 ─┬─ N-09 ─ N-11
-                              N-10 ───┴─ N-12          ✦THẾ GIỚI MỞ
+                                                 B-11 ─ B-12          │
+                                                 B-13                 ├─ W-14
+                                        W-16 ─ X-08                   └─ R-01 ─ R-02 ─ R-03 ─ R-04
+                                        W-17
+    N-04 ─ N-05 ─ N-06 ─ N-07 ─ N-08 ─┬─ N-09 ─ N-11 ─ S-05
+                              N-10 ───┴─ N-12 ─ N-13 ─ N-14 ─ N-15    ✦THẾ GIỚI MỞ
+                                        N-16 ◄── ngang bằng hai đường, làm SAU N-07
 ```
 
 ★ = việc mà nếu làm sai thì mọi thứ phía sau đo nhầm. Không giao cho ai, không vội.
+
+**Ba việc không nằm trên nhánh nào, và đó là lý do chúng suýt bị quên:**
+
+| | Vì sao nó lơ lửng | Vì sao vẫn phải làm |
+|---|---|---|
+| [N-16](tasks/N-16-ngang-bang-mang.md) | không mở khoá tính năng nào | nó là việc **giữ hai đường chạy khỏi lệch nhau**, và mỗi lần bỏ qua thì đường mạng lại thiếu một thứ đường cục bộ có — đếm được **tám lần** |
+| [W-16](tasks/W-16-cam-nang.md) / [B-14](tasks/B-14-linh-cam.md) | không ai chặn vì thiếu chúng | cả hai là **trí nhớ**, và trí nhớ mới là chỗ [thang chẩn đoán §3](#thang-chẩn-đoán-khi-match--0--đã-đi-hết-ba-nấc-đầu-cả-ba-đều-sạch) dừng lại ở nấc 5 |
+| X-08 / X-09 | là phép **đo**, không phải mã sản phẩm | một cơ chế chưa đo là một cơ chế chưa biết có tác dụng không — và cả hai **được phép trả lời KHÔNG** |
 
 ## 3. Bốn mốc, và bài kiểm tra của từng mốc
 
