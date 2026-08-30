@@ -307,3 +307,41 @@ def test_routes_work_khong_giu_ban_sao_tri_nho():
         assert f"{name}:" not in src and f"{name} =" not in src, (
             f"`{name}` ở cấp module là bản sao thứ hai của `Minds.{name.lstrip('_')}` "
             f"— trạng thái trí nhớ thuộc về `state.runner.minds`")
+
+
+def test_loai_cua_NGUOI_LA_cung_co_ba_dac_diem():
+    """W-19 ở chế độ mở — và nó là họ lỗi N-16 mọc lại lần thứ chín.
+
+    `build_match` gán `world.kits` cho các loài có mặt lúc dựng thế giới, mà
+    sinh vật của người chơi ra đời SAU đó ở `_spawn_registered`. Thiếu một dòng
+    thì loài đăng ký qua mạng **không có đặc điểm nào**: không hệ số hao sức,
+    không gai, không vào được hang, và mô tả 3D thiếu hẳn một lớp.
+
+    Bot có, người chơi không. Đúng thứ [N-16] tồn tại để dọn — và nó mọc lại
+    **ngay lần đầu** ta thêm một khái niệm mới vào thế giới. Bài kiểm này là để
+    lần thứ mười có người bắt được trước khi mở tunnel.
+    """
+    from genesis.features import N_FEATURES
+    from genesis.traits import founder_traits
+    from net.match import MatchRunner, Registration
+
+    r = MatchRunner(seed=1, ticks=10, tick_ms=10_000, log_dir=None)
+    r._seed_match()
+    r.registrations["c1"] = Registration(
+        client_id="c1", token="t", species_id="ZZ", display_name="Lạ",
+        persona="", league="A", brain_tier=5, pop=2,
+        traits=founder_traits("L1"))
+    r._spawn_registered()
+
+    kit = r.world.kits.get("ZZ")
+    assert kit is not None, "loài của người lạ không có đặc điểm nào"
+    assert len(kit.features) == N_FEATURES
+
+    # Tất định: người chơi vào lại cùng một ván thì vẫn là con vật ấy.
+    r2 = MatchRunner(seed=1, ticks=10, tick_ms=10_000, log_dir=None)
+    r2._seed_match()
+    r2.seed = r.seed
+    r2.registrations["c1"] = r.registrations["c1"]
+    r2._spawn_registered()
+    assert ([f.key for f in kit.features]
+            == [f.key for f in r2.world.kits["ZZ"].features])

@@ -96,7 +96,17 @@ def can_enter(domain: Domain, terrain: Terrain, traits=None, kit=None) -> bool:
     if terrain in _BASE[domain]:
         return True
     if kit is not None:
-        if terrain in getattr(kit, "extra_terrain", ()):
+        # `extra_terrain` là khả năng của TẦNG CẠN, nên nó chỉ mở khoá cho tầng
+        # cạn. Bản đầu áp nó trước cả cổng tầng, và kết quả vô lý hiện ra ngay
+        # lần đầu nhìn dữ liệu thật: một con **cá** bốc trúng `DAO_HANG` thì
+        # **chui qua đá đặc và vào hang được**, trong khi vẫn không đi nổi trên
+        # cỏ. Đào hang và lượn là chuyện của con vật có chân, không phải của
+        # con vật có vây.
+        #
+        # Tầng vẫn đứng TRƯỚC (bất biến 4): đặc điểm mở đường đi TRONG tầng,
+        # nó không đổi tầng. Muốn đổi tầng thì phải là `extra_domains` — và đó
+        # đúng là `LUONG_CU`, thứ duy nhất được phép làm việc ấy.
+        if domain is Domain.CAN and terrain in getattr(kit, "extra_terrain", ()):
             return True
         # TẦNG cộng thêm — đây là `LUONG_CU`. Thiếu nhánh này thì "lưỡng cư" là
         # một đặc điểm thuần TRANG TRÍ: nó tả chân màng và da trơn trong prompt

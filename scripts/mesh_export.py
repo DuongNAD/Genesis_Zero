@@ -4,21 +4,21 @@
     python scripts/mesh_export.py                 # ghi assets/meshy/
     python scripts/mesh_export.py --send          # gửi thật (cần MESHY_API_KEY)
     python scripts/mesh_export.py --send --only terrain_water
+    python scripts/mesh_export.py --creatures 2   # hâm thêm 2 seed (14 mesh sinh vật)
 
 Không có `--send` thì KHÔNG gọi mạng: chỉ ghi file để đọc và sửa câu chữ trước.
 Sinh mesh tốn tiền thật, nên gửi phải là một hành động cố ý.
 
 15 mesh tĩnh (địa hình, quả, xác, bản đồ) sinh MỘT LẦN dùng mãi. Mesh sinh vật
-KHÔNG nằm ở đây: chúng phụ thuộc vector trait, chỉ biết lúc `/join`, và
-`net/mesh.py` lo theo quota. `--creatures` xuất trước 20 vector trait hay gặp
-nhất để hâm cache — trần đo được ở [N-13] là 20 vector, không phải 180.000
-trạng thái cơ thể.
+KHÔNG nằm ở đây: chúng phụ thuộc vector trait, tầng sống (W-18), và ba đặc điểm
+bốc thăm theo (species_id, seed) (W-19). `--creatures N` xuất trước mô tả cho
+N seed (7 loài × N seed) để hâm đệm — đơn vị hâm đệm là (loài, seed) vì sau W-19
+đặc điểm và tầng đã đi vào khoá đệm, không còn là 20 vector trait thuần tuý nữa.
 """
 
 from __future__ import annotations
 
 import argparse
-import itertools
 import json
 import os
 from pathlib import Path
@@ -27,36 +27,38 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from genesis import config
+from genesis.domain import domain_of
+from genesis.features import roll_for_species
 from genesis.mesh_prompts import all_static_prompts, creature_prompt, meshy_payload
-from genesis.traits import Traits
+from genesis.traits import founder_traits
 import net_config
 
 OUT = Path(__file__).resolve().parent.parent / "assets" / "meshy"
 
 
-def creature_rows(limit: int) -> list[dict[str, str]]:
-    """Các vector trait hợp lệ, ưu tiên vector 'tròn trịa' (ít cực đoan) trước.
+def creature_rows(seeds: int) -> list[dict]:
+    """Mô tả sinh vật theo (loài, seed) để hâm đệm.
 
-    Tổng sáu trait luôn bằng `config.TRAIT_SUM`, nên không gian nhỏ hơn nhiều so
-    với 6^6 — và phần lớn người chơi rơi vào vùng giữa.
+    Sau W-18/W-19, ngoại hình là hàm của (trait, tầng, ba đặc điểm). Ba đặc điểm
+    được bốc theo (species_id, seed), nên đơn vị đệm đúng là (loài, seed).
+    Mỗi seed có 7 loài (theo config.POPULATION), nên N seed cho 7×N mô tả.
     """
-    names = ("brain", "attack", "armor", "speed", "sense", "stomach")
-    rows = []
-    for combo in itertools.product(range(config.TRAIT_MIN, config.TRAIT_MAX + 1),
-                                   repeat=len(names)):
-        if sum(combo) != config.TRAIT_SUM:
-            continue
-        spread = max(combo) - min(combo)
-        rows.append((spread, combo))
-    rows.sort(key=lambda r: (r[0], r[1]))
-    out = []
-    for _, combo in rows[:limit]:
-        tr = Traits(**dict(zip(names, combo)))
-        out.append({
-            "id": "creature_" + "".join(str(v) for v in combo),
-            "nhom": "sinh_vat",
-            "prompt": creature_prompt(tr),
-        })
+    out: list[dict] = []
+    for seed in range(1, seeds + 1):
+        for species_id in sorted(config.POPULATION):
+            tr = founder_traits(species_id)
+            dom = domain_of(species_id).value
+            feats = roll_for_species(species_id, seed)
+            prompt = creature_prompt(tr, dom, feats)
+            out.append({
+                "id": f"creature_{species_id}_s{seed}",
+                "nhom": "sinh_vat",
+                "species_id": species_id,
+                "seed": seed,
+                "domain": dom,
+                "features": [f.key for f in feats],
+                "prompt": prompt,
+            })
     return out
 
 
@@ -64,7 +66,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--send", action="store_true", help="gọi API Meshy thật")
     ap.add_argument("--creatures", type=int, default=0,
-                    help="xuất thêm N vector trait hay gặp nhất (N-13 đo được: 20)")
+                    help="xuất thêm mô tả sinh vật cho N seed (7 loài × N seed)")
     ap.add_argument("--only", default="", help="chỉ làm một id")
     args = ap.parse_args()
 

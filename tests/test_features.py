@@ -330,3 +330,34 @@ def test_ban_ngay_khong_bi_phat():
     w.phase = "NIGHT"
     b = len(visible(cs[0], w, cs))
     assert b <= a, "đêm không được cho nhìn XA HƠN ngày"
+
+
+def test_CA_khong_chui_qua_da_duoc_du_boc_trung_DAO_HANG():
+    """Hồi quy: `extra_terrain` từng áp TRƯỚC cổng tầng.
+
+    Bốc thăm là ngẫu nhiên nên một con cá hoàn toàn có thể trúng `DAO_HANG` —
+    và với thứ tự cũ thì nó **chui qua đá đặc và vào hang được**, trong khi vẫn
+    không đi nổi trên cỏ. Hiện ra ngay lần đầu nhìn dữ liệu thật (`W1` seed 1
+    bốc `DAO_HANG · LUONG_CU · RAU_CAM_UNG`), không phải từ đọc code.
+
+    Đào hang và lượn là chuyện của con vật có chân. Đặc điểm mở đường đi TRONG
+    tầng; muốn đổi tầng thì phải là `extra_domains`, và `LUONG_CU` là thứ duy
+    nhất được phép làm việc ấy.
+    """
+    from genesis.traits import founder_traits
+
+    tr = founder_traits("W1")
+    for key in ("DAO_HANG", "CANH_LUOT"):
+        k = kit_of((BY_KEY[key],))
+        assert can_enter(Domain.NUOC, Terrain.ROCK, tr, k) is False, key
+        assert can_enter(Domain.NUOC, Terrain.CAVE, tr, k) is False, key
+        # nhưng loài CẠN thì vẫn được mở khoá như thiết kế
+        assert can_enter(Domain.CAN, Terrain.ROCK, founder_traits("L2"), k) is True, key
+
+
+def test_LUONG_CU_van_doi_duoc_tang_vi_no_la_extra_domains():
+    """Ngoại lệ duy nhất, và nó đi qua `extra_domains` chứ không `extra_terrain`."""
+    from genesis.traits import founder_traits
+
+    k = kit_of((BY_KEY["LUONG_CU"],))
+    assert can_enter(Domain.CAN, Terrain.DEEP, founder_traits("L1"), k) is True

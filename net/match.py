@@ -42,6 +42,7 @@ from genesis.creature import Creature, creature_sort_key
 from genesis.lawdsl import to_json, to_vietnamese
 from genesis.logio import LogWriter
 from genesis.lawgen import generate_cached
+from genesis.features import kit_of, roll_for_species
 from genesis.handbook import Handbook
 from genesis.minds import Minds
 from genesis.strategist import RemoteClientStrategist
@@ -464,6 +465,21 @@ class MatchRunner:
                 self.creatures.append(c)
                 reg.creature_ids.append(c.id)
                 self.strategist.slots[c.id] = len(self.strategist.slots)
+            # Ba đặc điểm cho loài của NGƯỜI LẠ, bằng ĐÚNG luật của bot (W-19).
+            #
+            # `build_match` gán `world.kits` cho các loài có mặt lúc dựng thế
+            # giới — mà sinh vật của người chơi ra đời SAU đó, ở đây. Thiếu dòng
+            # này thì loài đăng ký qua mạng **không có đặc điểm nào**: không hệ
+            # số hao sức, không gai, không vào được hang, và mô tả 3D của nó
+            # thiếu hẳn một lớp. Bot có, người chơi không — đúng họ lỗi mà
+            # [N-16] tồn tại để dọn, và nó mọc lại ngay khi thêm một khái niệm
+            # mới vào thế giới.
+            #
+            # Tất định theo `(loài, seed)` như mọi chỗ khác, nên hai ván cùng
+            # seed cho cùng một con vật kể cả khi người chơi vào lại.
+            if self.world is not None and reg.species_id not in self.world.kits:
+                self.world.kits[reg.species_id] = kit_of(
+                    roll_for_species(reg.species_id, self.seed))
         self.creatures.sort(key=creature_sort_key)
 
     def step(self) -> None:
