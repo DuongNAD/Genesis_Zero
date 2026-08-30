@@ -247,6 +247,7 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
         sys_prompt = prompt_cache.get(
             c, reg.persona, state.runner.world.surface_map, tick_no=issued_tick,
             handbook=_minds().handbooks.get(c.species, ""),
+            hunch=_minds().hunch_enabled,
         )
         phash = prompt_hash(sys_prompt, ub)
         record = WorkRecord(
@@ -301,6 +302,7 @@ async def match_brief(
             state.runner.world.surface_map,
             tick_no=state.runner.tick_no,
             handbook=_minds().handbooks.get(c.species, ""),
+            hunch=_minds().hunch_enabled,
         )
         interval = max(1, c.traits.think_interval)
         offset = int(c.id.rpartition(":")[2]) % interval
