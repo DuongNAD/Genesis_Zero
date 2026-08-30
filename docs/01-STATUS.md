@@ -1,6 +1,6 @@
 # 01 · Trạng thái
 
-> [00 Bản đồ](00-INDEX.md) · **01 Trạng thái** · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md)
+> [00 Bản đồ](00-INDEX.md) · **01 Trạng thái** · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md) · [09 Họ lỗi](09-HO-LOI.md)
 
 > **Nguồn sự thật duy nhất về tiến độ.** Không tài liệu nào khác được ghi trạng thái.
 > Cập nhật: **2026-08-29**.

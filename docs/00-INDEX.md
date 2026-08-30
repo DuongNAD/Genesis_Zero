@@ -1,6 +1,6 @@
 # 00 · Bản đồ tài liệu
 
-> **00 Bản đồ** · [01 Trạng thái](01-STATUS.md) · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md)
+> **00 Bản đồ** · [01 Trạng thái](01-STATUS.md) · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md) · [09 Họ lỗi](09-HO-LOI.md)
 
 ## Ba tầng tài liệu
 
@@ -11,6 +11,7 @@
    ▼
 ĐẶC TẢ         05-GIAO-THUC    ── API, schema, mã lỗi. Không có ý kiến, chỉ có sự thật.
    │           08-TU-DIEN      ── mỗi thuật ngữ một nghĩa, dùng chung mọi nơi
+   │           09-HO-LOI       ── bốn kiểu hỏng đã lặp lại, và cách nhận ra sớm
    ▼
 THI CÔNG       01-STATUS       ── ★ hôm nay đang ở đâu
                06-CONG-VIEC    ── ★ làm gì tiếp, theo thứ tự nào
@@ -26,6 +27,7 @@ THI CÔNG       01-STATUS       ── ★ hôm nay đang ở đâu
 | Hằng số | `config.py`, `law_config.py` — tài liệu chỉ trỏ tới, không chép số |
 | Hình dạng API | [05-GIAO-THUC](05-GIAO-THUC.md) |
 | Nghĩa của thuật ngữ | [08-TU-DIEN](08-TU-DIEN.md) |
+| Kiểu hỏng đã lặp lại | [09-HO-LOI](09-HO-LOI.md) |
 | Vì sao chọn thế này | 02 / 03 / 04 |
 | Cách làm một việc cụ thể | `tasks/<mã>.md` |
 

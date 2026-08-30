@@ -1,6 +1,6 @@
 # 04 · Thế giới mở — nhiều máy, nhiều nơi, chỉ cần internet
 
-> [00 Bản đồ](00-INDEX.md) · [01 Trạng thái](01-STATUS.md) · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · **04 Thế giới mở** · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md)
+> [00 Bản đồ](00-INDEX.md) · [01 Trạng thái](01-STATUS.md) · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · **04 Thế giới mở** · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md) · [09 Họ lỗi](09-HO-LOI.md)
 
 > Mục tiêu: **ai có máy, ở đâu cũng được, chỉ cần có mạng, là cắm vào chơi được.**
 > Không mở port, không cấu hình router, không cần IP tĩnh, không cần ở cùng một mạng.

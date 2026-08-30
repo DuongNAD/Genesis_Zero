@@ -1,6 +1,6 @@
 # 08 · Từ điển
 
-> [00 Bản đồ](00-INDEX.md) · [01 Trạng thái](01-STATUS.md) · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · **08 Từ điển**
+> [00 Bản đồ](00-INDEX.md) · [01 Trạng thái](01-STATUS.md) · [02 Sandbox](02-SANDBOX-V4.md) · [03 Luật ẩn](03-LUAT-AN-V5.md) · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · **08 Từ điển** · [09 Họ lỗi](09-HO-LOI.md)
 
 > Mỗi thuật ngữ **một** nghĩa, dùng chung ở mọi tài liệu và mọi tên biến.
 > Thấy chỗ nào dùng lệch nghĩa thì đó là lỗi, sửa chỗ đó chứ đừng thêm nghĩa mới vào đây.

@@ -1,6 +1,6 @@
 # 03 · Thế Giới Luật Ẩn (v5)
 
-> [00 Bản đồ](00-INDEX.md) · [01 Trạng thái](01-STATUS.md) · [02 Sandbox](02-SANDBOX-V4.md) · **03 Luật ẩn** · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md)
+> [00 Bản đồ](00-INDEX.md) · [01 Trạng thái](01-STATUS.md) · [02 Sandbox](02-SANDBOX-V4.md) · **03 Luật ẩn** · [04 Thế giới mở](04-THE-GIOI-MO.md) · [05 Giao thức](05-GIAO-THUC.md) · [06 Công việc](06-CONG-VIEC.md) · [07 Giao việc](07-GIAO-VIEC-CHO-MODEL.md) · [08 Từ điển](08-TU-DIEN.md) · [09 Họ lỗi](09-HO-LOI.md)
 
 > **Đây là bản vá, không phải bản viết lại.** v4 đúng ở tầng sandbox và sai ở tầng mục tiêu.
 > Tài liệu này giữ nguyên §1–§4 và §8–§10 của v4, thay §5.4 (điểm số) và §7 (thí nghiệm),
