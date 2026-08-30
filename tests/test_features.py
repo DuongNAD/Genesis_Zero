@@ -201,21 +201,30 @@ def test_khong_co_khoa_thi_tra_ve_ban_GOC_khong_nem():
 
 
 def test_khong_co_khoa_nao_trong_kho():
-    """Bài canh chừng. `.env` bị gitignore; không khoá nào được lọt vào file theo dõi."""
+    """Bài canh chừng. `.env` bị gitignore; không khoá nào được lọt vào file theo dõi.
+
+    Khớp theo **hình dạng khoá thật**, không theo tiền tố: khoá Google là
+    `AIzaSy` cộng 33 ký tự nữa. Bản đầu chỉ tìm tiền tố và đỏ ngay lần chạy đầu
+    — nó bắt chính **ba file đang NÓI VỀ** khoá (phiếu việc, nhật ký, và bản
+    thân bài kiểm này). Một hàng rào bắt lời kể về con bọ thay vì con bọ thì
+    người sửa sau sẽ tắt nó đi, và lúc ấy nó tệ hơn không có.
+    """
+    import re
     import subprocess
 
     from pathlib import Path
 
     root = Path(__file__).resolve().parent.parent
+    hinh_dang_khoa = re.compile(r"AIzaSy[A-Za-z0-9_\-]{33}|AQ\.Ab8RN6[A-Za-z0-9_\-]{20,}")
     tracked = subprocess.run(["git", "ls-files"], cwd=root, capture_output=True,
                              text=True).stdout.split()
     for rel in tracked:
-        p = root / rel
-        if not p.is_file() or p.stat().st_size > 400_000:
+        f = root / rel
+        if not f.is_file() or f.stat().st_size > 400_000:
             continue
         try:
-            txt = p.read_text(encoding="utf-8")
+            txt = f.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        assert "AIzaSy" not in txt, f"{rel} chứa khoá Google API"
-        assert "AQ.Ab8RN6" not in txt, f"{rel} chứa khoá Google API"
+        m = hinh_dang_khoa.search(txt)
+        assert m is None, f"{rel} chứa khoá API thật (…{m.group(0)[-6:]})"
