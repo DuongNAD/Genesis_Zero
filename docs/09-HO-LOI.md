@@ -101,6 +101,7 @@ lúc ấy nó tệ hơn không có hàng rào nào.
 | `match = 0.000` | "model không quy nạp được" | **vẫn có thể đúng** — nhưng chỉ sau khi loại hết những cái trên |
 | `test_work` đỏ rồi xanh | "máy CI dở" | ván dài 5 mili-giây, đua với vòng lặp nền |
 | `make lint` in "ruff chưa cài" | "chưa cài ruff" | ruff có cài và vừa tìm ra 403 lỗi |
+| `pgrep -f "genesis.run"` trong vòng chờ | "ván vẫn đang chạy" | vòng chờ khớp **chính dòng lệnh của nó**, chờ chính mình, và ván tiếp theo **không bao giờ được khởi động** |
 
 **Ba phép thử rẻ, làm trước khi kết luận bất cứ điều gì:**
 
@@ -111,6 +112,20 @@ lúc ấy nó tệ hơn không có hàng rào nào.
 3. **Chạy chế độ gian lận.** Cho một tác nhân biết trước đáp án và đòi điểm tuyệt
    đối. Không đạt thì lỗi ở bộ chấm, và mọi kết luận phía trên đều treo lơ lửng.
    Đây là việc của `scripts/ci_smoke.py`, và nó chạy trong CI mỗi lần push.
+
+**Ca cuối trong bảng đáng nói riêng, vì nó là công cụ theo dõi tự nói dối.**
+Lệnh `while pgrep -f "genesis.run"; do sleep 30; done` có một dòng lệnh **chứa
+chuỗi `genesis.run`**, nên `pgrep` khớp chính nó. Vòng lặp chờ chính mình, không
+bao giờ thoát, và lệnh đứng sau nó — khởi động phép đo — **không bao giờ chạy**.
+Nhìn từ ngoài thì mọi thứ đều đúng: có một task đang chạy, `pgrep` xác nhận
+"còn chạy", và tôi đã báo cáo hai lượt liền rằng phép đo đang tiến triển.
+
+Cách chờ đúng: **file đánh dấu** do chính việc cần chờ ghi ra.
+
+```bash
+nohup sh -c 'việc-cần-chạy; echo done > /tmp/x.done' &
+until [ -f /tmp/x.done ]; do sleep 120; done
+```
 
 **Và một câu nữa, chép từ phiếu [B-10](tasks/B-10-score.md):** *đừng chẩn đoán
 bằng cách đổi model.* Trong hai ngày liên tiếp, mỗi lần con số xấu thì nguyên
