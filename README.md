@@ -45,6 +45,34 @@ Bề ngoài của quả **bị xáo lại mỗi ván**, nên "quả đỏ thì �
 là một cái bẫy, không phải tri thức. Cái duy nhất mang sang được là **phương
 pháp**.
 
+## Thế giới có gì
+
+Lưới 24×24, **ba tầng** sống: nước · cạn · trời. Tầng là thuộc tính của loài và
+**không dịch được** — nhưng *đường đi trong tầng* thì kiếm được, và đó là chỗ
+thế giới này khác một bàn cờ:
+
+```
+sư tử (attack 4, speed 1)  không trèo được cây
+khỉ   (speed 5)            trèo được          ← cùng một luật, đọc từ vector trait
+thỏ   (đặc điểm ĐÀO HANG)  xuyên được đá vào hang, kẻ săn không theo vào nổi
+cá                         chỉ nước; nước SÂU là chỗ trốn tuyệt đối
+chim                       bay khắp nơi, nhưng phải HẠ XUỐNG mới chạm được
+```
+
+Không loài nào được hard-code: ngưỡng trèo đọc thẳng từ `speed`, nên một dòng dõi
+**học được cách trèo** bằng cách dịch trait. Mỗi loài còn bốc **ba đặc điểm sinh
+học** trong mười hai (lưỡng cư · lông dài · gai độc · mắt đêm · râu cảm ứng…),
+cho 220 tổ hợp — và mỗi đặc điểm mang **hai mặt buộc phải khớp nhau**: nó đổi gì
+trong vòng tick, và nó *trông* thế nào. Nên hình 3D không minh hoạ luật chơi, nó
+**là** luật chơi: nhìn thấy chân màng và mõm dài là đọc được con này bơi và đào
+được, trước khi nó kịp làm gì.
+
+Bảy loại địa hình, và ba kiểu nước (ao · hồ · biển) sinh ra từ **cách xếp** chứ
+không từ enum mới — lõi của một mảng nước thành nước sâu, nên **bờ nước được bảo
+đảm bằng cấu trúc**. Bờ là ô duy nhất mà tầng nước và tầng cạn đứng cạnh nhau
+được, nên cả ba tầng dồn về một vành đai hẹp. Đo được: chim là kẻ săn đứng đầu và
+nó **có** săn cá — ở nước nông, không phải ngoài khơi.
+
 ## Điều dự án này muốn chứng minh
 
 > **Model to hơn thành loài đỉnh vì nó quy nạp giỏi hơn — không phải vì nó được
@@ -91,7 +119,7 @@ kiểm điều đó từ ngoài.
 | | |
 |---|---|
 | Test | **640 mục, xanh** |
-| Phiếu việc | 62, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
+| Phiếu việc | 65, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
 | Model 7B thật | ghi sổ đều, **`match` vẫn 0.000** — xem dưới |
