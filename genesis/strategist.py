@@ -648,11 +648,31 @@ _CLAIM_TAIL = {
     # được chấm, nó KHÔNG cần đúng, và thế giới sẽ ĐẾM HỘ. Thiếu điều thứ ba thì
     # model coi ô linh cảm như một ô Sổ Luật hạng hai và chỉ ghi vào đó thứ nó
     # đã tin — tức là xoá sạch lý do cơ chế này tồn tại.
+    # Ba câu cuối là ba LUẬT CHƠI chỉ tồn tại trong code cho tới khi được viết ra
+    # đây, và đo được là model không đoán ra cái nào:
+    #
+    #   · ghi đè một ô **xoá sạch bảng đếm** của ô ấy. Model ghi đè 3–4 lần mỗi
+    #     200 tick, nên 23 ô linh cảm chỉ tích được **3 lượt thử** — giá trị cốt
+    #     lõi của B-14 chưa một lần được giao.
+    #   · giả thuyết càng nhiều điều kiện càng **hiếm được thử**: trigger và mọi
+    #     cond phải cùng khớp. Model viết 2 điều kiện là chuyện thường.
+    #   · bảng đếm cần THỜI GIAN. "Chưa thử lần nào" nghĩa là hãy chờ, không
+    #     nghĩa là đoán sai.
+    #
+    # Đây là lần thứ ba trong dự án phải viết ra một luật vốn chỉ nằm trong code
+    # (trước đó: `want_codex`, `want_hunch`). Xem [09-HO-LOI](../docs/09-HO-LOI.md) họ 2.
     "hunch": (
         "\n\n[LINH CẢM]\nĐây KHÔNG phải Sổ Luật và nó không được chấm điểm. Hãy nêu "
         "một điều ngươi NGHI, chưa cần tin. Từ giờ mỗi lần chuyện ấy đáng lẽ xảy "
         "ra, ngươi sẽ được cho biết nó có xảy ra thật không — kể cả những lần "
-        "không có gì. Nghi sai không mất gì; nghi thứ ngươi đã chắc thì phí ô."
+        "không có gì. Nghi sai không mất gì; nghi thứ ngươi đã chắc thì phí ô.\n"
+        "Ba điều nên biết trước khi chọn ô:\n"
+        "- Ghi đè lên một ô sẽ XOÁ SẠCH bảng đếm của ô đó. Muốn giữ một linh cảm "
+        "đang được đếm thì hãy chọn ô TRỐNG, hoặc ô mà ngươi thấy đã sai.\n"
+        "- Càng NHIỀU điều kiện thì càng HIẾM được thử: phải khớp cả trigger lẫn "
+        "mọi điều kiện mới tính một lượt. Nêu ít điều kiện thì ngươi biết kết quả "
+        "sớm hơn.\n"
+        "- 'chưa thử lần nào' nghĩa là hãy CHỜ, không nghĩa là ngươi đoán sai."
     ),
 }
 
