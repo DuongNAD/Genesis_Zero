@@ -36,9 +36,20 @@ def test_1_mesh_key_khong_doi_khi_metadata_doi():
     k2 = mesh_key(tr)
     assert k1 == k2
 
-    # Chữ ký chỉ nhận traits, không nhận metadata nào khác
+    # Danh sách CHO PHÉP, không phải danh sách cấm — cấm thì mỗi tên mới lại
+    # lọt qua. Cả ba đều là thứ SERVER bốc thăm tất định theo `(loài, seed)`:
+    # `domain` là tầng (W-18), `features` là ba đặc điểm (W-19). Không cái nào
+    # do client gõ ra được, và đó mới là điều bất biến này bảo vệ.
+    #
+    # Vì sao chúng PHẢI có mặt: sau W-18/W-19 ngoại hình không còn là hàm của
+    # riêng vector trait. Khoá chỉ-theo-trait làm một con cá dùng chung mesh với
+    # một con bốn chân cùng chỉ số — tức là hình 3D nói dối, đúng thứ W-19 dựng
+    # lên để chặn.
     sig = inspect.signature(mesh_key)
-    assert list(sig.parameters.keys()) == ["traits"]
+    cho_phep = {"traits", "domain", "features"}
+    cam = {"client_id", "species_id", "display_name", "persona", "name", "token"}
+    assert set(sig.parameters) <= cho_phep, set(sig.parameters) - cho_phep
+    assert not (set(sig.parameters) & cam)
 
     # Hai đối tượng Traits có cùng giá trị luôn sinh cùng một khoá
     tr_clone = Traits(brain=4, attack=3, armor=1, speed=2, sense=1, stomach=1)
@@ -71,7 +82,10 @@ def test_3_body_prompt_chua_body_line_va_khong_chua_metadata():
     assert expected_line in prompt
 
     sig = inspect.signature(body_prompt)
-    assert list(sig.parameters.keys()) == ["traits"]
+    cho_phep = {"traits", "domain", "features"}
+    cam = {"client_id", "species_id", "display_name", "persona", "name", "token"}
+    assert set(sig.parameters) <= cho_phep, set(sig.parameters) - cho_phep
+    assert not (set(sig.parameters) & cam)
 
     # Thử với nhiều vector trait khác nhau
     tr2 = Traits(brain=0, attack=2, armor=0, speed=5, sense=3, stomach=2)
@@ -251,3 +265,37 @@ def test_11_khong_dung_bien_toan_cuc_cap_module():
     """Trạng thái sinh nền phải gắn với cache, không phải với module."""
     import net.mesh as m
     assert not hasattr(m, "_in_flight"), "biến toàn cục cấp module rò trạng thái giữa các test"
+
+
+def test_mesh_key_PHAI_doi_khi_tang_hoac_dac_diem_doi():
+    """Hồi quy W-19: khoá đệm chỉ-theo-trait làm hình 3D NÓI DỐI.
+
+    Sau W-18/W-19 ngoại hình là hàm của (trait, tầng, ba đặc điểm). Khoá cũ chỉ
+    băm sáu trait, nên hai con cùng chỉ số nhưng khác đặc điểm — thậm chí khác
+    TẦNG — dùng chung một mesh: con cá nhận thân bốn chân, con lưỡng cư mất chân
+    màng.
+
+    Đó là W-19 hỏng theo chiều ngược lại. Phiếu ấy dựng lên để hình dáng không
+    nói dối về cơ chế; một khoá đệm quá thô làm nó nói dối mà không ai thấy, vì
+    đệm trúng thì trông y như đệm đúng.
+    """
+    from genesis.features import roll_for_species
+    from genesis.traits import founder_traits
+
+    tr = founder_traits("L1")
+    goc = mesh_key(tr, "CAN", roll_for_species("L1", 21))
+    assert goc != mesh_key(tr, "NUOC", roll_for_species("L1", 21)), "khác TẦNG mà cùng khoá"
+    assert goc != mesh_key(tr, "CAN", roll_for_species("L2", 21)), "khác ĐẶC ĐIỂM mà cùng khoá"
+    # và vẫn tất định
+    assert goc == mesh_key(tr, "CAN", roll_for_species("L1", 21))
+
+
+def test_mo_ta_3D_mang_dung_tang_cua_con_vat():
+    """Cá phải được tả là có VÂY, không phải bốn chân."""
+    from genesis.features import roll_for_species
+    from genesis.traits import founder_traits
+
+    ca = body_prompt(founder_traits("W1"), "NUOC", roll_for_species("W1", 21))
+    chim = body_prompt(founder_traits("A1"), "TROI", roll_for_species("A1", 21))
+    assert "vây" in ca and "không có chân" in ca, ca[:120]
+    assert "cánh" in chim, chim[:120]

@@ -30,27 +30,43 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def mesh_key(traits: Traits) -> str:
-    """md5 của SÁU trait, theo thứ tự cố định.
+def mesh_key(traits: Traits, domain: str = "CAN", features=()) -> str:
+    """md5 của SÁU trait + TẦNG + ba đặc điểm.
 
-    TUYỆT ĐỐI không đưa client_id, species_id, display_name hay bất cứ thứ gì
-    do client viết vào khoá.
+    TUYỆT ĐỐI không đưa `client_id`, `display_name` hay bất cứ thứ gì **do client
+    viết** vào khoá — đó vẫn là bất biến gốc của N-13, và nó không đổi. Tầng và
+    đặc điểm thì khác hẳn: chúng do **server bốc thăm** tất định theo
+    `(loài, seed)`, không ai gõ ra được.
+
+    Vì sao phải thêm: sau W-18/W-19, ngoại hình **không còn là hàm của riêng
+    vector trait**. Khoá chỉ-theo-trait làm hai con cùng vector nhưng khác đặc
+    điểm — thậm chí khác TẦNG — dùng chung một mesh, nên hình 3D của một con cá
+    có thể là thân bốn chân, và một con lưỡng cư mất chân màng.
+
+    Đó là W-19 hỏng theo chiều ngược lại: phiếu ấy dựng lên để hình dáng KHÔNG
+    nói dối về cơ chế, và một khoá đệm quá thô làm nó nói dối mà không ai thấy.
+
+    Cái giá: đệm bớt hiệu quả. `mesh_cost_probe` đếm theo trần "20 vector, không
+    phải 180.000" của N-13, mà giờ mỗi vector nhân thêm tầng và tổ hợp đặc điểm.
+    Nhưng đệm sai còn tệ hơn đệm ít — nó trả về một cái hình của con khác.
     """
-    raw = f"{traits.brain}:{traits.attack}:{traits.armor}:{traits.speed}:{traits.sense}:{traits.stomach}"
+    keys = ":".join(sorted(getattr(f, "key", str(f)) for f in features))
+    raw = (f"{traits.brain}:{traits.attack}:{traits.armor}:{traits.speed}:"
+           f"{traits.sense}:{traits.stomach}|{domain}|{keys}")
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
-def body_prompt(traits: Traits) -> str:
+def body_prompt(traits: Traits, domain: str = "CAN", features=()) -> str:
     """DÙNG LẠI `genesis.mesh_prompts.creature_prompt` — một đường tới Meshy.
 
-    `creature_prompt` là hàm THUẦN của vector trait và vẫn nhúng nguyên
+    `creature_prompt` vẫn nhúng nguyên
     `prompt.body_line` cho phần số, nên bất biến 1 ("hình = trait, chỉ trait")
     giữ nguyên: đổi thang trait thì câu chữ và hình đổi cùng lúc, không lệch.
 
     Bản cũ gửi thẳng `body_line` — đúng về bất biến nhưng là một dòng chỉ số
     khô ("đầu óc 4 · tay 3 · …"), và Meshy không có gì để dựng từ đó.
     """
-    return creature_prompt(traits)
+    return creature_prompt(traits, domain, features)
 
 
 class MeshCache:
