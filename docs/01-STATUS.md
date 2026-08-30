@@ -54,36 +54,63 @@ Ván mở tự chạy vòng `LOBBY → SEEDING → RUNNING → REVEAL → COOLDO
 
 ### ▶ Mai bắt đầu từ đây
 
-Sáu lỗi vá hôm nay đều thuộc một họ: **cái gì bộ chấm hay bộ xác thực bắt bẻ thì
-schema phải đòi trước.** Nền giờ sạch nhất từ trước tới nay, nhưng chưa có phép
-đo nào đứng trên nền ấy.
+Ba việc của hôm qua **đã chạy xong cả ba**, và chúng đổi hẳn câu hỏi tiếp theo.
 
-**Việc 1 — chạy mẫu đủ lớn, bằng model NHANH.**
+**Việc 1 (chạy mẫu 7B) — đang chạy**, seed `55 26 32 9 3`. Hai seed đầu xong:
+`match = 0.000` cả hai, trên một nền đã sạch (0–2 `LLM_MISS` trên 300+ lời gọi,
+47/50 và 53/55 mục sổ được nhận).
+
+**Việc 2 (kiểm bộ chấm trước khi đổ lỗi cho model) — xong, bộ chấm KHÔNG hỏng.**
+Chế độ gian lận cho `match = 1.000`. Và tầng chấm thứ hai giờ cũng có bằng chứng
+riêng: đáp án hoàn hảo ăn **1.000**, toàn `None` ăn 0, **toàn hệ quả cũng ăn 0**
+(chuẩn hoá null chặn đúng lối đoán bừa).
+
+**Việc 3 (`ever_stated` trước `found`) — vẫn đúng**, và giờ có nguyên nhân.
+
+#### Chỗ hỏng KHÔNG phải "năng lực quy nạp". Nó là hai thứ, cả hai đo được.
+
+**(1) Lỗ khoá 27 tick.** Sinh vật chết **4,4–4,9 lần một ván**; tuổi **trung vị
+lúc nó ghi Sổ Luật là 27 tick**. Sổ tay chết theo đời, nên lúc bị hỏi "ngươi tin
+luật nào" thì trong tay nó chỉ có 27 tick — trong khi luật thật nổ suốt cả ván.
+
+**(2) Định kiến chú ý.** Vào sổ tay `EAT` 45% · `ATTACK` 32% · `DRINK` 19%. Ra
+mục sổ `EAT` **85%** · `ATTACK` 4% · `DRINK` **2%**. Sổ tay cân đối; model
+khuếch đại chuyện ăn ~2 lần và bóp uống ~10 lần.
+
+Đã kiểm và **bác bỏ** lời giải thích dễ chịu nhất cho (2) — *"`EAT` thắng vì nó
+giàu `arg`"*: `STEP_ON` cũng có 5 `arg` mà chỉ ăn 2%. Nên phần còn lại là định
+kiến ngữ nghĩa thật.
+
+#### Việc tiếp theo, theo thứ tự
+
+**A — chờ phán quyết 5 seed.** Đừng đổi gì trước khi nó xong; đổi giữa chừng là
+tự bỏ mẫu.
+
+**B — X-09, và nó nhắm đúng (1).** `--hunch` cho phép ghi giả thuyết mà không
+tốn ô Sổ Luật, và **bảng đếm sống qua cái chết** (co lại, không xoá) — tức là nó
+gỡ đúng cái lỗ khoá 27 tick.
 ```bash
-SLOTS=8 bash scripts/serve_L2.sh        # Qwen-7B, ~14 tok/s
-bash scripts/final_run.sh models/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf 55 26 32 9 3
+python scripts/x09_hunch.py --seeds 5 --ticks 200 --llm-url http://127.0.0.1:8080
 ```
-7B là lựa chọn đúng ở đây **không phải vì nó giỏi hơn** mà vì nó nhanh gấp 2,5
-lần: cần **mẫu**, không cần một ván đẹp. Mọi lỗi schema từng bóp chết dữ liệu 7B
-hôm qua đã vá.
+Nếu bảng đếm cộng dồn qua nhiều đời mà `match` **vẫn** 0 thì nút thắt không phải
+trí nhớ — và chỉ **lúc ấy** câu *"model không quy nạp được trong thế giới này"*
+mới có căn cứ.
 
-**Việc 2 — nếu vẫn 0, kiểm bộ chấm TRƯỚC khi đổi model.**
-```bash
-python scripts/fake_model_server.py --port 8099 --cheat-seed 55 &
-python -m genesis.run --seed 55 --ticks 200 --llm all --llm-url http://127.0.0.1:8099 \
-  --out runs/cheat.jsonl --truth runs/cheat.truth.json
-python -m genesis.score runs/cheat.jsonl runs/cheat.truth.json
-```
-Phải ra `match = 1.000`. Nếu không, lỗi ở bộ chấm chứ không ở model.
+**C — prompt, cho (2).** Đây là chỗ duy nhất còn lại sau khi đã loại sổ tay, tần
+suất luật, độ giàu từ vựng và bộ chấm. Và dự án đã có tiền lệ đúng cỡ này: thêm
+**một câu** vào khối D nói thẳng `want_codex` là cánh cửa duy nhất đã kéo tỉ lệ
+xin ghi sổ từ **0/44 lên 3/18**. Đổi **một thứ một lúc**, đo lại bằng chính cột
+"chủ đề mục sổ".
 
-**Việc 3 — đọc cột `ever_stated` trước cột `found`.** Chúng trả lời hai câu khác
-nhau: "chưa bao giờ tìm ra" và "tìm ra rồi đánh mất". `L5:1` hôm nay thuộc loại
-thứ hai — brain 0 có đúng **một ô sổ**, nó tìm ra ở tick 99 rồi phải xoá ở tick
-148 để ghi thứ khác.
+**D — đổi model là việc CUỐI.** Phiếu [B-10](tasks/B-10-score.md) dặn *đừng chẩn
+đoán bằng cách đổi model*, và hôm nay là ngày thứ hai lời dặn ấy đúng: hai lỗi
+tìm được (ngân sách oracle, tên sự kiện chưa khai) đều là lỗi hạ tầng đội lốt
+"model kém".
 
-**Còn nợ, không gấp:** **X-09** — chạy phép đo của [B-14](tasks/B-14-linh-cam.md).
-Cơ chế đã viết và TẮT mặc định; mệnh đề *"linh cảm rút ngắn `t_discover`"* chưa
-được đo, và nó **được phép trả lời KHÔNG**.
+**Còn nợ, không gấp:** ~~X-09~~ (đã thành việc B ở trên) · cột `n_answered` mới
+thêm sẽ trả lời `pred_acc = 0.000` là *trả lời sai* hay *im lặng* — seed 9 và 3
+chạy tiến trình riêng nên **đã nhận bản vá**, còn 55/26/32 thì không, thành một
+phép so trước/sau ngay trong cùng một lần chạy.
 
 ### Đang bị chặn vì thiếu tài nguyên ngoài
 
@@ -92,7 +119,7 @@ Cơ chế đã viết và TẮT mặc định; mệnh đề *"linh cảm rút ng
 | ~~S-02~~ | ~~chưa tải model~~ | **đã gỡ chặn 2026-08-29** — tải `Qwen2.5-1.5B-Instruct-Q4_K_M` (1,0 GB), `llama-server` chạy, `json_schema` **có hiệu lực** (kiểm bằng một schema chỉ nhận đúng một chuỗi bịa) |
 | ~~[R-03](tasks/R-03-grpo.md)~~ | ~~chưa có `trl`/`peft` và GPU đủ lớn~~ | **đã gỡ chặn 2026-08-29** — máy có sẵn `peft`/`transformers`, và `trl` **không cần**: rollout đã có sẵn nên viết GRPO ngoại tuyến bằng torch + peft trực tiếp. Adapter LoRA 2,1 MB đã lưu được. Dòng "chưa có `trl`/`peft`" ở đây từng **sai suốt nửa ngày** — tôi khai báo bị chặn mà không kiểm máy |
 | ~~N-04–N-13~~ | ~~chưa có FastAPI~~ | **đã gỡ chặn 2026-08-29** — thêm `fastapi` + `uvicorn` vào phụ thuộc |
-| **X-02 điều kiện (2)**, **X-08** | cần một model **thật sự tìm ra được luật** | Qwen-7B ghi sổ đều nhưng `match = 0.000`; bộ chấm đã kiểm bằng chế độ gian lận (`match = 1.000`) nên chỗ hỏng là năng lực quy nạp. Biến chưa thử: **model 14B** |
+| **X-02 điều kiện (2)**, **X-08** | cần một model **thật sự tìm ra được luật** | Qwen-7B ghi sổ đều mà `match = 0.000`. Bộ chấm đã bị loại khỏi danh sách nghi can (gian lận cho `match = 1.000`; oracle cho đáp án hoàn hảo = 1.000). **Nhưng "chỗ hỏng là năng lực quy nạp" là kết luận SAI của hôm qua** — đo ra hai nguyên nhân hạ tầng trước đó: lỗ khoá trí nhớ 27 tick, và định kiến chú ý ~2 lần về phía chuyện ăn. Thứ tự đúng giờ là **X-09 → prompt → mới tới model**, xem "Mai bắt đầu từ đây". |
 
 > ✦ **TRACK L XONG** — động cơ luật ẩn chạy đầu-cuối **trên thế giới thật**:
 > sinh luật qua cổng lọc → luật tác động lên sinh vật trong pha 4 của vòng tick →
