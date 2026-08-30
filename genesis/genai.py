@@ -41,6 +41,9 @@ import urllib.request
 # trả 404 kèm câu "no longer available, please update to gemini-3.6-flash".
 # Đổi được bằng biến môi trường để không phải sửa code lần sau.
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+# Số lần thử với KHOÁ CHẠY ĐƯỢC trước khi chịu dùng bản gốc. Khoá hỏng
+# không tính vào đây — xem `rewrite`.
+MAX_REWRITE_TRIES = 2
 URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 # Từ khoá giải phẫu: nếu bản gốc có, bản viết lại phải giữ. Đây là hàng rào
@@ -72,15 +75,28 @@ _ANATOMY: tuple[tuple[str, ...], ...] = (
     ("túi",),
 )
 
+# Ba lần sửa mới ra được câu này, và hai lần hỏng đều đáng ghi.
+#
+# Bản có câu *"Tối đa 90 từ"*: model **đếm từ ra thành chữ** — nó trả về
+# `(48) Bốn(49) chi(50) ngắn(51) chắc,(52) riêng…`. Một ràng buộc đếm được là
+# một lời mời đếm, và model làm đúng thế, ngay giữa câu trả lời.
+#
+# Bản có câu *"không dùng số"*: nó dội sang cả chữ số trong "bốn chân".
+#
+# Nên: nói giới hạn bằng **số CÂU** chứ không bằng số từ, và nói cái không được
+# mang bằng tên gọi ("chỉ số trò chơi") chứ không bằng hình thức ("số").
 SYSTEM = (
-    "Bạn viết lại mô tả sinh vật hư cấu thành MỘT đoạn văn tiếng Việt liền mạch "
-    "để dựng mô hình 3D. Quy tắc tuyệt đối:\n"
-    "1. CHỈ diễn đạt lại. Không thêm bộ phận, không đổi số chi, không thêm màu "
-    "sắc hay hoa văn không có trong bản gốc.\n"
-    "2. Giữ nguyên mọi chi tiết giải phẫu đã nêu.\n"
-    "3. Viết như đang tả một con vật có thật đứng trước mặt: hình khối, tỉ lệ, "
-    "tư thế. Không dùng số, không dùng thuật ngữ trò chơi.\n"
-    "4. Tối đa 90 từ. Trả về đúng đoạn văn, không thêm gì khác."
+    "Bạn viết lại mô tả một sinh vật hư cấu thành một đoạn văn tiếng Việt liền "
+    "mạch, dùng để dựng mô hình 3D.\n"
+    "QUY TẮC:\n"
+    "· Chỉ diễn đạt lại. Không thêm bộ phận cơ thể, không đổi số lượng chi, "
+    "không thêm màu sắc hay hoa văn không có trong bản gốc.\n"
+    "· Giữ lại MỌI chi tiết giải phẫu đã nêu, kể cả số lượng chi.\n"
+    "· Viết như đang tả một con vật có thật đứng trước mặt: hình khối, tỉ lệ, "
+    "tư thế, chất da lông.\n"
+    "· Bỏ hết phần chỉ số trò chơi và phần dặn về phong cách ảnh.\n"
+    "· Ba đến bốn câu.\n"
+    "Trả về đúng đoạn văn ấy, không mở đầu, không giải thích, không đánh số."
 )
 
 
@@ -100,7 +116,12 @@ def _one_call(key: str, prompt: str, timeout: float) -> str | None:
         # thì nó trả về một mẩu suy nghĩ dở (`/no digits like "4", use "bốn`) —
         # JSON hợp lệ, `finishReason: STOP`, và rác. Kiểu hỏng tệ nhất: trông y
         # như model kém.
-        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2000},
+        #
+        # Rồi 2000 vẫn chưa đủ: phần nghĩ ~1100 cộng một đoạn văn bốn câu là
+        # chạm trần, và câu trả lời **đứt giữa chừng** — bản viết lại mất chữ
+        # "móng vuốt" ở cuối và bị bộ kiểm loại vì "đánh rơi bộ phận", trong khi
+        # model đã tả nó đúng, chỉ là chưa kịp viết ra.
+        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 4000},
     }).encode("utf-8")
     req = urllib.request.Request(
         URL.format(model=MODEL) + f"?key={key}",
@@ -110,6 +131,13 @@ def _one_call(key: str, prompt: str, timeout: float) -> str | None:
         data = json.loads(r.read().decode("utf-8"))
     cands = data.get("candidates") or []
     if not cands:
+        return None
+    # Đứt vì chạm trần thì VỨT, đừng trả về một câu dở.
+    #
+    # Một đoạn văn cụt trông y như một đoạn văn đánh rơi bộ phận, nên nếu để nó
+    # đi tiếp thì `verify_rewrite` báo "đánh rơi 'móng vuốt'" và ta đi sửa nhầm
+    # chỗ — sửa hàng rào, trong khi lỗi nằm ở ngân sách token.
+    if cands[0].get("finishReason") not in (None, "STOP"):
         return None
     parts = (cands[0].get("content") or {}).get("parts") or []
     text = " ".join(p.get("text", "") for p in parts).strip()
@@ -145,13 +173,29 @@ def rewrite(prompt: str, timeout: float = 20.0) -> tuple[str, str]:
     ks = keys()
     if not ks:
         return prompt, "goc"
+
+    # Hai loại hỏng, hai cách xử lý — và gộp chúng làm một là lỗi đã trả giá.
+    #
+    # · **khoá hỏng / hết hạn mức** -> xoay sang khoá kế tiếp. Đúng.
+    # · **model trả bản đánh rơi bộ phận** -> KHÔNG xoay khoá. Đó không phải lỗi
+    #   khoá; khoá khác cũng cho ra một bản tương tự.
+    #
+    # Bản đầu gộp cả hai, nên một bản bị bộ kiểm từ chối làm nó thử hết **14
+    # khoá**, mỗi lần ~30 giây. Năm sinh vật mất hơn 25 phút thay vì 2 phút rưỡi,
+    # và không có gì trong log nói vì sao — nó chỉ *chậm*.
+    tries_left = MAX_REWRITE_TRIES
     for key in ks:
+        if tries_left <= 0:
+            break
         try:
             out = _one_call(key, prompt, timeout)
         except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
             continue          # khoá này hỏng hoặc hết hạn mức -> khoá kế tiếp
         except (ValueError, KeyError):
             continue
+        # Từ đây trở đi là khoá CHẠY ĐƯỢC: mọi thất bại còn lại là chuyện của
+        # model, và nó ăn vào ngân sách thử chứ không ăn vào danh sách khoá.
+        tries_left -= 1
         if not out:
             continue
         ok, _why = verify_rewrite(prompt, out)

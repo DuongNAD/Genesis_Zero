@@ -100,11 +100,27 @@ số chi, bị loại. Phải khớp theo **nhóm đồng nghĩa**. Và cố ý 
 khỏi hàng rào: chúng quá thường trong tiếng Việt nên khớp nhầm khắp nơi, mà một
 hàng rào khớp nhầm thì tệ hơn không có — nó dạy người sửa sau bỏ qua cảnh báo.
 
-**Bẫy 3 — tên model không cố định.** `gemini-2.0-flash` trả 404 kèm câu *"no
+**Bẫy 3 — "tối đa 90 từ" làm model ĐẾM TỪ RA THÀNH CHỮ.** Nó trả về
+`(48) Bốn(49) chi(50) ngắn(51) chắc,(52) riêng…`. Một ràng buộc đếm được là một
+lời mời đếm, và nó đếm ngay giữa câu trả lời. Nói giới hạn bằng **số CÂU**.
+
+**Bẫy 4 — 2000 token vẫn chưa đủ, và ca đứt trông y hệt ca đánh rơi.** Phần nghĩ
+~1100 cộng một đoạn bốn câu là chạm trần; câu trả lời đứt giữa chừng, mất chữ
+"móng vuốt" ở cuối, và `verify_rewrite` báo *"đánh rơi bộ phận"*. Ta sẽ đi sửa
+**hàng rào** trong khi lỗi nằm ở **ngân sách**. Nên `_one_call` vứt luôn mọi phản
+hồi có `finishReason` khác `STOP` — một câu dở tệ hơn không có câu nào.
+
+**Bẫy 5 — bản viết lại bị TỪ CHỐI thì đừng xoay khoá.** Bản đầu gộp "khoá hỏng"
+với "model trả bản không đạt" làm một, nên một lần bị bộ kiểm từ chối kéo theo
+đủ **14 khoá**, mỗi lần ~30 giây: năm sinh vật mất hơn **25 phút** thay vì hai
+phút rưỡi, và không dòng log nào nói vì sao — nó chỉ *chậm*. Khoá hỏng thì xoay
+khoá; model trả sai thì tiêu ngân sách thử (`MAX_REWRITE_TRIES = 2`).
+
+**Bẫy 6 — tên model không cố định.** `gemini-2.0-flash` trả 404 kèm câu *"no
 longer available, please update to gemini-3.6-flash"*. Đọc từ `GEMINI_MODEL` để
 lần sau không phải sửa code.
 
-**Bẫy 4 — KHOÁ.** Không khoá nào vào kho. `.env` gitignore, đọc qua môi trường,
+**Bẫy 7 — KHOÁ.** Không khoá nào vào kho. `.env` gitignore, đọc qua môi trường,
 và `tests/test_features.py` quét **mọi file git theo dõi** tìm `AIzaSy`.
 
 ## 8. Nghiệm thu
@@ -114,6 +130,10 @@ pytest tests/test_features.py tests/test_domain.py -q
 python scripts/creature_design.py --seed 21                 # mô tả gốc
 python scripts/creature_design.py --seed 21 --rewrite       # qua Gemini
 ```
+
+Đã chạy thật (2026-08-30): **5/5 sinh vật qua được Gemini**, mô tả gọn lại
+725 → 603 ký tự mà không đánh rơi bộ phận nào. Kết quả ở
+`assets/meshy/creatures.json`.
 
 ## 9. Chưa làm
 
