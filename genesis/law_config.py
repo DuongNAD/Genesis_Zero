@@ -97,6 +97,19 @@ HUNCH_BY_BRAIN        = {0:2, 1:2, 2:3, 3:4, 4:5, 5:6}
 # cạnh tranh trực tiếp với việc ghi một kết luận, và ta vừa dựng cơ chế này lên
 # đúng để hai việc ấy thôi cạnh tranh nhau.
 HUNCH_COOLDOWN        = 10
+# Sang đời sau, bảng đếm co lại còn bấy nhiêu — KHÔNG bị xoá.
+#
+# Đây là con số quan trọng nhất của B-14, và nó được chọn bằng phép đo chứ không
+# bằng cảm giác. Đo trên seed 55 và 26 (Qwen-7B, 200 tick): mỗi con chết **4,4–4,9
+# lần một ván**, tuổi thọ trung bình **35–39 tick**, và tuổi trung vị của con vật
+# **lúc nó ghi Sổ Luật là 27 tick**. Nghĩa là model được yêu cầu quy nạp một luật
+# qua một lỗ khoá 27 tick, lặp đi lặp lại, không có cách nào cộng dồn.
+#
+# Xoá sạch bảng đếm khi chết thì linh cảm thừa hưởng đúng cái lỗ khoá ấy và
+# không mua được gì. Giữ nguyên thì đời sau ăn không một hiểu biết nó chưa từng
+# quan sát. Co lại một nửa giữ được TỈ LỆ (thứ đã học) mà bỏ bớt SỐ LẦN (thứ đã
+# tự tay đo) — cùng logic với `CODEX_CONF_DECAY_PER_GEN`.
+HUNCH_DECAY_PER_GEN   = 0.5
 COST_CLAIM            = 4.0
 NOTEPAD_MAX_CHARS     = 200
 # Trần số dòng ở khối "NGHE ĐƯỢC". Không chặn thì một loài ồn ào đẩy hết sổ tay

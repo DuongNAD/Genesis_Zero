@@ -117,13 +117,40 @@ class HunchBook:
         if new_size > len(self._entries):
             self._entries.extend([None] * (new_size - len(self._entries)))
 
-    def clear(self) -> int:
-        """Sang đời mới thì linh cảm chết theo. Trả số ô đã xoá.
+    def on_death(self) -> int:
+        """Sang đời sau: **giữ** câu hỏi, **co** bảng đếm. Trả số ô còn lại.
 
-        Đi cùng sổ tay chứ không đi cùng Sổ Luật: linh cảm là trạng thái *đang
-        điều tra*, không phải niềm tin. Một cuộc điều tra dở dang không thừa kế
-        được — người thừa kế không có cái sổ tay đã sinh ra nó.
+        Bản đầu của B-14 xoá sạch, với lý do "linh cảm là trạng thái đang điều
+        tra, không phải niềm tin". Phép đo bác bỏ lý do ấy — xem
+        `law_config.HUNCH_DECAY_PER_GEN`: sinh vật chết 4,4–4,9 lần một ván và
+        tuổi trung vị lúc ghi Sổ Luật là **27 tick**, nên xoá sạch nghĩa là linh
+        cảm thừa hưởng đúng cái lỗ khoá 27 tick đang làm hỏng mọi thứ, và cơ chế
+        này không mua được gì.
+
+        Bảng của [W-17](../docs/tasks/W-17-doi.md) đã có câu trả lời đúng, tôi
+        chỉ xếp nhầm hàng: *Sổ Luật sống qua đời vì nó là thứ ngươi đã **viết
+        ra**; sổ tay chết theo vì trải nghiệm thô không truyền được.* Một linh
+        cảm là một **phát biểu đã viết ra** — nên nó thuộc hàng trên. Còn bảng
+        đếm thì đúng là quan sát thô, nên nó co lại thay vì đi theo nguyên vẹn.
+
+        Co chứ không xoá giữ được TỈ LỆ (thứ đã học) mà bỏ bớt SỐ LẦN (thứ đã tự
+        tay đo). Hệ quả phụ đáng muốn: một linh cảm mới thử một hai lần sẽ co về
+        `0/0` — "chưa thử lần nào" — nên một cú đoán chưa kiểm không truyền được
+        sự chắc chắn nào cả, đúng tinh thần `CODEX_CONF_DECAY_PER_GEN`.
         """
+        k = law_config.HUNCH_DECAY_PER_GEN
+        n = 0
+        for h in self._entries:
+            if h is None:
+                continue
+            h.tried = int(h.tried * k)
+            h.hit = min(h.tried, int(h.hit * k))
+            n += 1
+        self.last_write = -law_config.HUNCH_COOLDOWN
+        return n
+
+    def clear(self) -> int:
+        """Xoá SẠCH. Dùng ở ranh giới VÁN, không phải ranh giới đời."""
         n = sum(1 for e in self._entries if e is not None)
         self._entries = [None] * len(self._entries)
         self.last_write = -law_config.HUNCH_COOLDOWN

@@ -79,9 +79,13 @@ cạn, không phải quy nạp, và `match` sẽ đo tốc độ vét chứ khô
 một linh cảm đi qua đúng đường CLAIM hai pha của [B-08](B-08-codex.md): một cờ
 `want_hunch` trong quyết định thường, rồi **một lời gọi riêng** ở tick sau.
 
-**Bất biến 5 — chết theo đời.** Linh cảm là trạng thái *đang điều tra*, không
-phải niềm tin. Nó đi cùng sổ tay ở `lineage.forget_on_death`, không đi cùng Sổ
-Luật (thứ chỉ giảm `conf`).
+**Bất biến 5 — CÂU HỎI sống qua đời, BẢNG ĐẾM co lại.** *(Sửa 2026-08-30 sau
+khi đo — bản đầu của bất biến này viết ngược, xem §7.)* Bảng của
+[W-17](W-17-doi.md) đã có sẵn ranh giới đúng: Sổ Luật sống qua đời **vì nó là
+thứ ngươi đã viết ra**; sổ tay chết **vì trải nghiệm thô không truyền được**.
+Một linh cảm là một phát biểu đã viết ra, nên nó thuộc hàng trên. Bảng đếm là
+quan sát thô, nên nó nhân `HUNCH_DECAY_PER_GEN` — giữ **tỉ lệ** (thứ đã học),
+bỏ bớt **số lần** (thứ đã tự tay đo).
 
 **Bất biến 6 — TẮT mặc định.** Bật lên là **đổi luật chơi**, nên mọi con số đã
 ghi trước đây không so được với con số sau đây. Nó là một **nhánh thí nghiệm**
@@ -190,7 +194,47 @@ python scripts/x09_hunch.py --seeds 5 --ticks 200 --llm-url http://127.0.0.1:808
 # nó không. Cùng model, cùng trọng số, chỉ khác một khối prompt và một cuốn sổ.
 ```
 
-## 7. Cái KHÔNG làm, và vì sao
+## 7. Bất biến 5 viết ngược, và phép đo đã sửa nó
+
+Bản đầu viết: *"linh cảm chết theo đời, đi cùng sổ tay"*, lý do là *"nó là trạng
+thái đang điều tra, không phải niềm tin"*. Nghe hợp lý, và **sai**.
+
+Đo trên ván 7B thật (seed 55 và 26, 200 tick):
+
+| | seed 55 | seed 26 |
+|---|---|---|
+| số lần chết trên mỗi cá thể | **4,4** | **4,9** |
+| tuổi thọ trung bình | 39 tick | 35 tick |
+| **tuổi của con vật LÚC ghi Sổ Luật** (trung vị) | **27 tick** | **27 tick** |
+| mục sổ nói về `EAT` | 39/45 | 40/50 |
+| `match` cao nhất | **0,000** | **0,000** |
+
+Dòng thứ ba là cả câu chuyện. Sổ tay chết theo đời, nên **lúc model được hỏi
+"ngươi tin luật nào", nó chỉ có 27 tick trải nghiệm trong tay** — lặp đi lặp
+lại, không có cách nào cộng dồn. Luật thật thì nổ suốt cả ván (luật `DRINK` của
+seed 26 nổ 78 lần).
+
+Ca cụ thể, `L1:1` ở seed 26: nó uống nước 8 lần, **7 lần bị mất máu ngay sau
+đó**, rồi ở tick 185 nó ghi vào Sổ Luật *"KHI uống nước THÌ hồi máu"* — ngược
+hẳn. Không phải nó bỏ qua bằng chứng: nó **chết ở tick 12, 51, 77, 131, 159**, và
+lần uống cuối của nó là tick 76. Đến lúc ghi sổ, ba đời đã trôi qua và cuốn sổ
+tay chứa bằng chứng ấy đã bị xoá ba lần. Nó viết từ định kiến vì nó **không còn
+gì khác để viết từ đó**.
+
+`lineage.py` đã ghi đúng triệu chứng này từ trước (*"0% mục sổ nói về uống nước,
+trong khi uống chiếm 26% hành động"*) nhưng chưa có nguyên nhân. Đây là nguyên
+nhân.
+
+Hệ quả cho phiếu này: nếu linh cảm cũng chết theo đời thì nó thừa hưởng **đúng
+cái lỗ khoá 27 tick** đang làm hỏng mọi thứ, và cơ chế này không mua được gì cả.
+Nên nó không chết theo đời — nó co lại. Đó là thay đổi khiến B-14 nhắm vào
+nguyên nhân thay vì nhắm vào triệu chứng.
+
+**Và nó làm X-09 thành một phép đo sắc hơn:** nếu bảng đếm cộng dồn qua nhiều
+đời mà `match` vẫn 0, thì nút thắt không phải trí nhớ — lúc ấy mới được nói "model
+không quy nạp được trong thế giới này", và câu ấy mới có căn cứ.
+
+## 8. Cái KHÔNG làm, và vì sao
 
 **Không có "thăng cấp" từ linh cảm sang Sổ Luật.** Nghe thì tiện, nhưng con vật
 đã có sẵn chữ của luật ấy trong prompt của chính nó — nó chỉ cần chép sang. Một

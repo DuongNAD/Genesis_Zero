@@ -161,13 +161,13 @@ class Minds:
     def on_death(self, cid: str) -> int:
         """Sang đời mới: sổ tay chết theo, Sổ Luật bớt chắc chắn (W-17).
 
-        Linh cảm đi cùng SỔ TAY, không đi cùng Sổ Luật: nó là trạng thái *đang
-        điều tra*, và một cuộc điều tra dở dang không thừa kế được — người thừa
-        kế không có cuốn sổ tay đã sinh ra nó.
+        Linh cảm đi cùng SỔ LUẬT, không đi cùng sổ tay: nó là một phát biểu đã
+        **viết ra**, nên nó sống qua đời — nhưng bảng đếm co lại, vì bảng đếm là
+        quan sát thô. Xem `HunchBook.on_death`.
         """
         hb = self.hunches.get(cid)
         if hb is not None:
-            hb.clear()
+            hb.on_death()
         return forget_on_death(self.notes.get(cid), self.codices.get(cid))
 
     def new_match(self) -> None:

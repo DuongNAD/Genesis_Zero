@@ -157,7 +157,19 @@ def test_6_bo_cham_khong_nhin_thay_linh_cam():
 
 # ── 7: bất biến 5 — chết theo đời, cùng sổ tay ──────────────────────────────
 
-def test_7_linh_cam_chet_theo_doi_so_luat_thi_khong():
+def test_7_qua_doi_sau_giu_CAU_HOI_co_BANG_DEM():
+    """Bất biến 5, **đã sửa sau khi đo**.
+
+    Bản đầu xoá sạch linh cảm khi chết, với lý do "nó là trạng thái đang điều
+    tra, không phải niềm tin". Phép đo bác bỏ: sinh vật chết **4,4–4,9 lần một
+    ván** và tuổi trung vị lúc ghi Sổ Luật là **27 tick**, nên xoá sạch nghĩa là
+    linh cảm thừa hưởng đúng cái lỗ khoá đang làm hỏng mọi thứ.
+
+    Bảng của W-17 vốn đã có câu trả lời đúng, chỉ là tôi xếp nhầm hàng: Sổ Luật
+    sống qua đời vì nó là thứ đã **viết ra**; sổ tay chết vì trải nghiệm thô
+    không truyền được. Một linh cảm là một phát biểu đã viết ra — hàng trên. Bảng
+    đếm là quan sát thô — nên nó **co lại**, không đi theo nguyên vẹn.
+    """
     from genesis.lawdsl import random_law, vocab_for_brain
 
     m = Minds()
@@ -171,13 +183,40 @@ def test_7_linh_cam_chet_theo_doi_so_luat_thi_khong():
     cx.apply("SET", 0, random_law(random.Random(1), vocab_for_brain(5)), 3, tick=99)
     hb = m.hunch_of(c)
     hb.apply("SET", 0, _law(), tick=99)
+    h = hb.entries()[0]
+    h.tried, h.hit = 40, 32
 
     m.on_death(c.id)
 
     assert not notes.render(8).strip(), "sổ tay phải chết theo"
-    assert all(e is None for e in hb.entries()), "linh cảm phải chết theo"
     assert cx.entries()[0] is not None, "Sổ Luật chỉ GIẢM conf, không bị xoá"
     assert cx.entries()[0].conf == 3 - config.CODEX_CONF_DECAY_PER_GEN
+
+    assert hb.entries()[0] is not None, "CÂU HỎI phải sống qua đời"
+    k = law_config.HUNCH_DECAY_PER_GEN
+    assert (h.tried, h.hit) == (int(40 * k), int(32 * k))
+    # Tỉ lệ — thứ đã học — giữ nguyên. Số lần — thứ đã tự tay đo — bớt đi.
+    assert abs(h.hit / h.tried - 32 / 40) < 1e-9
+
+
+def test_7b_linh_cam_moi_doan_thi_co_ve_chua_thu_lan_nao():
+    """Một cú đoán chưa kiểm không được truyền sự chắc chắn nào sang đời sau."""
+    hb = HunchBook(size=2)
+    hb.apply("SET", 0, _law(), tick=0)
+    h = hb.entries()[0]
+    h.tried, h.hit = 1, 1
+    hb.on_death()
+    assert (h.tried, h.hit) == (0, 0), "1/1 phải co về 0/0, không phải 1/1"
+
+
+def test_7c_ranh_gioi_VAN_thi_xoa_sach():
+    """Đời sau giữ; ván sau thì không — luật đổi mỗi ván nên câu hỏi cũ vô nghĩa."""
+    m = Minds()
+    c = _creature("L1")
+    m.hunch_enabled = True
+    m.hunch_of(c).apply("SET", 0, _law(), tick=0)
+    m.new_match()
+    assert not m.hunches, "sang VÁN mới thì linh cảm phải sạch"
 
 
 # ── phụ: dung lượng, cooldown, khối prompt ──────────────────────────────────
