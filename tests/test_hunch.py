@@ -254,26 +254,54 @@ def test_linh_cam_tat_mac_dinh():
     assert Minds().hunch_enabled is False
 
 
-def test_vong_tick_dem_linh_cam():
-    """Đầu-cuối: chạy vòng tick thật và bảng đếm phải nhúc nhích."""
+def _run(seed: int, ticks: int, law_for_hunch, laws=None):
+    """Chạy một ván thật với một linh cảm nhồi sẵn. Trả (tried, hit) cộng dồn."""
     from genesis.strategist import ReflexStrategist
     from genesis.tick import build_match, tick
 
-    w, cs, st, rng = build_match(seed=3)
+    w, cs, st, rng = build_match(seed, laws=laws)
     strat = ReflexStrategist()
     strat.minds = Minds()
     strat.minds.hunch_enabled = True
     for c in cs:
-        hb = strat.minds.hunch_of(c)
-        # `REST -> HEAL` — trigger nào cũng được, miễn là nó nổ thường xuyên.
-        hb.apply("SET", 0, _law(kind=TriggerKind.REST, eff=EffectKind.HEAL), tick=0)
+        strat.minds.hunch_of(c).apply("SET", 0, law_for_hunch, tick=0)
+    for t in range(ticks):
+        tick(w, cs, t, rng, st, laws=laws, strategist=strat)
+    es = [h for hb in strat.minds.hunches.values() for h in hb.entries() if h]
+    return sum(h.tried for h in es), sum(h.hit for h in es)
 
-    for t in range(40):
-        tick(w, cs, t, rng, st, strategist=strat)
 
-    total = sum(h.tried for hb in strat.minds.hunches.values()
-                for h in hb.entries() if h is not None)
-    assert total > 0, "40 tick mà không linh cảm nào được thử lần nào"
+def test_vong_tick_dem_dung_khi_linh_cam_TRUNG_luat_that():
+    """Ca dương ở mức VÁN THẬT, không phải mức hàm.
+
+    Nhồi đúng luật thật của ván làm linh cảm: mỗi lần trigger nổ thì hệ quả phải
+    có mặt trong `happened`, nên `hit` phải bằng `tried`. Bài này bắt được cả
+    một lớp lỗi mà bài đơn vị không thấy — `happened` dựng sai chỗ, hoặc dựng
+    sau khi hệ quả đã bị ghi đè.
+    """
+    from genesis.lawgen import generate_cached
+
+    laws = generate_cached(9, arm="STANDARD")
+    tried, hit = _run(9, 200, laws[0], laws=laws)
+    assert tried > 0, "200 tick mà luật thật không nổ lần nào — seed hỏng?"
+    assert hit == tried, f"linh cảm TRÙNG luật thật phải đúng mọi lần: {hit}/{tried}"
+
+
+def test_vong_tick_dem_SAI_khi_linh_cam_truot():
+    """Ca âm ở mức ván thật: nghi sai thì `tried` vẫn lên, `hit` phải đứng yên.
+
+    Đây là nửa giá trị của cơ chế — bằng chứng phủ định — và nó chỉ đúng nếu
+    `tried` đếm cả những tick không có gì xảy ra.
+    """
+    from genesis.lawgen import generate_cached
+
+    laws = generate_cached(9, arm="STANDARD")
+    # Một luật KHÔNG có trong ván: cùng trigger của luật thật, sai hệ quả.
+    wrong = Law(trigger=laws[0].trigger, conds=(),
+                effect=Effect(kind=EffectKind.TELEPORT))
+    tried, hit = _run(9, 200, wrong, laws=laws)
+    assert tried > 0, "trigger vẫn phải nổ — nếu không thì bài này không kiểm gì"
+    assert hit == 0, f"nghi sai mà vẫn ăn {hit} lần đúng"
 
 
 # ── chế độ mở: cùng cơ chế, không có bản thứ hai (N-16 bẫy 4) ───────────────

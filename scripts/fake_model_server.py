@@ -40,9 +40,18 @@ class Handler(BaseHTTPRequestHandler):
                     "effect": {"kind": "HEAL", "mag": "SMALL", "dur": "INSTANT"}}}
             else:
                 out = {"op": "SET", "slot": 0, "conf": 5, "law": self.cheat_law}
+        elif "[LINH CẢM]" in prompt:
+            # Linh cảm (B-14). Model giả nghi về DRINK — cố ý KHÁC chỗ nó ghi Sổ
+            # Luật, để một ván giả cũng phơi ra được đường đi của bảng đếm.
+            out = {"op": "SET", "slot": 0, "law": {
+                "trigger": {"kind": "DRINK"}, "conds": [],
+                "effect": {"kind": "DAMAGE", "mag": "MED", "dur": "SHORT"}}}
+        elif "[DỊCH CƠ THỂ]" in prompt:
+            out = {"from": "speed", "to": "brain", "why": "cần nhớ nhiều hơn"}
         else:
             out = {"goal": self.rng.choice(GOALS), "ttl": self.rng.randint(3, 8),
-                   "want_codex": self.rng.random() < 0.25}
+                   "want_codex": self.rng.random() < 0.25,
+                   "want_hunch": self.rng.random() < 0.35}
 
         payload = json.dumps(out, ensure_ascii=False)
         resp = json.dumps({
