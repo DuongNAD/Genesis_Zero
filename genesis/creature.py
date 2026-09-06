@@ -35,6 +35,51 @@ class Creature:
     # đường replay không phải dựng lại mỗi lần có con chết (64 lần một ván).
     generation: int = 0
 
+    # ── M1_EVO: Dòng dõi & Đặc điểm cá thể ────────────────────────────────
+    parent_id: str | None = None
+    lineage_id: str = ""
+    birth_tick: int = 0
+    reproduce_cooldown: int = 0
+    features: tuple[str, ...] = ()
+    _kit: object | None = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if not self.lineage_id and self.id:
+            self.lineage_id = self.id
+
+    @property
+    def kit(self) -> object | None:
+        if self._kit is not None:
+            return self._kit
+        if not self.features:
+            return None
+        from genesis.features import BY_KEY, kit_of
+        feats = tuple(BY_KEY[k] for k in self.features if k in BY_KEY)
+        if feats:
+            self._kit = kit_of(feats)
+            return self._kit
+        return None
+
+    @kit.setter
+    def kit(self, val: object | None) -> None:
+        self._kit = val
+
+
+def allocate_creature_id(species: str, creatures: list[Creature]) -> str:
+    """Cấp phát ID số nguyên tiếp theo cho cá thể mới sinh theo format `{species}:{idx}`.
+
+    Bảo đảm `int(idx)` trong `creature_sort_key` không bao giờ gặp lỗi ValueError.
+    """
+    max_idx = -1
+    for c in creatures:
+        if c.species == species:
+            s_sp, _, s_idx = c.id.rpartition(":")
+            if s_sp == species and s_idx.isdigit():
+                val = int(s_idx)
+                if val > max_idx:
+                    max_idx = val
+    return f"{species}:{max_idx + 1}"
+
 
 def spawn_population(world: World, rng: random.Random) -> list[Creature]:
     """Tạo quần thể ban đầu trên các ô passable ngẫu nhiên.
@@ -76,6 +121,7 @@ def spawn_population(world: World, rng: random.Random) -> list[Creature]:
                     pos=pos,
                     hp=float(config.HP_MAX),
                     energy=traits.energy_max,
+                    lineage_id=cid,
                 )
             )
 
@@ -91,7 +137,11 @@ def creature_sort_key(c: Creature) -> tuple[str, int]:
     và không có gì báo lỗi. Tách phần số ra rồi sắp bằng số.
     """
     species, _, idx = c.id.rpartition(":")
-    return (species, int(idx))
+    try:
+        return (species, int(idx))
+    except ValueError:
+        return (species, 999999)
+
 
 
 def random_step(c: Creature, world: World, rng: random.Random) -> int:
@@ -99,12 +149,14 @@ def random_step(c: Creature, world: World, rng: random.Random) -> int:
     if not c.alive:
         return 0
     steps_taken = 0
+    weather_mod = getattr(getattr(world, "weather", None), "modifiers", None)
+    move_mult = getattr(weather_mod, "move_cost_mult", 1.0) if weather_mod else 1.0
     for _ in range(c.traits.moves_per_tick):
-        candidates = [p for p in world.neighbors(c.pos) if world.passable(p)]
+        candidates = [p for p in world.neighbors(c.pos) if world.passable(p, c)]
         if not candidates:
             break
         c.pos = rng.choice(candidates)
-        c.energy -= config.COST_MOVE
+        c.energy -= config.COST_MOVE * move_mult
         steps_taken += 1
     return steps_taken
 
@@ -122,7 +174,8 @@ def upkeep_and_check_death(c: Creature, tick: int, kit=None) -> bool:
     if not c.alive:
         return False
     c.age += 1
-    c.energy -= c.traits.upkeep * (getattr(kit, "upkeep_mult", 1.0) if kit else 1.0)
+    effective_kit = kit if kit is not None else getattr(c, "kit", None)
+    c.energy -= c.traits.upkeep * (getattr(effective_kit, "upkeep_mult", 1.0) if effective_kit else 1.0)
     if c.energy <= 0:
         c.alive = False
         return True
@@ -144,22 +197,39 @@ def resolve_eat(c: Creature, world: World) -> float:
 def kill(c: Creature, world: World, tick: int, cause: str = "starve") -> None:
     """Xử lý sinh vật chết: chuyển alive=False, để lại xác, hẹn giờ hồi sinh."""
     c.alive = False
-    c.dead_until = tick + config.RESPAWN_DELAY
+    if c.parent_id is not None:
+        c.dead_until = -1
+    else:
+        c.dead_until = tick + config.RESPAWN_DELAY
     world.corpses[c.pos] = tick
 
 
-def try_respawn(c: Creature, world: World, tick: int, rng: random.Random) -> bool:
+def try_respawn(
+    c: Creature,
+    world: World,
+    tick: int,
+    rng: random.Random,
+    creatures: list[Creature] | None = None,
+) -> bool:
     """Hồi sinh sinh vật khi đã hết thời gian chờ chết.
 
     Bẫy: chỉ hồi sinh ở ô passable, reset age=0 nhưng giữ nguyên id và trí nhớ.
     """
-    if c.alive or c.dead_until < 0 or tick < c.dead_until:
+    if c.alive or c.dead_until < 0 or tick < c.dead_until or c.parent_id is not None:
         return False
+    pool = creatures if creatures is not None else getattr(world, "creatures", None)
+    if pool is not None:
+        alive_all = [x for x in pool if x.alive]
+        if len(alive_all) >= config.POPULATION_GLOBAL_MAX:
+            return False
+        alive_sp = [x for x in alive_all if x.species == c.species]
+        if len(alive_sp) >= config.POPULATION_SPECIES_MAX:
+            return False
     passable_cells = [
         (x, y)
         for y in range(world.h)
         for x in range(world.w)
-        if world.passable((x, y))
+        if world.passable((x, y), c)
     ]
     if not passable_cells:
         return False
@@ -174,3 +244,4 @@ def try_respawn(c: Creature, world: World, tick: int, rng: random.Random) -> boo
     c.last_drink_tick = -1
     c.stun_ticks = 0
     return True
+

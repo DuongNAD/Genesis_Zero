@@ -50,6 +50,8 @@ def test_prefix_chi_vo_khi_brain_doi():
     for t in range(400):
         tick(world, creatures, t, rng, state)
         for c in creatures:
+            if c.id not in last_brain:
+                last_brain[c.id] = c.traits.brain
             if c.traits.brain != last_brain[c.id]:
                 brain_changes += 1
                 last_brain[c.id] = c.traits.brain

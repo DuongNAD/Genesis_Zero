@@ -6,17 +6,24 @@ Từ cài đặt tới lúc có người khác cắm máy vào chơi cùng.
 
 ## 0. Trong 60 giây
 
-```bash
-git clone https://github.com/DuongNAD/Genesis_Zero.git
-cd Genesis_Zero
-pip install -r requirements.txt
-python -m genesis.run --seed 1 --ticks 200 --controller reflex
-```
+**Khởi chạy 1-chạm (Khuyên dùng):**
 
-Xong. Bạn vừa chạy một ván 200 lượt, không cần model, không cần mạng. Màn hình
-in ra lưới thế giới và bảng tổng kết.
+- **macOS / Linux**:
+  ```bash
+  git clone https://github.com/DuongNAD/Genesis_Zero.git && cd Genesis_Zero
+  ./run.sh
+  ```
+- **Windows (PowerShell)**:
+  ```powershell
+  git clone https://github.com/DuongNAD/Genesis_Zero.git && cd Genesis_Zero
+  .\run.ps1
+  ```
 
-Muốn sinh vật **suy nghĩ** thay vì chạy theo phản xạ thì cần một model — mục 2.
+*(Hoặc chạy thủ công qua Python: `pip install -r requirements.txt` rồi `python -m genesis.run --seed 1 --ticks 200 --controller reflex`)*
+
+Xong. Bạn vừa chạy một ván 200 lượt: script tự động cấu hình `.venv`, kiểm tra dependencies, tự dò quét LLM và chuyển mượt về phản xạ nếu không có GPU/LLM cục bộ. Màn hình in ra lưới thế giới và bảng tổng kết.
+
+Muốn sinh vật **suy nghĩ** bằng LLM cục bộ (Ollama, llama.cpp, vLLM) thì xem mục 2.
 
 ---
 

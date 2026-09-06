@@ -293,12 +293,14 @@ def apply_intent(
     if c is None or not c.alive:
         return 0
     steps = 0
+    weather_mod = getattr(getattr(world, "weather", None), "modifiers", None)
+    move_mult = getattr(weather_mod, "move_cost_mult", 1.0) if weather_mod else 1.0
     for pos in intent.path:
         # Bẫy: chỉ đi vào ô passable — và passable CỦA CON NÀY. Con vật đã ở
         # trong tay rồi thì không có cớ gì hỏi bằng bản đồ của loài khác.
         if not world.passable(pos, c):
             break
         c.pos = world.wrap(*pos)
-        c.energy -= config.COST_MOVE
+        c.energy -= config.COST_MOVE * move_mult
         steps += 1
     return steps

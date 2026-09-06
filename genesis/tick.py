@@ -62,6 +62,8 @@ class SimState:
     last_did: dict[str, dict[str, int]] = field(default_factory=dict)
     # creature_id -> số tick đứng yên LIÊN TIẾP; nguồn cho trigger REST(k)
     rest_streak: dict[str, int] = field(default_factory=dict)
+    extinct_species: set[str] = field(default_factory=set)
+    reproduction_enabled: bool | None = None
 
 
 def creature_rng(match_seed: int, tick_no: int, creature_id: str) -> random.Random:
@@ -75,11 +77,13 @@ def build_match(
     prior_arm: str = "PRIOR_FREE",
     laws: list | None = None,
     map_name: str | None = None,
+    reproduction: bool | None = None,
 ) -> tuple[World, list[Creature], SimState, random.Random]:
     """Dựng thế giới + quần thể + state từ một seed. Dùng chung cho run và test.
 
     `prior_arm` khác `PRIOR_FREE` thì ánh xạ bề mặt được CHỌN theo bộ luật (X-03,
     03 §10.2) chứ không bốc ngẫu nhiên — nên phải truyền `laws` vào.
+    `reproduction` cho phép ghi đè cơ chế sinh sản cho riêng ván này (None = theo config).
     """
     rng = random.Random(seed)
     # Bất biến B2: hoán vị bề mặt phải dùng luồng ĐỘC LẬP THẬT.
@@ -94,9 +98,9 @@ def build_match(
         from genesis.prior import prior_surface_map
         surface_map = prior_surface_map(laws or [], prior_arm, s_rng)
     world = World(config.GRID_W, config.GRID_H, rng, surface_map=surface_map,
-                  map_name=map_name)
+                  map_name=map_name, seed=seed)
     creatures = spawn_population(world, rng)
-    state = SimState(match_seed=seed)
+    state = SimState(match_seed=seed, reproduction_enabled=reproduction)
     # Ba đặc điểm bốc thăm cho mỗi loài (W-19), tất định theo `(loài, seed)`.
     # Tất định là bắt buộc: bộ đệm hình 3D khoá theo chuỗi mô tả, `--replay`
     # dựng lại ván cũ, và bộ chấm so hai ván với nhau — bốc lại mỗi lần chạy
@@ -107,6 +111,10 @@ def build_match(
                   for sp in sorted({c.species for c in creatures})}
 
     return world, creatures, state, rng
+
+
+# Alias tiện ích tương thích
+init_simulation = build_match
 
 
 _DEFAULT_STRATEGIST: Strategist = ReflexStrategist()
@@ -165,7 +173,7 @@ def _resolve_algae(
     for c in creatures:
         if not c.alive:
             continue
-        kit = world.kits.get(c.species)
+        kit = getattr(c, "kit", None) or world.kits.get(c.species)
         an_duoc = (domain_of(c.species) is Domain.NUOC
                    or (kit is not None and Domain.NUOC in getattr(kit, "extra_domains", ())))
         if an_duoc:
@@ -250,6 +258,9 @@ def tick(
     strat = _DEFAULT_STRATEGIST if strategist is None else strategist
 
     world.phase = phase_at(tick_no)
+    seed = getattr(state, "match_seed", getattr(world, "seed", 0))
+    from genesis.weather import weather_at
+    world.weather = weather_at(seed, tick_no)
 
     # 0. NGHĨ — bắn cả đàn một lượt rồi CHỜ HẾT, trước khi thu intent.
     # Bẫy B-05 §3: áp goal ngay lúc nó về, giữa pha thu intent, là phá bất biến
@@ -355,7 +366,7 @@ def tick(
 
         tick_regen(c)
 
-        if upkeep_and_check_death(c, tick_no, world.kits.get(c.species)):
+        if upkeep_and_check_death(c, tick_no, getattr(c, "kit", None) or world.kits.get(c.species)):
             death_causes[c.id] = "starve"
 
     # Thắng trận: mục tiêu chết vì đòn của mình trong tick đó -> award_adapt(c, "win")
@@ -406,6 +417,25 @@ def tick(
                 "why": getattr(strat, "shift_why", {}).pop(c.id, None),
                 "traits": list(astuple(c.traits)),
             })
+
+    # 3.5 SINH SẢN (M1_EVO): kiểm tra ngưỡng năng lượng, tuổi, streak, cooldown, trần dân số
+    reproduce_events: list[dict] = []
+    repro_on = (
+        state.reproduction_enabled
+        if getattr(state, "reproduction_enabled", None) is not None
+        else config.REPRODUCTION_ENABLED
+    )
+    if repro_on:
+        from genesis.evolution import resolve_reproduction
+
+        reproduce_events = resolve_reproduction(
+            world, creatures, tick_no, state, log=log, strategist=strat
+        )
+        for rep_ev in reproduce_events:
+            for c_new in creatures:
+                if c_new.id == rep_ev["child_id"]:
+                    creatures_by_id[c_new.id] = c_new
+                    break
 
     # 4. LUẬT ẨN — thu hết (cá thể, hệ quả) rồi mới áp dụng, giữ tính đồng thời của W-11.
     law_events: list[dict] = []
@@ -543,14 +573,32 @@ def tick(
             })
 
     respawn_events: list[dict] = []
+    alive_count = sum(1 for x in creatures if x.alive)
+    sp_counts = {sp: sum(1 for x in creatures if x.alive and x.species == sp) for sp in {x.species for x in creatures}}
     for c in sorted(creatures, key=creature_sort_key):
-        crng = creature_rng(state.match_seed, tick_no, c.id)
-        if try_respawn(c, world, tick_no, crng):
-            respawn_events.append({
-                "creature_id": c.id,
-                "species_id": c.species,
-                "pos": list(c.pos),
-            })
+        if not c.alive and c.dead_until >= 0 and tick_no >= c.dead_until and c.parent_id is None:
+            if alive_count >= config.POPULATION_GLOBAL_MAX:
+                continue
+            if sp_counts.get(c.species, 0) >= config.POPULATION_SPECIES_MAX:
+                continue
+            crng = creature_rng(state.match_seed, tick_no, c.id)
+            if try_respawn(c, world, tick_no, crng, creatures=creatures):
+                alive_count += 1
+                sp_counts[c.species] = sp_counts.get(c.species, 0) + 1
+                respawn_events.append({
+                    "creature_id": c.id,
+                    "species_id": c.species,
+                    "pos": list(c.pos),
+                })
+
+    from genesis.evolution import detect_extinctions
+
+    if not hasattr(state, "extinct_species"):
+        state.extinct_species = set()
+    extinction_events = detect_extinctions(creatures, tick_no, state.extinct_species)
+
+    # Clean up dead non-reincarnating offspring while preserving founders
+    creatures[:] = [c for c in creatures if c.parent_id is None or c.alive or c.dead_until >= 0]
 
     # 6. THẾ GIỚI: spawn_plants, decay_corpses | rồi GHI LOG một chỗ duy nhất
     spawn_plants(world, rng, tick_no)
@@ -570,7 +618,8 @@ def tick(
         observe(tick_no, world, creatures, {
             "eat": eat_events, "drink": drink_events, "attack": attack_events,
             "law": law_events, "death": death_events, "move": move_events,
-            "speak": speak_events,
+            "speak": speak_events, "reproduce": reproduce_events,
+            "extinction": extinction_events,
         }, state)
 
     if log is not None:
@@ -592,6 +641,10 @@ def tick(
             log.write(tick_no, "DEATH", **death_ev)
         for respawn_ev in respawn_events:
             log.write(tick_no, "RESPAWN", **respawn_ev)
+        for rep_ev in reproduce_events:
+            log.write(tick_no, "REPRODUCE", **{k: v for k, v in rep_ev.items() if k != "kind"})
+        for ext_ev in extinction_events:
+            log.write(tick_no, "EXTINCTION", **{k: v for k, v in ext_ev.items() if k != "kind"})
 
         alive_count = sum(1 for c in creatures if c.alive)
         goals_count: dict[str, int] = {}

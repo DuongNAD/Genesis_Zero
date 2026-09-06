@@ -1,0 +1,57 @@
+{
+  "overall_pass": true,
+  "tests": {
+    "cave_entrance_portal_mesh": {
+      "passed": true,
+      "details": "verts=128 (14 rings x 8 verts + facade), faces=120, X=[10.9, 18.1], Y=[-7.7, 5.4], Z=[-7.2, 5.8], hollow tunnel intact (0 blockers)"
+    },
+    "cam16_position_and_clearance": {
+      "passed": true,
+      "details": "pos=(10.0, 12.0, -6.5), ceiling_z=-2.99m, headroom=3.51m (expected +3.5m), inside_cavern=True"
+    },
+    "watertight_diorama_slab": {
+      "passed": true,
+      "details": "boundary_edges=0, non_manifold=0, wire=0, X=[-80.0, 80.0], Y=[-80.0, 80.0], Z=[-16.00, 35.16], delta_z=51.16m, bottom_planar=True (count=513)"
+    },
+    "marine_bay_water_clipped_and_cutaway": {
+      "passed": true,
+      "details": "clipped=True (X=[-1.0, 80.0], Y=[-80.0, 1.0]), east_faces=16, south_faces=16, drops_to_seabed=-4.20m"
+    },
+    "river_water_ribbon_alignment": {
+      "passed": true,
+      "details": "total_verts=375, submerged=0, floating=0, min_diff=0.020m, max_diff=0.850m, uphill_surges=0, z_start=8.15m -> z_end=4.90m"
+    },
+    "lake_perimeter_berm_containment": {
+      "passed": true,
+      "details": "360 degrees tested at R=23.5m: min_z=4.969m >= 4.56m (water level 4.50m), breaches=0"
+    },
+    "cascades_and_foam_apron": {
+      "passed": true,
+      "details": "tiers_quads=4, circle_apron=1, Z_range=[0.05m, 21.20m], foam_apron_at_bay=True"
+    },
+    "botanical_prototypes_multi_material": {
+      "passed": true,
+      "details": "Flora_Alpine_DwarfPine: mat0=10, mat1=48 (needle cones); Flora_Forest_CanopyOak: mat0=10, mat1=320 (canopy foliage); Flora_Forest_Shrub: mat0=8, mat1=60 (shrub foliage); Flora_Forest_Wildflower: mat0=6, mat1=1 (petals); Flora_Aquatic_WaterLily: mat0=1, mat1=10 (flower); Flora_Aquatic_Reed: mat0=8, mat1=8 (spike); Flora_Cave_BioMushroom: mat0=8, mat1=20 (glowing cap)"
+    },
+    "terrain_pbr_shader_graph": {
+      "passed": true,
+      "details": "Base Color driven by Color_Terrain_Strata_Mix; input6=Mix_Snow_Procedural, input7=Attribute (attr=COLOR_0)"
+    },
+    "geometry_nodes_water_proximity": {
+      "passed": true,
+      "details": "prox_node=True, frustum_socket=True, lod_socket=True, dry_land_leak=4.5% (< 5% acceptance threshold)"
+    },
+    "material_contract_name_blend": {
+      "passed": true,
+      "details": "bpy.data.materials['M_Cave_BioFungi'] exists: True"
+    },
+    "material_contract_name_glb": {
+      "passed": true,
+      "details": "GLB materials contains 'M_Cave_BioFungi': True (total mats: 26)"
+    },
+    "glb_cameras_count": {
+      "passed": true,
+      "details": "GLB embedded cameras: 24/24"
+    }
+  }
+}

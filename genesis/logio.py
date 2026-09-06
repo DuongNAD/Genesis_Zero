@@ -28,6 +28,7 @@ EVENT_KINDS: frozenset[str] = frozenset({
     "RUN_START", "RUN_END", "TICK", "PHASE_CHANGE",
     # sinh vật
     "MOVE", "EAT", "DRINK", "ATTACK", "DEATH", "RESPAWN", "TRAIT_SHIFT",
+    "REPRODUCE", "EXTINCTION",
     # giao tiếp
     "SPEAK", "TEACH",
     # tầng LLM

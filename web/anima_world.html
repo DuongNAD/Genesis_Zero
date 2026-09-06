@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anima World · 3D Open World Map Spectator</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: #060911;
+      color: #f1f5f9;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      user-select: none;
+    }
+    #viewport {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    .hud {
+      position: absolute;
+      background: rgba(13, 18, 30, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 14px;
+      padding: 16px 20px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 24px rgba(56, 189, 248, 0.12);
+      z-index: 10;
+      transition: all 0.3s ease;
+    }
+    #title-hud {
+      top: 20px;
+      left: 20px;
+      max-width: 380px;
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .badge {
+      font-size: 0.68rem;
+      background: rgba(16, 185, 129, 0.18);
+      color: #34d399;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(52, 211, 153, 0.4);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-gold {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border-color: rgba(251, 191, 36, 0.4);
+    }
+    .desc {
+      font-size: 0.82rem;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+      font-size: 0.78rem;
+      padding: 10px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 12px;
+    }
+    .stat-row { display: flex; justify-content: space-between; align-items: center; }
+    .stat-k { color: #64748b; }
+    .stat-v { color: #f8fafc; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-weight: 700; }
+    
+    #controls-hud {
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      max-width: 96vw;
+      justify-content: center;
+    }
+    .hud-btn {
+      background: rgba(30, 41, 59, 0.85);
+      color: #f1f5f9;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      outline: none;
+    }
+    .hud-btn:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+    }
+    .hud-btn.active {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+    }
+    .hud-separator {
+      width: 1px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 4px;
+    }
+    #lighting-hud {
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 16px;
+    }
+    .lighting-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    #guide-hud {
+      top: 180px;
+      right: 20px;
+      max-width: 260px;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+    #guide-hud b { color: #e2e8f0; }
+    #guide-hud .key {
+      display: inline-block;
+      padding: 1px 6px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 4px;
+      font-family: monospace;
+      color: #38bdf8;
+      font-weight: 700;
+      margin: 0 2px;
+    }
+
+    #loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      z-index: 100;
+      transition: opacity 0.6s ease;
+    }
+    .spinner {
+      width: 56px;
+      height: 56px;
+      border: 4px solid rgba(56, 189, 248, 0.15);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      letter-spacing: -0.01em;
+    }
+    .loading-bar-wrap {
+      width: 280px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .loading-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      border-radius: 999px;
+      transition: width 0.2s ease;
+    }
+    .loading-subtext {
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    #camera-banner {
+      position: absolute;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 999px;
+      padding: 8px 24px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #38bdf8;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      z-index: 20;
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      pointer-events: none;
+    }
+    #camera-banner.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(10px);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Đang tải Bản đồ Thế giới Mở Anima World...</div>
+    <div class="loading-bar-wrap">
+      <div class="loading-bar" id="load-progress"></div>
+    </div>
+    <div class="loading-subtext" id="load-status">Khởi tạo Three.js WebGL & nạp models/anima_world.glb (14.8MB)...</div>
+  </div>
+
+  <div id="viewport"></div>
+  <div id="camera-banner">Góc máy: Toàn cảnh Cinematic</div>
+
+  <!-- Main Info Card -->
+  <div class="hud" id="title-hud">
+    <h1>
+      🌿 Pristine Wilderness
+      <span class="badge badge-gold">100% Hoang Dã</span>
+    </h1>
+    <p class="desc">
+      Thế giới tự nhiên nguyên sinh 420m × 420m: Động nước Karst thạch nhũ phát quang, ghềnh thác 3 tầng, thung lũng sông uốn lượn, hồ băng núi tuyết và thảo nguyên hoa dại phong phú.
+    </p>
+
+    <div class="stats-grid">
+      <div class="stat-row"><span class="stat-k">Quy mô:</span><span class="stat-v" style="color:#38bdf8;">420m × 420m</span></div>
+      <div class="stat-row"><span class="stat-k">Đỉnh tuyết:</span><span class="stat-v" style="color:#f87171;">+135.0 m</span></div>
+      <div class="stat-row"><span class="stat-k">Hoa & Cỏ 3D:</span><span class="stat-v" style="color:#4ade80;">1,350+ Khóm</span></div>
+      <div class="stat-row"><span class="stat-k">Cây cối & Đá:</span><span class="stat-v" style="color:#34d399;">670+ Cây rừng</span></div>
+      <div class="stat-row"><span class="stat-k">Nhân tạo:</span><span class="stat-v" style="color:#fbbf24;">0 (Nguyên sinh)</span></div>
+      <div class="stat-row"><span class="stat-k">Hệ thủy văn:</span><span class="stat-v" style="color:#22d3ee;">4 Phân vùng</span></div>
+    </div>
+
+    <div style="display:flex; gap:8px;">
+      <button class="hud-btn" style="flex:1; justify-content:center;" onclick="window.location.href='watch3d.html'">
+        🎮 Mở Spectator Game
+      </button>
+      <button class="hud-btn" style="justify-content:center;" onclick="toggleAutoRotate()" id="btn-autorotate">
+        🔄 Tự xoay
+      </button>
+    </div>
+  </div>
+
+  <!-- Lighting Preset Switcher -->
+  <div class="hud" id="lighting-hud">
+    <div class="lighting-title">☀️ Thời gian / Ánh sáng</div>
+    <div style="display:flex; gap:6px;">
+      <button class="hud-btn active" id="light-day" onclick="setLighting('day')">☀️ Trưa</button>
+      <button class="hud-btn" id="light-dusk" onclick="setLighting('dusk')">🌅 Chiều</button>
+      <button class="hud-btn" id="light-night" onclick="setLighting('night')">🌙 Đêm</button>
+    </div>
+  </div>
+
+  <!-- Navigation Guide -->
+  <div class="hud" id="guide-hud">
+    <div class="lighting-title" style="margin-bottom:6px;">🕹️ Hướng dẫn tương tác</div>
+    • <b>Chuột trái:</b> Giữ & xoay quanh tâm cảnh.<br>
+    • <b>Chuột phải:</b> Giữ & di chuyển song song (Pan).<br>
+    • <b>Cuộn chuột:</b> Phóng to / Thu nhỏ (Zoom).<br>
+    • <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>: Di chuyển góc nhìn tự do.<br>
+    • <span class="key">0</span>-<span class="key">5</span>: Đổi nhanh 6 góc máy điện ảnh.
+  </div>
+
+  <!-- Bottom Camera Tour HUD -->
+  <div class="hud" id="controls-hud">
+    <button class="hud-btn active" id="btn-cam-0" onclick="switchCameraPreset(0)">
+      🌟 Toàn cảnh (0)
+    </button>
+    <button class="hud-btn" id="btn-cam-1" onclick="switchCameraPreset(1)">
+      🌌 Động Nước Karst (1)
+    </button>
+    <button class="hud-btn" id="btn-cam-2" onclick="switchCameraPreset(2)">
+      🏔️ Hồ Băng Núi Cao (2)
+    </button>
+    <button class="hud-btn" id="btn-cam-3" onclick="switchCameraPreset(3)">
+      🌸 Sông Uốn & Hoa Cỏ (3)
+    </button>
+    <button class="hud-btn" id="btn-cam-4" onclick="switchCameraPreset(4)">
+      🌊 Ghềnh Thác 3 Tầng (4)
+    </button>
+    <button class="hud-btn" id="btn-cam-5" onclick="switchCameraPreset(5)">
+      🏝️ Đại Hồ & Đảo Đá (5)
+    </button>
+  </div>
+
+  <!-- Three.js & GLTFLoader -->
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+
+  <script>
+    // ── 1. CONFIG & CAMERA PRESETS ───────────────────────────────────────────
+    // Tọa độ chuẩn chuyển đổi từ Blender (Z-up: x, y, z) sang Three.js (Y-up: x, z, -y)
+    const CAMERA_PRESETS = [
+      {
+        name: "Toàn Cảnh Hoang Dã (Wilderness Overview)",
+        banner: "🌟 Toàn Cảnh Hoang Dã: Đỉnh tuyết, Rừng già, Động nước Karst & Đại hồ",
+        pos: new THREE.Vector3(160.0, 165.0, 160.0),
+        target: new THREE.Vector3(-15.0, 30.0, 10.0),
+        fov: 34
+      },
+      {
+        name: "Động Nước Karst & Nấm Dạ Quang (Water Cave)",
+        banner: "🌌 Động Nước Karst: Cổng vòm đá vôi, thạch nhũ, hồ ngọc bích & nấm phát quang",
+        pos: new THREE.Vector3(-10.0, 15.2, 28.0),
+        target: new THREE.Vector3(-10.0, 16.5, 14.0),
+        fov: 42
+      },
+      {
+        name: "Hồ Băng Núi Cao (Alpine Tarn)",
+        banner: "🏔️ Hồ Băng Núi Cao: Mặt hồ xanh ngọc phẳng lặng trên đỉnh núi đá tuyết",
+        pos: new THREE.Vector3(-70.0, 49.5, -58.0),
+        target: new THREE.Vector3(-70.0, 41.5, -75.0),
+        fov: 38
+      },
+      {
+        name: "Sông Uốn & Thảm Hoa Dại (Valley River & Wildflowers)",
+        banner: "🌸 Sông Uốn Thung Lũng: Dòng sông xanh mát giữa thảo nguyên hoa dại rực rỡ",
+        pos: new THREE.Vector3(-22.0, 19.5, 56.0),
+        target: new THREE.Vector3(-10.0, 14.5, 26.0),
+        fov: 40
+      },
+      {
+        name: "Hẻm Núi Ghềnh Thác 3 Tầng (Waterfall Canyon)",
+        banner: "🌊 Ghềnh Thác 3 Tầng: Dòng thác trắng đổ cuồn cuộn qua các bậc thềm đá",
+        pos: new THREE.Vector3(-12.0, 36.5, -2.0),
+        target: new THREE.Vector3(-25.0, 46.0, -42.0),
+        fov: 38
+      },
+      {
+        name: "Đại Hồ Phẳng Lặng & Đảo Đá Cô Đơn (Lake Solitude & Islet)",
+        banner: "🏝️ Đại Hồ & Đảo Đá: Bãi cát vàng mịn màng, rặng liễu rủ và đảo đá đơn độc",
+        pos: new THREE.Vector3(-24.0, 15.5, 66.0),
+        target: new THREE.Vector3(12.0, 23.5, 105.0),
+        fov: 38
+      }
+    ];
+
+    let scene, camera, renderer, clock;
+    let modelGroup, mixer;
+    let sunLight, hemiLight, ambientLight, fog;
+    let autoRotate = false;
+
+    // Smooth camera transition variables
+    let currentPos = new THREE.Vector3();
+    let currentTarget = new THREE.Vector3();
+    let targetPos = new THREE.Vector3();
+    let targetLook = new THREE.Vector3();
+    let isTransitioning = false;
+    let transitionProgress = 1.0;
+    let startPos = new THREE.Vector3();
+    let startTarget = new THREE.Vector3();
+
+    // Mouse Orbit & Pan
+    let isDragging = false;
+    let isPanning = false;
+    let prevMousePos = { x: 0, y: 0 };
+    let spherical = { radius: 280, theta: 0.75, phi: 1.05 };
+    let cameraCenter = new THREE.Vector3(-5.0, 12.0, 5.0);
+
+    // Keyboard keys pressed
+    const keysPressed = {};
+
+    // Performance Stats
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
+
+    // ── 2. INITIALIZATION ───────────────────────────────────────────────────
+    function init() {
+      const container = document.getElementById('viewport');
+      clock = new THREE.Clock();
+
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x7dc3e8); // Natural azure sky
+      fog = new THREE.Fog(0xbde2f7, 220, 1100); // Linear fog: keeps foreground & midground 100% crisp and vibrant!
+      scene.fog = fog;
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(36, window.innerWidth / window.innerHeight, 0.5, 4000);
+      const initialPreset = CAMERA_PRESETS[0];
+      camera.position.copy(initialPreset.pos);
+      currentPos.copy(initialPreset.pos);
+      targetPos.copy(initialPreset.pos);
+      currentTarget.copy(initialPreset.target);
+      targetLook.copy(initialPreset.target);
+      cameraCenter.copy(initialPreset.target);
+      camera.lookAt(initialPreset.target);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.0;
+      if (renderer.outputEncoding !== undefined) {
+        renderer.outputEncoding = THREE.sRGBEncoding;
+      }
+      container.appendChild(renderer.domElement);
+
+      // Lights (Rich, balanced sunlight with warm sky and deep ground bounce)
+      hemiLight = new THREE.HemisphereLight(0xdaf0ff, 0x2e3c27, 0.70);
+      hemiLight.position.set(0, 300, 0);
+      scene.add(hemiLight);
+
+      sunLight = new THREE.DirectionalLight(0xfff7ea, 1.25);
+      sunLight.position.set(180, 260, 140);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      sunLight.shadow.camera.near = 10;
+      sunLight.shadow.camera.far = 800;
+      const d = 260;
+      sunLight.shadow.camera.left = -d;
+      sunLight.shadow.camera.right = d;
+      sunLight.shadow.camera.top = d;
+      sunLight.shadow.camera.bottom = -d;
+      sunLight.shadow.bias = -0.0005;
+      scene.add(sunLight);
+
+      ambientLight = new THREE.AmbientLight(0x455666, 0.20);
+      scene.add(ambientLight);
+
+      // Model Group
+      modelGroup = new THREE.Group();
+      scene.add(modelGroup);
+
+      // Event Listeners
+      window.addEventListener('resize', onWindowResize);
+      setupControls(renderer.domElement);
+      setupKeyboard();
+
+      // Load 3D Map Model
+      loadMapModel();
+
+      // Start Loop
+      animate();
+    }
+
+    // ── 3. MODEL LOADING ────────────────────────────────────────────────────
+    function loadMapModel() {
+      const loader = new THREE.GLTFLoader();
+      const modelUrl = "models/anima_world.glb";
+      const progressEl = document.getElementById('load-progress');
+      const statusEl = document.getElementById('load-status');
+
+      loader.load(
+        modelUrl,
+        (gltf) => {
+          console.log("[Anima World] Loaded model successfully:", gltf);
+          const root = gltf.scene;
+          root.traverse((child) => {
+            if (child.isLight) {
+              child.visible = false;
+              child.intensity = 0;
+              return;
+            }
+            if (child.isMesh) {
+              if (child.name.includes("Sky_Dome") || child.name.includes("Cloud_Cluster") || child.name.includes("Sky_Sun_Disc")) {
+                child.visible = false;
+                return;
+              }
+              child.castShadow = true;
+              child.receiveShadow = true;
+              if (child.geometry) {
+                if (!child.geometry.attributes.color && child.geometry.attributes.COLOR_0) {
+                  child.geometry.setAttribute('color', child.geometry.attributes.COLOR_0);
+                }
+                if (child.geometry.attributes.color && child.material) {
+                  child.material.vertexColors = true;
+                  child.material.color.setRGB(1, 1, 1);
+                  child.material.needsUpdate = true;
+                }
+              }
+              if (child.material) {
+                if (child.name.includes("Water") || child.name.includes("Cascade")) {
+                  child.material.transparent = true;
+                  if (child.material.transmission !== undefined) {
+                    child.material.transmission = 0.0;
+                  }
+                  if (child.name.includes("Cascade")) {
+                    child.material.color = new THREE.Color(0xd6f3fc);
+                    child.material.opacity = 0.94;
+                    child.material.roughness = 0.20;
+                    child.material.metalness = 0.04;
+                    child.material.emissive = new THREE.Color(0x3598b0);
+                    child.material.emissiveIntensity = 0.35;
+                  } else if (child.name.includes("Alpine_Tarn")) {
+                    child.material.color = new THREE.Color(0x0e9cb8);
+                    child.material.opacity = 0.92;
+                    child.material.roughness = 0.12;
+                    child.material.metalness = 0.06;
+                    child.material.emissive = new THREE.Color(0x074e62);
+                    child.material.emissiveIntensity = 0.30;
+                  } else if (child.name.includes("Valley_River")) {
+                    child.material.color = new THREE.Color(0x1bb2cf);
+                    child.material.opacity = 0.92;
+                    child.material.roughness = 0.12;
+                    child.material.metalness = 0.06;
+                    child.material.emissive = new THREE.Color(0x085368);
+                    child.material.emissiveIntensity = 0.30;
+                  } else {
+                    // Great Lowland Lake & Cave pool
+                    child.material.color = new THREE.Color(0x168fa8);
+                    child.material.opacity = 0.92;
+                    child.material.roughness = 0.12;
+                    child.material.metalness = 0.06;
+                    child.material.emissive = new THREE.Color(0x094859);
+                    child.material.emissiveIntensity = 0.35;
+                  }
+                  child.material.needsUpdate = true;
+                } else if (child.name.includes("Terrain")) {
+                  child.material.roughness = 0.88;
+                  child.material.metalness = 0.0;
+                } else {
+                  child.material.roughness = Math.min(1.0, (child.material.roughness || 0.6) * 1.05);
+                }
+                if (child.name.includes("Glow_Mushroom") || child.name.includes("Light_Cave")) {
+                  if (child.material.emissive) {
+                    child.material.emissiveIntensity = 2.2;
+                  }
+                }
+              }
+            }
+          });
+          modelGroup.add(root);
+
+          // Animation mixer (sails spinning, water, etc.)
+          if (gltf.animations && gltf.animations.length > 0) {
+            mixer = new THREE.AnimationMixer(root);
+            gltf.animations.forEach((clip) => {
+              mixer.clipAction(clip).play();
+            });
+            console.log(`[Anima World] Playing ${gltf.animations.length} animations.`);
+          }
+
+          // Hide Loading
+          progressEl.style.width = '100%';
+          statusEl.textContent = "Hoàn tất giải mã mô hình!";
+          setTimeout(() => {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 600);
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const timeParam = urlParams.get('time');
+            if (timeParam && ['day', 'dusk', 'night'].includes(timeParam)) {
+              setLighting(timeParam);
+            }
+            const camParam = urlParams.get('cam');
+            if (camParam !== null) {
+              const camIdx = parseInt(camParam);
+              if (!isNaN(camIdx) && camIdx >= 0 && camIdx < CAMERA_PRESETS.length) {
+                switchCameraPreset(camIdx);
+                return;
+              }
+            }
+            showBanner(CAMERA_PRESETS[0].banner);
+          }, 400);
+        },
+        (xhr) => {
+          if (xhr.lengthComputable) {
+            const percent = Math.round((xhr.loaded / xhr.total) * 100);
+            progressEl.style.width = percent + '%';
+            statusEl.textContent = `Đang nạp file glTF: ${percent}% (${(xhr.loaded / 1048576).toFixed(1)}MB / ${(xhr.total / 1048576).toFixed(1)}MB)...`;
+          } else {
+            statusEl.textContent = `Đang nạp file glTF: ${(xhr.loaded / 1048576).toFixed(1)}MB...`;
+          }
+        },
+        (err) => {
+          console.error("[Anima World] Load error:", err);
+          statusEl.style.color = '#ef4444';
+          statusEl.textContent = "Không thể tải file glTF! Kiểm tra đường dẫn 'models/anima_world.glb'.";
+        }
+      );
+    }
+
+    // ── 4. CAMERA SYSTEM & TOUR ─────────────────────────────────────────────
+    function switchCameraPreset(index) {
+      if (index < 0 || index >= CAMERA_PRESETS.length) return;
+      const preset = CAMERA_PRESETS[index];
+
+      // Update button active state
+      for (let i = 0; i < CAMERA_PRESETS.length; i++) {
+        const btn = document.getElementById(`btn-cam-${i}`);
+        if (btn) btn.classList.toggle('active', i === index);
+      }
+
+      // Tween to new position
+      startPos.copy(camera.position);
+      startTarget.copy(cameraCenter);
+      targetPos.copy(preset.pos);
+      targetLook.copy(preset.target);
+
+      transitionProgress = 0.0;
+      isTransitioning = true;
+
+      // Update Spherical representation
+      cameraCenter.copy(preset.target);
+      const offset = new THREE.Vector3().subVectors(preset.pos, preset.target);
+      spherical.radius = offset.length();
+      spherical.theta = Math.atan2(offset.x, offset.z);
+      spherical.phi = Math.acos(Math.max(-1, Math.min(1, offset.y / spherical.radius)));
+
+      showBanner(preset.banner);
+    }
+
+    function showBanner(text) {
+      const banner = document.getElementById('camera-banner');
+      banner.textContent = text;
+      banner.classList.add('show');
+      clearTimeout(banner._timer);
+      banner._timer = setTimeout(() => {
+        banner.classList.remove('show');
+      }, 4500);
+    }
+
+    function toggleAutoRotate() {
+      autoRotate = !autoRotate;
+      const btn = document.getElementById('btn-autorotate');
+      btn.classList.toggle('active', autoRotate);
+      btn.textContent = autoRotate ? "⏸️ Dừng xoay" : "🔄 Tự xoay";
+    }
+
+    // ── 5. LIGHTING / TIME OF DAY ───────────────────────────────────────────
+    function setLighting(mode) {
+      ['day', 'dusk', 'night'].forEach(m => {
+        const btn = document.getElementById(`light-${m}`);
+        if (btn) btn.classList.toggle('active', m === mode);
+      });
+
+      if (mode === 'day') {
+        scene.background.setHex(0x7dc3e8);
+        fog.color.setHex(0xbde2f7);
+        fog.near = 220;
+        fog.far = 1100;
+        hemiLight.color.setHex(0xdaf0ff);
+        hemiLight.groundColor.setHex(0x2e3c27);
+        hemiLight.intensity = 0.70;
+        sunLight.color.setHex(0xfff7ea);
+        sunLight.intensity = 1.25;
+        sunLight.position.set(180, 260, 140);
+        ambientLight.color.setHex(0x455666);
+        ambientLight.intensity = 0.20;
+      } else if (mode === 'dusk') {
+        scene.background.setHex(0xf97316);
+        fog.color.setHex(0xfb923c);
+        fog.near = 140;
+        fog.far = 950;
+        hemiLight.color.setHex(0xfed7aa);
+        hemiLight.groundColor.setHex(0x52200e);
+        hemiLight.intensity = 0.65;
+        sunLight.color.setHex(0xff6b35);
+        sunLight.intensity = 1.45;
+        sunLight.position.set(240, 70, 180);
+        ambientLight.color.setHex(0x9a3412);
+        ambientLight.intensity = 0.25;
+      } else if (mode === 'night') {
+        scene.background.setHex(0x050b14);
+        fog.color.setHex(0x0a1122);
+        fog.near = 90;
+        fog.far = 850;
+        hemiLight.color.setHex(0x38bdf8);
+        hemiLight.groundColor.setHex(0x020617);
+        hemiLight.intensity = 0.30;
+        sunLight.color.setHex(0x60a5fa);
+        sunLight.intensity = 0.40;
+        sunLight.position.set(-100, 200, -100);
+        ambientLight.color.setHex(0x132035);
+        ambientLight.intensity = 0.15;
+      }
+    }
+
+    // ── 6. INTERACTION CONTROLS ─────────────────────────────────────────────
+    function setupControls(dom) {
+      dom.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      dom.addEventListener('mousedown', (e) => {
+        isTransitioning = false; // Cancel ongoing auto-tween on manual interaction
+        if (e.button === 0) isDragging = true;
+        else if (e.button === 2) isPanning = true;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging && !isPanning) return;
+        const dx = e.clientX - prevMousePos.x;
+        const dy = e.clientY - prevMousePos.y;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+
+        if (isDragging) {
+          spherical.theta -= dx * 0.005;
+          spherical.phi = Math.max(0.08, Math.min(Math.PI / 2 - 0.02, spherical.phi - dy * 0.005));
+          updateCameraFromSpherical();
+        } else if (isPanning) {
+          const panSpeed = 0.0018 * spherical.radius;
+          const right = new THREE.Vector3();
+          camera.getWorldDirection(right);
+          right.cross(camera.up).normalize();
+          cameraCenter.addScaledVector(right, -dx * panSpeed);
+          cameraCenter.y += dy * panSpeed;
+          updateCameraFromSpherical();
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+        isPanning = false;
+      });
+
+      dom.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        isTransitioning = false;
+        spherical.radius = Math.max(8.0, Math.min(600.0, spherical.radius + e.deltaY * 0.25));
+        updateCameraFromSpherical();
+      }, { passive: false });
+
+      // Touch controls
+      let touchStartDist = 0;
+      dom.addEventListener('touchstart', (e) => {
+        isTransitioning = false;
+        if (e.touches.length === 1) {
+          isDragging = true;
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          touchStartDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      });
+      dom.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && isDragging) {
+          const dx = e.touches[0].clientX - prevMousePos.x;
+          const dy = e.touches[0].clientY - prevMousePos.y;
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          spherical.theta -= dx * 0.006;
+          spherical.phi = Math.max(0.08, Math.min(Math.PI / 2 - 0.02, spherical.phi - dy * 0.006));
+          updateCameraFromSpherical();
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const factor = (touchStartDist - dist) * 0.5;
+          touchStartDist = dist;
+          spherical.radius = Math.max(8.0, Math.min(600.0, spherical.radius + factor));
+          updateCameraFromSpherical();
+        }
+      });
+      dom.addEventListener('touchend', () => { isDragging = false; });
+    }
+
+    function updateCameraFromSpherical() {
+      const x = cameraCenter.x + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+      const y = cameraCenter.y + spherical.radius * Math.cos(spherical.phi);
+      const z = cameraCenter.z + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+      camera.position.set(x, y, z);
+      camera.lookAt(cameraCenter);
+    }
+
+    function setupKeyboard() {
+      window.addEventListener('keydown', (e) => {
+        keysPressed[e.key.toLowerCase()] = true;
+        if (e.key >= '0' && e.key <= '5') {
+          switchCameraPreset(parseInt(e.key, 10));
+        } else if (e.key.toLowerCase() === 'r') {
+          toggleAutoRotate();
+        }
+      });
+      window.addEventListener('keyup', (e) => {
+        keysPressed[e.key.toLowerCase()] = false;
+      });
+    }
+
+    function handleFreeRoamKeyboard(delta) {
+      if (isTransitioning) return;
+      const speed = (keysPressed['shift'] ? 80.0 : 35.0) * delta;
+      const forward = new THREE.Vector3();
+      camera.getWorldDirection(forward);
+      const right = new THREE.Vector3().crossVectors(forward, camera.up).normalize();
+
+      let moved = false;
+      if (keysPressed['w'] || keysPressed['arrowup']) {
+        cameraCenter.addScaledVector(forward, speed);
+        moved = true;
+      }
+      if (keysPressed['s'] || keysPressed['arrowdown']) {
+        cameraCenter.addScaledVector(forward, -speed);
+        moved = true;
+      }
+      if (keysPressed['a'] || keysPressed['arrowleft']) {
+        cameraCenter.addScaledVector(right, -speed);
+        moved = true;
+      }
+      if (keysPressed['d'] || keysPressed['arrowright']) {
+        cameraCenter.addScaledVector(right, speed);
+        moved = true;
+      }
+      if (keysPressed['e']) {
+        cameraCenter.y += speed * 0.7;
+        moved = true;
+      }
+      if (keysPressed['q']) {
+        cameraCenter.y -= speed * 0.7;
+        moved = true;
+      }
+      if (moved) {
+        updateCameraFromSpherical();
+      }
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // ── 7. ANIMATION LOOP ───────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      // Update animations (windmill sail rotation, etc.)
+      if (mixer) mixer.update(delta);
+
+      // Auto Rotate mode
+      if (autoRotate && !isDragging && !isPanning && !isTransitioning) {
+        spherical.theta += 0.18 * delta;
+        updateCameraFromSpherical();
+      }
+
+      // Smooth camera preset interpolation
+      if (isTransitioning) {
+        transitionProgress += delta * 0.85; // ~1.2s smooth ease
+        if (transitionProgress >= 1.0) {
+          transitionProgress = 1.0;
+          isTransitioning = false;
+          camera.position.copy(targetPos);
+          camera.lookAt(targetLook);
+        } else {
+          // Smoothstep ease curve
+          const t = transitionProgress * transitionProgress * (3.0 - 2.0 * transitionProgress);
+          camera.position.lerpVectors(startPos, targetPos, t);
+          const currentTargetPos = new THREE.Vector3().lerpVectors(startTarget, targetLook, t);
+          camera.lookAt(currentTargetPos);
+        }
+      }
+
+      // Free roam keyboard inputs
+      handleFreeRoamKeyboard(delta);
+
+      // Render
+      renderer.render(scene, camera);
+
+      // FPS & Stats update
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsUpdate >= 1000) {
+        const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+        document.getElementById('fps-val').textContent = fps;
+        frameCount = 0;
+        lastFpsUpdate = now;
+
+        const pos = camera.position;
+        document.getElementById('cam-coord').textContent = 
+          `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}`;
+      }
+    }
+
+    // Launch
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

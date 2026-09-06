@@ -160,8 +160,9 @@ def test_try_respawn_timing_and_state() -> None:
     assert try_respawn(c, w, 10 + config.RESPAWN_DELAY + 1, rng) is False
 
 
-def test_acceptance_run_scenario_300_ticks(tmp_path: Path) -> None:
+def test_acceptance_run_scenario_300_ticks(tmp_path: Path, monkeypatch) -> None:
     """Kiểm tra kịch bản nghiệm thu 300 tick: DEATH, RESPAWN, EAT đều xảy ra, quần thể ổn định."""
+    monkeypatch.setattr(config, "REPRODUCTION_ENABLED", False)
     out_file = tmp_path / "w05.jsonl"
     main(["--seed", "11", "--ticks", "300", "--no-render", "--out", str(out_file)])
 

@@ -864,6 +864,8 @@ class LlmStrategist:
         vô hại; ngoài vòng tick nó là thứ duy nhất giữ cho prompt đúng.
         """
         world.phase = phase_at(tick_no)
+        from genesis.weather import weather_at
+        world.weather = weather_at(getattr(world, "seed", 0), tick_no)
         system = self.cache.get(
             c, self.personas.get(c.species, ""), world.surface_map, tick_no, self.log,
             handbook=self.handbooks.get(c.species, ""),

@@ -70,8 +70,8 @@ def resolve_combat(
         # Sát thương = damage của attacker * dmg_taken_mult của defender,
         # rồi nhân tiếp hai hệ số đặc điểm (W-19): răng nanh của kẻ đánh, vảy
         # cứng / vỏ sò của kẻ đỡ.
-        ka = world.kits.get(attacker.species)
-        kd = world.kits.get(defender.species)
+        ka = getattr(attacker, "kit", None) or world.kits.get(attacker.species)
+        kd = getattr(defender, "kit", None) or world.kits.get(defender.species)
         attackers_by_target.setdefault(defender.id, set()).add(attacker.id)
         dmg = (attacker.traits.damage * defender.traits.dmg_taken_mult
                * (getattr(ka, "damage_mult", 1.0) if ka else 1.0)

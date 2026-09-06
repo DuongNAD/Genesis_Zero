@@ -1,0 +1,8 @@
+--- a/README.md
++++ b/README.md
+@@ -131,1 +131,1 @@
+-| Test | **945 mục, xanh** |
++| Test | **1009 mục, xanh** |
+@@ -185,1 +185,1 @@
+-make test         # 945 test
++make test         # 1009 test

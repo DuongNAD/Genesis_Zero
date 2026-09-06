@@ -1,0 +1,3324 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genesis Zero · Thư Viện Thực Vật 3D (3D Botanical Flora Inspector)</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+  <style>
+    :root {
+      --bg-space: #050811;
+      --bg-card: rgba(13, 19, 33, 0.88);
+      --bg-hover: rgba(30, 41, 59, 0.7);
+      --border-hud: rgba(56, 189, 248, 0.22);
+      --border-active: #38bdf8;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-emerald: #10b981;
+      --accent-cyan: #38bdf8;
+      --accent-amber: #f59e0b;
+      --accent-violet: #a855f7;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      user-select: none;
+    }
+
+    /* 3D Viewport */
+    #viewport-container {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+    #viewport-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Top Navigation Header */
+    header.hud-header {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+    .brand-cluster {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-hud);
+      border-radius: 14px;
+      padding: 10px 20px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.08);
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-cluster h1 {
+      font-size: 1.12rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-cluster .version-badge {
+      font-size: 0.7rem;
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      font-weight: 600;
+    }
+    .header-quick-actions {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .header-btn {
+      background: var(--bg-card);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-hud);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      text-decoration: none;
+    }
+    .header-btn:hover {
+      background: #1e293b;
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      transform: translateY(-1px);
+    }
+
+    /* Left Sidebar: Flora Catalog */
+    aside.sidebar {
+      position: absolute;
+      top: 80px;
+      bottom: 24px;
+      left: 16px;
+      width: 340px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-hud);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    aside.sidebar.collapsed {
+      transform: translateX(-360px);
+    }
+    .sidebar-header {
+      padding: 14px 16px 10px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .sidebar-header .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .sidebar-header h2 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .search-box {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 7px 12px;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-box:focus {
+      border-color: var(--accent-cyan);
+    }
+    .search-box::placeholder {
+      color: #64748b;
+    }
+    .filter-tabs {
+      display: flex;
+      overflow-x: auto;
+      gap: 6px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      scrollbar-width: none;
+    }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      white-space: nowrap;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.73rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .tab-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+    }
+
+    .flora-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(56, 189, 248, 0.3) transparent;
+    }
+    .flora-list::-webkit-scrollbar { width: 6px; }
+    .flora-list::-webkit-scrollbar-thumb {
+      background: rgba(56, 189, 248, 0.3);
+      border-radius: 4px;
+    }
+    .flora-card {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .flora-card:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(56, 189, 248, 0.4);
+      transform: translateX(3px);
+    }
+    .flora-card.active {
+      background: rgba(14, 116, 144, 0.25);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+    }
+    .flora-card .icon-wrapper {
+      font-size: 1.4rem;
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .flora-card .card-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .flora-card .name-vn {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .flora-card .name-latin {
+      font-size: 0.72rem;
+      font-style: italic;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
+    .flora-card .badge-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .flora-card .badge-biome {
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.12);
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .flora-card .badge-turnaround {
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(168, 85, 247, 0.16);
+      color: #c084fc;
+      font-weight: 600;
+    }
+
+    /* Bottom / Floating Controls Toolbar */
+    .viewport-toolbar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      gap: 8px;
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-hud);
+      border-radius: 14px;
+      padding: 8px 12px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    }
+    .tool-btn {
+      background: #1e293b;
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .tool-btn:hover {
+      background: #334155;
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    .tool-btn.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+
+    /* Right Inspector & Technical Spec HUD */
+    aside.inspector-panel {
+      position: absolute;
+      top: 80px;
+      right: 16px;
+      width: 350px;
+      max-height: calc(100vh - 120px);
+      z-index: 20;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-hud);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(56, 189, 248, 0.3) transparent;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    aside.inspector-panel.collapsed {
+      transform: translateX(380px);
+    }
+    .panel-section-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 800;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .plant-header-box h2 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.3;
+    }
+    .plant-header-box .latin-subtitle {
+      font-size: 0.84rem;
+      color: var(--accent-cyan);
+      font-style: italic;
+      margin-top: 2px;
+    }
+    .plant-desc-box {
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 8px;
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .metric-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .metric-card .metric-label {
+      font-size: 0.68rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .metric-card .metric-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+      margin-top: 2px;
+    }
+
+    .tags-cluster {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tag-pill {
+      font-size: 0.68rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+    }
+
+    .action-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-action {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    .btn-action:hover {
+      background: #334155;
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      transform: translateY(-1px);
+    }
+    .btn-action.primary {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      border-color: #38bdf8;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+    }
+    .btn-action.primary:hover {
+      background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.45);
+      color: #ffffff;
+    }
+    .btn-action.secondary-violet {
+      background: rgba(168, 85, 247, 0.18);
+      border-color: rgba(168, 85, 247, 0.4);
+      color: #d8b4fe;
+    }
+    .btn-action.secondary-violet:hover {
+      background: rgba(168, 85, 247, 0.3);
+      border-color: #c084fc;
+      color: #ffffff;
+    }
+
+    /* Modal for 4-View Turnaround Concept Sheet */
+    dialog#turnaround-modal {
+      margin: auto;
+      padding: 0;
+      background: rgba(10, 15, 28, 0.95);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 20px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
+      color: var(--text-main);
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow: hidden;
+      outline: none;
+    }
+    dialog#turnaround-modal::backdrop {
+      background: rgba(3, 7, 18, 0.8);
+      backdrop-filter: blur(8px);
+    }
+    .modal-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.7);
+    }
+    .modal-header h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #94a3b8;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close-btn:hover {
+      background: rgba(239, 68, 68, 0.25);
+      color: #f87171;
+    }
+    .modal-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      max-height: calc(85vh - 70px);
+      overflow-y: auto;
+    }
+    .modal-body img {
+      max-width: 100%;
+      max-height: 68vh;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+      object-fit: contain;
+    }
+    .modal-caption {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      text-align: center;
+      max-width: 700px;
+    }
+
+    /* Loading Spinner */
+    #loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 8, 17, 0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #loading-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .spinner-ring {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(56, 189, 248, 0.15);
+      border-top-color: var(--accent-cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading-text {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      letter-spacing: 0.02em;
+    }
+
+    /* Drag & Drop Visual Hint */
+    #drop-zone-overlay {
+      position: absolute;
+      inset: 20px;
+      border: 3px dashed var(--accent-cyan);
+      border-radius: 20px;
+      background: rgba(2, 132, 199, 0.15);
+      backdrop-filter: blur(10px);
+      z-index: 150;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      color: #38bdf8;
+      font-size: 1.2rem;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    /* Toggle Panel Floating Buttons */
+    .toggle-aside-btn {
+      position: absolute;
+      top: 80px;
+      z-index: 21;
+      background: var(--bg-card);
+      border: 1px solid var(--border-hud);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: all 0.2s;
+    }
+    .toggle-aside-btn:hover {
+      color: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+    }
+    #toggle-sidebar-btn { left: 366px; }
+    aside.sidebar.collapsed ~ #toggle-sidebar-btn { left: 16px; }
+
+    #toggle-inspector-btn { right: 376px; }
+    aside.inspector-panel.collapsed ~ #toggle-inspector-btn { right: 16px; }
+
+    /* Instructions Toast */
+    .view-hints {
+      position: absolute;
+      bottom: 24px;
+      left: 20px;
+      z-index: 10;
+      background: rgba(13, 19, 33, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.72rem;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+    .view-hints b { color: #f1f5f9; }
+
+    /* Responsive Mobile Adjustments */
+    @media (max-width: 900px) {
+      aside.sidebar { width: 280px; }
+      aside.inspector-panel { width: 300px; }
+      .viewport-toolbar { transform: translateX(-50%) scale(0.9); bottom: 10px; }
+    }
+  </style>
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+  <script src="flora_models_data.js"></script>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loading-overlay" class="visible">
+    <div class="spinner-ring"></div>
+    <div id="loading-text">Đang khởi tạo thư viện thực vật 3D...</div>
+  </div>
+
+  <!-- Drag & Drop Overlay -->
+  <div id="drop-zone-overlay">
+    <div style="font-size: 3rem;">📦</div>
+    <div>Thả file .GLB / .GLTF vào đây để soi mô hình 3D ngay lập tức!</div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="hud-header">
+    <div class="brand-cluster">
+      <h1>🌿 Genesis Zero <span style="color:#64748b; font-weight:400;">|</span> Thư Viện Thực Vật 3D</h1>
+      <span class="version-badge">Blender 5.2.1 LTS · Quads</span>
+    </div>
+    <div class="header-quick-actions">
+      <a href="anima_world.html" class="header-btn" title="Chuyển sang Bản đồ Thế giới 3D">🌐 Bản Đồ Sinh Thái</a>
+      <a href="../docs/flora/README.md" target="_blank" class="header-btn" title="Đọc danh mục toàn bộ loài">📖 Toàn Bộ 100 Loài</a>
+      <label class="header-btn" style="cursor: pointer;" title="Mở file 3D từ máy của bạn">
+        📁 Mở File .GLB
+        <input type="file" id="local-file-input" accept=".glb,.gltf" style="display: none;">
+      </label>
+    </div>
+  </header>
+
+  <!-- Left Sidebar: Flora Catalog -->
+  <aside class="sidebar" id="flora-sidebar">
+    <div class="sidebar-header">
+      <div class="title-row">
+        <h2>🌱 Bộ Sưu Tập Thực Vật (<span id="flora-count">103</span>)</h2>
+      </div>
+      <input type="text" id="search-input" class="search-box" placeholder="Tìm theo tên loài, tên khoa học...">
+    </div>
+    <div class="filter-tabs" id="category-tabs">
+      <button class="tab-btn active" data-cat="all">Tất cả (103)</button>
+      <button class="tab-btn" data-cat="canopy_trees">🌳 Tán Rừng (26)</button>
+      <button class="tab-btn" data-cat="understory_shrubs">🌿 Dưới Tán (15)</button>
+      <button class="tab-btn" data-cat="grasses_herbs">🌾 Đồng Cỏ & Hoa (26)</button>
+      <button class="tab-btn" data-cat="aquatic_wetland">🪷 Thủy Sinh (12)</button>
+      <button class="tab-btn" data-cat="arid_succulents">🌵 Sa Mạc (12)</button>
+      <button class="tab-btn" data-cat="carnivorous_vines">🪴 Bắt Mồi (7)</button>
+      <button class="tab-btn" data-cat="cave_bioluminescent">🍄 Hang Động (5)</button>
+    </div>
+    <div class="flora-list" id="flora-list">
+      <!-- Cards rendered via JS -->
+    </div>
+  </aside>
+  <button class="toggle-aside-btn" id="toggle-sidebar-btn" title="Thu gọn / Mở rộng danh sách">◀</button>
+
+  <!-- Right Panel: Inspector & Technical Specifications -->
+  <aside class="inspector-panel" id="inspector-panel">
+    <div class="plant-header-box">
+      <div class="panel-section-title">
+        <span>Hồ Sơ Giống Loài</span>
+        <span id="insp-category-badge" class="tag-pill" style="color:var(--accent-cyan);">Tầng Tán Rừng</span>
+      </div>
+      <h2 id="insp-name-vn">Cây Sồi Cổ Thụ</h2>
+      <div id="insp-name-latin" class="latin-subtitle">Quercus robur</div>
+    </div>
+
+    <div class="plant-desc-box" id="insp-desc">
+      Thân vặn xoắn gân guốc với các rãnh vỏ sâu sần sùi, tán lá hình vòm rộng hùng vĩ với hiệu ứng tán xạ dưới bề mặt (SSS) quang phổ diệp lục.
+    </div>
+
+    <div>
+      <div class="panel-section-title">Thông Số Hình Học 3D (Mesh Stats)</div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Số Đỉnh (Vertices)</div>
+          <div class="metric-value" id="mesh-vertices">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Số Mặt (Faces)</div>
+          <div class="metric-value" id="mesh-faces">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Số Khối (Objects)</div>
+          <div class="metric-value" id="mesh-objects">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Chiều Cao (Z/Y)</div>
+          <div class="metric-value" id="mesh-height">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-section-title">Đặc Tính Sinh Học & Tuổi Thọ</div>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Độ Rộng Tán (Span)</div>
+          <div class="metric-value" id="bio-span">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Tuổi Thọ Ước Tính</div>
+          <div class="metric-value" id="bio-lifespan">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel-section-title">Thẻ Phân Loại (Tags)</div>
+      <div class="tags-cluster" id="insp-tags">
+        <!-- Tags populated via JS -->
+      </div>
+    </div>
+
+    <div class="action-group">
+      <button class="btn-action secondary-violet" id="btn-open-turnaround">
+        📷 Bản Vẽ Thiết Kế 4 Góc (Turnaround)
+      </button>
+      <a href="#" target="_blank" class="btn-action primary" id="btn-download-blend" download>
+        📥 Tải File Gốc Blender (.BLEND)
+      </a>
+      <a href="#" target="_blank" class="btn-action" id="btn-download-glb" download>
+        🌐 Tải File Game-Ready (.GLB)
+      </a>
+      <a href="#" target="_blank" class="btn-action" id="btn-view-doc">
+        📄 Xem Hồ Sơ Markdown Đầy Đủ
+      </a>
+    </div>
+  </aside>
+  <button class="toggle-aside-btn" id="toggle-inspector-btn" title="Thu gọn / Mở rộng thông số">▶</button>
+
+  <!-- Bottom Floating Viewport Controls -->
+  <div class="viewport-toolbar">
+    <button class="tool-btn active" id="btn-lighting-studio" onclick="setLighting('studio')">☀️ Studio Ngày</button>
+    <button class="tool-btn" id="btn-lighting-sunset" onclick="setLighting('sunset')">🌅 Hoàng Hôn</button>
+    <button class="tool-btn" id="btn-lighting-night" onclick="setLighting('night')">🌌 Đêm Phát Quang</button>
+    <button class="tool-btn" id="btn-wireframe" onclick="toggleWireframe()">📐 Khung Dây (Topology)</button>
+    <button class="tool-btn" id="btn-turntable" onclick="toggleTurntable()">🔄 Tự Xoay 360°</button>
+    <button class="tool-btn" onclick="resetCameraView()">🎯 Căn Giữa</button>
+  </div>
+
+  <!-- Instruction Hints -->
+  <div class="view-hints">
+    🖱️ <b>Chuột trái:</b> Xoay 360° &nbsp;·&nbsp; <b>Chuột phải / Shift:</b> Di chuyển Pan &nbsp;·&nbsp; <b>Cuộn:</b> Thu phóng Zoom
+  </div>
+
+  <!-- 3D Canvas Viewport -->
+  <div id="viewport-container"></div>
+
+  <!-- Modal for 4-View Turnaround Concept Sheet -->
+  <dialog id="turnaround-modal">
+    <div class="modal-header">
+      <h3 id="modal-plant-title">📷 Bản Vẽ Thiết Kế 4 Mặt Chuẩn Scan</h3>
+      <button class="modal-close-btn" onclick="closeTurnaroundModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <img id="modal-turnaround-img" src="" alt="Bản vẽ 4 mặt">
+      <p class="modal-caption" id="modal-turnaround-caption">
+        Bản vẽ thiết kế 4 góc độ (Góc 3/4 Phối Cảnh, Mặt Trước, Mặt Bên, Nhìn Từ Trên Xuống) đạt tiêu chuẩn Hyper-Realistic Scan-Quality trước khi xuất mô hình 3D Blender.
+      </p>
+    </div>
+  </dialog>
+
+  <script>
+    /* ==========================================================================
+       1. Master Flora Database (16 Generated Species)
+       ========================================================================== */
+    const FLORA_DATABASE = [
+      {
+        id: "canopy_ancient_oak",
+        nameVN: "Cây Sồi Cổ Thụ",
+        nameLatin: "Quercus robur",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "28 m",
+        span: "25 m",
+        lifespan: "800 - 1500 năm",
+        desc: "Thân vặn xoắn gân guốc với các rãnh vỏ sâu sần sùi, tán lá hình vòm rộng hùng vĩ với hiệu ứng tán xạ dưới bề mặt (SSS) quang phổ diệp lục.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_ancient_oak.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_ancient_oak.blend",
+        specUrl: "../docs/flora/species/canopy_ancient_oak.md",
+        turnaroundImg: "flora_images/canopy_ancient_oak_turnaround.jpg",
+        tags: ["Đại thụ", "Rừng ôn đới", "Gỗ cứng", "SSS Tán lá"]
+      },
+      {
+        id: "canopy_alpine_pine",
+        nameVN: "Cây Thông Núi Cao",
+        nameLatin: "Pinus cembra",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌲",
+        height: "22 m",
+        span: "12 m",
+        lifespan: "400 - 800 năm",
+        desc: "Cây thân gỗ nón chịu sương tuyết khắc nghiệt, tầng tán phân lớp hình tháp nón đối xứng, vỏ xù xì bọc nhựa thông dày.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_alpine_pine.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_alpine_pine.blend",
+        specUrl: "../docs/flora/species/canopy_alpine_pine.md",
+        turnaroundImg: "flora_images/canopy_alpine_pine_turnaround.jpg",
+        tags: ["Lá kim", "Núi tuyết", "Chịu lạnh", "Nhựa thông"]
+      },
+      {
+        id: "canopy_weeping_willow",
+        nameVN: "Cây Liễu Rũ Bờ Nước",
+        nameLatin: "Salix babylonica",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌾",
+        height: "14 m",
+        span: "16 m",
+        lifespan: "70 - 100 năm",
+        desc: "Các chuỗi cành rủ mềm mại buông xuống mặt nước, chuyển động mượt mà trong gió với tán lá thướt tha chuyển sắc.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_weeping_willow.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_weeping_willow.blend",
+        specUrl: "../docs/flora/species/canopy_weeping_willow.md",
+        turnaroundImg: "flora_images/canopy_weeping_willow_turnaround.jpg",
+        tags: ["Bờ nước", "Cành rủ", "Đầm lầy", "Mềm mại"]
+      },
+      {
+        id: "canopy_giant_sequoia",
+        nameVN: "Cây Cự Mộc Khổng Lồ",
+        nameLatin: "Sequoiadendron giganteum",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🪵",
+        height: "65 m",
+        span: "18 m",
+        lifespan: "2000 - 3500 năm",
+        desc: "Loài cây vĩ đại nhất hành tinh với bệ rễ chống khổng lồ, vỏ dày màu đỏ xốp kháng lửa và tán cây vươn tới tầng mây.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_giant_sequoia.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_giant_sequoia.blend",
+        specUrl: "../docs/flora/species/canopy_giant_sequoia.md",
+        turnaroundImg: "flora_images/canopy_giant_sequoia_turnaround.jpg",
+        tags: ["Cự mộc", "Khổng lồ", "Kháng lửa", "Ngàn năm"]
+      },
+      {
+        id: "canopy_baobab",
+        nameVN: "Cây Bao-báp Thảo Nguyên",
+        nameLatin: "Adansonia digitata",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌴",
+        height: "20 m",
+        span: "22 m",
+        lifespan: "1000 - 2500 năm",
+        desc: "Thân cây dạng bình nước phình to khổng lồ trữ nước sinh quyển, cành rễ trần ngoằn ngoèo vươn lên bầu trời xavan.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_baobab.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_baobab.blend",
+        specUrl: "../docs/flora/species/canopy_baobab.md",
+        turnaroundImg: "flora_images/canopy_baobab_turnaround.jpg",
+        tags: ["Thảo nguyên", "Trữ nước", "Bình gốm", "Xavan"]
+      },
+      {
+        id: "understory_tree_fern",
+        nameVN: "Dương Xỉ Thân Gỗ Rừng Mưa",
+        nameLatin: "Cyathea australis",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "6.5 m",
+        span: "5.5 m",
+        lifespan: "100 - 250 năm",
+        desc: "Thân hình cột phủ đầy rễ xơ khí sinh, ngọn xòe rộng các tàu lá lược khổng lồ đối xứng uốn cong tuyệt mỹ.",
+        glbUrl: "../assets/flora/understory_shrubs/understory_tree_fern.glb",
+        blendUrl: "../assets/flora/understory_shrubs/understory_tree_fern.blend",
+        specUrl: "../docs/flora/species/understory_tree_fern.md",
+        turnaroundImg: "flora_images/understory_tree_fern_turnaround.jpg",
+        tags: ["Cổ sinh", "Tàu lá lược", "Rừng mưa", "Ẩm ướt"]
+      },
+      {
+        id: "understory_sword_fern",
+        nameVN: "Dương Xỉ Rừng Gươm",
+        nameLatin: "Polystichum munitum",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🪴",
+        height: "1.2 m",
+        span: "1.5 m",
+        lifespan: "20 - 50 năm",
+        desc: "Các nhánh lá kiếm xanh bóng mọc tỏa tròn từ gốc, mép khía răng cưa tinh xảo che phủ mặt đất ẩm dưới tán rừng.",
+        glbUrl: "../assets/flora/understory_shrubs/understory_sword_fern.glb",
+        blendUrl: "../assets/flora/understory_shrubs/understory_sword_fern.blend",
+        specUrl: "../docs/flora/species/understory_sword_fern.md",
+        turnaroundImg: "flora_images/understory_sword_fern_turnaround.jpg",
+        tags: ["Thảm dưới tán", "Lá kiếm", "Che phủ", "Ẩm mát"]
+      },
+      {
+        id: "grass_alpine_tussock",
+        nameVN: "Cỏ Búi Núi Tuyết",
+        nameLatin: "Poa colensoi",
+        category: "grasses_herbs",
+        categoryVN: "Đồng Cỏ & Thảo Mộc",
+        icon: "🌱",
+        height: "0.45 m",
+        span: "0.55 m",
+        lifespan: "15 - 30 năm",
+        desc: "Búi cỏ dày đặc uốn lượn chịu gió băng giá, các dải lá cứng chuyển sắc từ xanh ô-liu sang vàng rơm hoang dã.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_alpine_tussock.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_alpine_tussock.blend",
+        specUrl: "../docs/flora/species/grass_alpine_tussock.md",
+        turnaroundImg: "flora_images/grass_alpine_tussock_turnaround.jpg",
+        tags: ["Đồng cỏ", "Núi cao", "Búi dẻo dai", "Chịu tuyết"]
+      },
+      {
+        id: "aquatic_water_lily",
+        nameVN: "Hoa Súng Nước Ngọt",
+        nameLatin: "Nymphaea alba",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "0.35 m",
+        span: "1.8 m",
+        lifespan: "10 - 25 năm",
+        desc: "Các tán lá tròn xẻ rãnh nổi bập bềnh trên mặt nước, đóa hoa đa lớp cánh trắng tinh khôi nhụy vàng rực rỡ đón nắng.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_water_lily.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_water_lily.blend",
+        specUrl: "../docs/flora/species/aquatic_water_lily.md",
+        turnaroundImg: "flora_images/aquatic_water_lily_turnaround.jpg",
+        tags: ["Thủy sinh", "Lá nổi", "Hoa nước", "Mặt hồ"]
+      },
+      {
+        id: "aquatic_sacred_lotus",
+        nameVN: "Hoa Sen Hồng Linh Thiêng",
+        nameLatin: "Nelumbo nucifera",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🌸",
+        height: "1.6 m",
+        span: "1.4 m",
+        lifespan: "Vĩnh cửu (hạt 1000 năm)",
+        desc: "Lá khiên chống dính nước vượt khỏi mặt hồ, bông sen hồng nhiều lớp cánh vươn cao cùng bát sen độc đáo.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_sacred_lotus.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_sacred_lotus.blend",
+        specUrl: "../docs/flora/species/aquatic_sacred_lotus.md",
+        turnaroundImg: "flora_images/aquatic_sacred_lotus_turnaround.jpg",
+        tags: ["Sen linh thiêng", "Lá vươn cao", "Đài sen", "Chống dính"]
+      },
+      {
+        id: "aquatic_broadleaf_cattail",
+        nameVN: "Cây Cỏ Nến Bờ Đầm",
+        nameLatin: "Typha latifolia",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🎋",
+        height: "2.4 m",
+        span: "0.8 m",
+        lifespan: "10 - 20 năm",
+        desc: "Thân thảo đứng thẳng lá dài hẹp mọc quanh bắp bông lau hình trụ màu nâu nhung đặc trưng vùng sình lầy ngập triều.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_broadleaf_cattail.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_broadleaf_cattail.blend",
+        specUrl: "../docs/flora/species/aquatic_broadleaf_cattail.md",
+        turnaroundImg: "flora_images/aquatic_broadleaf_cattail_turnaround.jpg",
+        tags: ["Bông lau", "Bờ sình", "Lọc nước", "Cỏ nến"]
+      },
+      {
+        id: "succulent_saguaro_cactus",
+        nameVN: "Xương Rồng Cột Saguaro",
+        nameLatin: "Carnegiea gigantea",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "9.5 m",
+        span: "2.8 m",
+        lifespan: "150 - 250 năm",
+        desc: "Cột thân gân xếp nếp co giãn trữ nước với các nhánh vươn chữ U biểu tượng, gai nhọn bảo vệ và bề mặt sáp dày chống bốc hơi.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_saguaro_cactus.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_saguaro_cactus.blend",
+        specUrl: "../docs/flora/species/succulent_saguaro_cactus.md",
+        turnaroundImg: "flora_images/succulent_saguaro_cactus_turnaround.jpg",
+        tags: ["Sa mạc", "Cột gân", "Gai sáp", "Chữ U"]
+      },
+      {
+        id: "succulent_century_agave",
+        nameVN: "Thùa Bách Niên Agave",
+        nameLatin: "Agave americana",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🪴",
+        height: "1.8 m",
+        span: "2.4 m",
+        lifespan: "25 - 35 năm",
+        desc: "Hoa hồng lá mọng nước khổng lồ xanh xám, mép lá viền gai đen cong quặp và đầu nhọn sắc nhọn bảo vệ củ lõi.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_century_agave.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_century_agave.blend",
+        specUrl: "../docs/flora/species/succulent_century_agave.md",
+        turnaroundImg: "flora_images/succulent_century_agave_turnaround.jpg",
+        tags: ["Mọng nước", "Gai viền", "Xanh phấn", "Chịu hạn"]
+      },
+      {
+        id: "carnivorous_pitcher_plant",
+        nameVN: "Cây Nắp Ấm Khổng Lồ",
+        nameLatin: "Nepenthes rajah",
+        category: "carnivorous_vines",
+        categoryVN: "Cây Bắt Mồi & Dây Leo",
+        icon: "🏺",
+        height: "1.4 m",
+        span: "1.1 m",
+        lifespan: "20 - 45 năm",
+        desc: "Bình bẫy tiêu hóa phồng to hình quả lê viền môi gợn sóng đỏ rực trơn trượt, nắp che mưa và dịch mật dẫn dụ con mồi.",
+        glbUrl: "../assets/flora/carnivorous_vines/carnivorous_pitcher_plant.glb",
+        blendUrl: "../assets/flora/carnivorous_vines/carnivorous_pitcher_plant.blend",
+        specUrl: "../docs/flora/species/carnivorous_pitcher_plant.md",
+        turnaroundImg: "flora_images/carnivorous_pitcher_plant_turnaround.jpg",
+        tags: ["Bắt mồi", "Bình ấm", "Viền môi đỏ", "Dịch enzyme"]
+      },
+      {
+        id: "carnivorous_venus_flytrap",
+        nameVN: "Cây Bắt Ruồi Venus",
+        nameLatin: "Dionaea muscipula",
+        category: "carnivorous_vines",
+        categoryVN: "Cây Bắt Mồi & Dây Leo",
+        icon: "🪤",
+        height: "0.25 m",
+        span: "0.35 m",
+        lifespan: "20 - 30 năm",
+        desc: "Hai phiến kẹp hình bán nguyệt với các răng lược đan khít, lông cảm ứng siêu nhạy kích hoạt cơ chế đóng sập thủy lực.",
+        glbUrl: "../assets/flora/carnivorous_vines/carnivorous_venus_flytrap.glb",
+        blendUrl: "../assets/flora/carnivorous_vines/carnivorous_venus_flytrap.blend",
+        specUrl: "../docs/flora/species/carnivorous_venus_flytrap.md",
+        turnaroundImg: "flora_images/carnivorous_venus_flytrap_turnaround.jpg",
+        tags: ["Bẫy kẹp", "Răng lược", "Thủy lực", "Con mồi"]
+      },
+      {
+        id: "cave_bioluminescent_mushroom",
+        nameVN: "Nấm Ma Phát Quang Karst",
+        nameLatin: "Omphalotus nidiformis",
+        category: "cave_bioluminescent",
+        categoryVN: "Hang Động Phát Quang",
+        icon: "🍄",
+        height: "0.85 m",
+        span: "0.95 m",
+        lifespan: "Vĩnh cửu hệ sợi ngầm",
+        desc: "Mũ nấm phễu lượn sóng tự phát xạ ánh sáng xanh lam ngọc ngọc bích ma mị thông qua phản ứng enzym luciferase luciferin trong màn đêm hang động.",
+        glbUrl: "../assets/flora/cave_bioluminescent/cave_bioluminescent_mushroom.glb",
+        blendUrl: "../assets/flora/cave_bioluminescent/cave_bioluminescent_mushroom.blend",
+        specUrl: "../docs/flora/species/cave_bioluminescent_mushroom.md",
+        turnaroundImg: "flora_images/cave_bioluminescent_mushroom_turnaround.jpg",
+        tags: ["Phát quang", "Hang ngầm", "Luciferase", "Neon xanh"]
+      },
+      {
+        id: "grass_red_fescue",
+        nameVN: "Cỏ Lúa Mì Đỏ Đồng Hoang",
+        nameLatin: "Festuca rubra",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.4m (Cao)",
+        span: "0.35m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Lá dạng sợi thanh mảnh mọc thành cụm búi dày đặc. Đầu ngọn lá có sắc tố anthocyanin ánh đỏ hung đặc trưng. Thân cọng mềm mại uốn cong tự nhiên theo chiều gió lùa.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_red_fescue.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_red_fescue.blend",
+        specUrl: "../docs/flora/species/grass_red_fescue.md",
+        turnaroundImg: "flora_images/grass_red_fescue_turnaround.jpg",
+        tags: ["Poaceae", "Đồng cỏ", "18,400 tris"]
+      },
+      {
+        id: "grass_feather_grass",
+        nameVN: "Cỏ Đuôi Chuột Lông Vũ",
+        nameLatin: "Stipa pennata",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.95m (Cao)",
+        span: "0.55m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân mảnh mai vươn thẳng, đầu ngọn mang chùm bông tơ dài mềm mại như đuôi chim phượng hoàng, rung rinh nhịp nhàng theo từng làn gió thoảng.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_feather_grass.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_feather_grass.blend",
+        specUrl: "../docs/flora/species/grass_feather_grass.md",
+        turnaroundImg: "flora_images/grass_feather_grass_turnaround.jpg",
+        tags: ["Poaceae", "Thảo nguyên đón gió", "22,000 tris"]
+      },
+      {
+        id: "grass_velvet_moss",
+        nameVN: "Thảm Rêu Nhung Rừng Ẩm",
+        nameLatin: "Bryophyta saxatilis",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.06m (Cao)",
+        span: "1.4m (Tán phủ)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thảm rêu xanh lục bảo xốp dày trải dài theo địa hình gồ ghề, mọc chùm hàng vạn ngọn rêu tí hon hình sao ngậm nước lấp lánh.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_velvet_moss.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_velvet_moss.blend",
+        specUrl: "../docs/flora/species/grass_velvet_moss.md",
+        turnaroundImg: "flora_images/grass_velvet_moss_turnaround.jpg",
+        tags: ["Bryaceae", "Chân cổ thụ", "32,000 tris"]
+      },
+      {
+        id: "grass_white_clover",
+        nameVN: "Cỏ Ba Lá May Mắn",
+        nameLatin: "Trifolium repens",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.18m (Cao)",
+        span: "0.45m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cuống mảnh uốn lượn mang bộ 3 lá chét hình tim ngược, mặt lá có vệt chữ V màu trắng sữa đặc trưng. Điểm xuyết hoa đầu tròn màu trắng ngà cánh bướm.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_white_clover.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_white_clover.blend",
+        specUrl: "../docs/flora/species/grass_white_clover.md",
+        turnaroundImg: "flora_images/grass_white_clover_turnaround.jpg",
+        tags: ["Fabaceae", "Bãi cỏ xanh", "14,500 tris"]
+      },
+      {
+        id: "grass_sheeps_fescue",
+        nameVN: "Cỏ Lông Nhím Rừng Đá",
+        nameLatin: "Festuca ovina",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.32m (Cao)",
+        span: "0.28m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Bụi cỏ gai nhọn xòe tròn như lưng nhím, lá cuộn tròn hình kim màu xanh xám tro tráng sáp xanh ngọc xỉn, chịu hạn và gió dữ.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_sheeps_fescue.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_sheeps_fescue.blend",
+        specUrl: "../docs/flora/species/grass_sheeps_fescue.md",
+        turnaroundImg: "flora_images/grass_sheeps_fescue_turnaround.jpg",
+        tags: ["Poaceae", "Khe đá núi vôi", "16,000 tris"]
+      },
+      {
+        id: "grass_woolly_moss",
+        nameVN: "Thảm Rêu Râu Bạc Vách Đá",
+        nameLatin: "Racomitrium lanuginosum",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.08m (Cao)",
+        span: "0.9m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Mọc thành mảng đệm xốp phủ trên mặt đá granit gồ ghề. Đỉnh mỗi chồi rêu mang một sợi râu trong suốt dài lấp lánh như sương tuyết vĩnh cửu.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_woolly_moss.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_woolly_moss.blend",
+        specUrl: "../docs/flora/species/grass_woolly_moss.md",
+        turnaroundImg: "flora_images/grass_woolly_moss_turnaround.jpg",
+        tags: ["Grimmiaceae", "Vách đá phong hóa", "28,000 tris"]
+      },
+      {
+        id: "grass_switchgrass",
+        nameVN: "Cỏ Đuôi Phụng Thảo Nguyên",
+        nameLatin: "Panicum virgatum",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "1.6m (Cao)",
+        span: "0.8m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân cỏ cao thẳng đứng mọc thành cụm bụi lớn, mùa thu đổi sang sắc vàng óng ả. Chùy hoa phân nhánh mở rộng tạo thành đám mây hạt bay lơ lửng.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_switchgrass.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_switchgrass.blend",
+        specUrl: "../docs/flora/species/grass_switchgrass.md",
+        turnaroundImg: "flora_images/grass_switchgrass_turnaround.jpg",
+        tags: ["Poaceae", "Đồng bằng trung tâm", "24,000 tris"]
+      },
+      {
+        id: "grass_sphagnum_moss",
+        nameVN: "Rêu Than Bùn Đầm Lầy",
+        nameLatin: "Sphagnum palustre",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.15m (Cao)",
+        span: "1.6m (Mảng phủ)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây rêu phân nhánh hình đầu cúc tròn, chứa các tế bào rỗng ngậm nước gấp 20 lần trọng lượng khô, tạo thành thảm phồng êm như đệm hơi.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_sphagnum_moss.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_sphagnum_moss.blend",
+        specUrl: "../docs/flora/species/grass_sphagnum_moss.md",
+        turnaroundImg: "flora_images/grass_sphagnum_moss_turnaround.jpg",
+        tags: ["Sphagnaceae", "Vùng đầm lầy trũng", "30,000 tris"]
+      },
+      {
+        id: "grass_needle_burr",
+        nameVN: "Cỏ May Xước Đồng Hoang",
+        nameLatin: "Chrysopogon aciculatus",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.35m (Cao)",
+        span: "0.4m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân bò lan bám rễ chặt chẽ dưới đất, phóng các cọng hoa mang chùm quả gai nhọn có móc ngược bám vào lông động vật di cư.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_needle_burr.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_needle_burr.blend",
+        specUrl: "../docs/flora/species/grass_needle_burr.md",
+        turnaroundImg: "flora_images/grass_needle_burr_turnaround.jpg",
+        tags: ["Poaceae", "Lối mòn khô cằn", "16,500 tris"]
+      },
+      {
+        id: "grass_goosegrass",
+        nameVN: "Cỏ Mần Trầu Dược Liệu",
+        nameLatin: "Eleusine indica",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.45m (Cao)",
+        span: "0.5m (Tán",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Gốc phân nhánh tỏa tròn sát mặt đất như nan hoa xe bò, cọng hoa dẹt cứng mang 3-7 bông hình chân vịt xòe ở đỉnh.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_goosegrass.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_goosegrass.blend",
+        specUrl: "../docs/flora/species/grass_goosegrass.md",
+        turnaroundImg: "flora_images/grass_goosegrass_turnaround.jpg",
+        tags: ["Poaceae", "Vành đai làng", "18,000 tris"]
+      },
+      {
+        id: "grass_liverwort",
+        nameVN: "Rêu Rồng Xanh Vách Thác",
+        nameLatin: "Marchantia polymorpha",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌾",
+        height: "0.04m (Cao)",
+        span: "0.8m (Mảng phiến)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Tản lá hình dải xanh đậm chia thùy như vảy rồng bám chặt mặt đá ướt át. Mặt trên tản mang các chén truyền thể hình chén hoa và các cây dù tí hon mang bào tử.",
+        glbUrl: "../assets/flora/grasses_herbs/grass_liverwort.glb",
+        blendUrl: "../assets/flora/grasses_herbs/grass_liverwort.blend",
+        specUrl: "../docs/flora/species/grass_liverwort.md",
+        turnaroundImg: "flora_images/grass_liverwort_turnaround.jpg",
+        tags: ["Marchantiaceae", "Vách đá ẩm cạnh thác nước đổ (Z: 2m - 7m)", "25,000 tris"]
+      },
+      {
+        id: "flower_oxeye_daisy",
+        nameVN: "Cúc Vàng Đồng Nội",
+        nameLatin: "Leucanthemum vulgare",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.65m (Cao)",
+        span: "0.4m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân đứng có khía dọc, lá xẻ thùy răng cưa thưa. Đóa hoa đơn độc ở đỉnh với đĩa nhụy hoa vàng cam hình vòm lõm chứa hàng trăm hoa ống li ti, viền ngoài là 20-30 cánh hoa trắng muốt thuôn dài.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_oxeye_daisy.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_oxeye_daisy.blend",
+        specUrl: "../docs/flora/species/flower_oxeye_daisy.md",
+        turnaroundImg: "flora_images/flower_oxeye_daisy_turnaround.jpg",
+        tags: ["Asteraceae", "Thung lũng ngập nắng", "24,000 tris"]
+      },
+      {
+        id: "flower_bluebell",
+        nameVN: "Hoa Chuông Xanh Rừng Rậm",
+        nameLatin: "Hyacinthoides non-scripta",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.48m (Cao)",
+        span: "0.32m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cành hoa cong uốn cong một bên duyên dáng, mang 6-12 đóa hoa hình chuông rủ xuống. Đầu cánh hoa uốn cong quăn ngược ra ngoài, màu xanh lam tím violet huyền ảo.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_bluebell.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_bluebell.blend",
+        specUrl: "../docs/flora/species/flower_bluebell.md",
+        turnaroundImg: "flora_images/flower_bluebell_turnaround.jpg",
+        tags: ["Asparagaceae", "Tán rừng sồi ẩm râm mát (Z: 5m - 9m)", "19,500 tris"]
+      },
+      {
+        id: "flower_wild_lavender",
+        nameVN: "Oải Hương Tím Dại",
+        nameLatin: "Lavandula angustifolia",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.72m (Cao)",
+        span: "0.65m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Bụi bán mộc thân gốc hóa gỗ, cành non vuông vức màu xám xanh mang lá hẹp thuôn. Cành hoa vươn cao kết thành bông dày đặc các vòng hoa tím biếc.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_wild_lavender.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_wild_lavender.blend",
+        specUrl: "../docs/flora/species/flower_wild_lavender.md",
+        turnaroundImg: "flora_images/flower_wild_lavender_turnaround.jpg",
+        tags: ["Lamiaceae", "Sườn đồi đá vôi khô nhiều nắng (Z: 6m - 14m)", "34,000 tris"]
+      },
+      {
+        id: "flower_dandelion",
+        nameVN: "Bồ Công Anh Bào Tử Gió",
+        nameLatin: "Taraxacum officinale",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.38m (Cao)",
+        span: "0.26m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cuống rỗng vươn thẳng từ vòng lá sát đất hình răng sư tử. Đỉnh mang quả cầu bồ công anh tròn xoe hoàn hảo cấu tạo từ hàng trăm chiếc dù lông tơ trắng muốt đính hạt.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_dandelion.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_dandelion.blend",
+        specUrl: "../docs/flora/species/flower_dandelion.md",
+        turnaroundImg: "flora_images/flower_dandelion_turnaround.jpg",
+        tags: ["Asteraceae", "Bãi cỏ nắng", "42,000 tris"]
+      },
+      {
+        id: "flower_wild_mint",
+        nameVN: "Bạc Hà Rừng Hoang Dã",
+        nameLatin: "Mentha arvensis",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.52m (Cao)",
+        span: "0.38m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân 4 cạnh vuông vức màu phớt tím, lá mọc đối chéo chữ thập có răng cưa sắc nhọn, gân lá chìm sâu. Hoa tím phớt trắng mọc thành cụm tròn quanh nách lá.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_wild_mint.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_wild_mint.blend",
+        specUrl: "../docs/flora/species/flower_wild_mint.md",
+        turnaroundImg: "flora_images/flower_wild_mint_turnaround.jpg",
+        tags: ["Lamiaceae", "Rìa suối ẩm", "18,000 tris"]
+      },
+      {
+        id: "flower_corn_poppy",
+        nameVN: "Hoa Anh Túc Lửa Hoang",
+        nameLatin: "Papaver rhoeas",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.75m (Cao)",
+        span: "0.35m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cuống hoa mảnh uốn lượn có lông châm tơ trắng dựng đứng, mang nụ hoa rủ trước khi bung nở thành đóa hoa đỏ rực 4 cánh mỏng manh như lụa, tâm có đốm đen huyền bí.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_corn_poppy.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_corn_poppy.blend",
+        specUrl: "../docs/flora/species/flower_corn_poppy.md",
+        turnaroundImg: "flora_images/flower_corn_poppy_turnaround.jpg",
+        tags: ["Papaveraceae", "Cánh đồng ngập nắng", "16,500 tris"]
+      },
+      {
+        id: "flower_lily_valley",
+        nameVN: "Bách Hợp Thung Lũng Trắng",
+        nameLatin: "Convallaria majalis",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.26m (Cao)",
+        span: "0.22m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Hai lá gốc lớn hình bầu dục bóng mượt bao bọc cuống hoa mảnh mai nghiêng nhẹ, treo 6-10 quả chuông hoa màu trắng ngà thanh tao rủ xuống.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_lily_valley.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_lily_valley.blend",
+        specUrl: "../docs/flora/species/flower_lily_valley.md",
+        turnaroundImg: "flora_images/flower_lily_valley_turnaround.jpg",
+        tags: ["Asparagaceae", "Dưới bóng râm cây cổ thụ", "15,800 tris"]
+      },
+      {
+        id: "flower_wild_sunflower",
+        nameVN: "Hoa Hướng Dương Dại",
+        nameLatin: "Helianthus annuus",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "1.85m (Cao)",
+        span: "0.75m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân thô ráp có lông cứng ráp, mang lá hình tim lớn ráp nhám. Đỉnh thân trổ đóa hướng dương rực rỡ với đĩa nhụy hạt nâu sẫm và vành cánh vàng nghệ chói chang luôn hướng theo vệt mặt trời.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_wild_sunflower.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_wild_sunflower.blend",
+        specUrl: "../docs/flora/species/flower_wild_sunflower.md",
+        turnaroundImg: "flora_images/flower_wild_sunflower_turnaround.jpg",
+        tags: ["Asteraceae", "Đồng cỏ hoang dã ngập nắng (Z: 5m - 10m)", "32,000 tris"]
+      },
+      {
+        id: "flower_purple_coneflower",
+        nameVN: "Hoa Cúc Tím Echinacea",
+        nameLatin: "Echinacea purpurea",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "1.1m (Cao)",
+        span: "0.5m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân thẳng cứng cáp mang đóa hoa có tâm hình nón nhô cao như tổ ong gai màu cam đồng, bao quanh bởi các cánh hoa dài màu tím hồng rủ nhẹ xuống dưới.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_purple_coneflower.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_purple_coneflower.blend",
+        specUrl: "../docs/flora/species/flower_purple_coneflower.md",
+        turnaroundImg: "flora_images/flower_purple_coneflower_turnaround.jpg",
+        tags: ["Asteraceae", "Thảo nguyên đón nắng", "26,000 tris"]
+      },
+      {
+        id: "flower_morning_glory",
+        nameVN: "Cây Hoa Bìm Bìm Rừng",
+        nameLatin: "Ipomoea purpurea",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "2.2m (Leo dài)",
+        span: "0.8m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Dây leo cuốn uốn lượn mang lá hình tim xanh mướt. Sáng sớm bung nở những đóa hoa hình phễu kèn trumpet màu xanh lam tím chuyển hồng ở tâm, xòe tròn như chiếc váy dạ hội.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_morning_glory.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_morning_glory.blend",
+        specUrl: "../docs/flora/species/flower_morning_glory.md",
+        turnaroundImg: "flora_images/flower_morning_glory_turnaround.jpg",
+        tags: ["Convolvulaceae", "Bờ rào đá làng", "22,000 tris"]
+      },
+      {
+        id: "flower_wild_geranium",
+        nameVN: "Hoa Phong Lữ Dại Rừng Sồi",
+        nameLatin: "Geranium maculatum",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.55m (Cao)",
+        span: "0.45m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Lá xẻ thùy chân vịt sâu 5 nhánh răng cưa nhọn, hoa 5 cánh màu hồng tím hoa cà có các đường gân chỉ tím đậm dẫn đường cho ong bướm vào tâm hoa nhụy vàng.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_wild_geranium.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_wild_geranium.blend",
+        specUrl: "../docs/flora/species/flower_wild_geranium.md",
+        turnaroundImg: "flora_images/flower_wild_geranium_turnaround.jpg",
+        tags: ["Geraniaceae", "Dưới tán rừng râm mát", "20,000 tris"]
+      },
+      {
+        id: "flower_sweet_flag",
+        nameVN: "Cây Xương Bồ Thơm Bờ Suối",
+        nameLatin: "Acorus calamus",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.9m (Cao)",
+        span: "0.6m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Lá dài hình lưỡi kiếm màu xanh bóng có gân giữa nổi rõ, tỏa hương thơm ngát khi vò nhẹ. Từ nách lá trổ bông hoa hình bắp ngô màu vàng lục nghiêng một bên.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_sweet_flag.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_sweet_flag.blend",
+        specUrl: "../docs/flora/species/flower_sweet_flag.md",
+        turnaroundImg: "flora_images/flower_sweet_flag_turnaround.jpg",
+        tags: ["Acoraceae", "Bờ suối sỏi đá", "18,500 tris"]
+      },
+      {
+        id: "flower_wormwood",
+        nameVN: "Cây Ngải Đắng Rừng",
+        nameLatin: "Artemisia absinthium",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "1.0m (Cao)",
+        span: "0.7m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây bán bụi màu trắng bạc tro do toàn thân và lá xẻ nhiều lần phủ dày đặc lớp lông tơ tằm mịn màng. Cành trổ vô số hoa đầu tròn li ti màu vàng rơm rủ xuống.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_wormwood.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_wormwood.blend",
+        specUrl: "../docs/flora/species/flower_wormwood.md",
+        turnaroundImg: "flora_images/flower_wormwood_turnaround.jpg",
+        tags: ["Asteraceae", "Đồi khô sỏi đá", "26,000 tris"]
+      },
+      {
+        id: "flower_snowdrop",
+        nameVN: "Hoa Giọt Tuyết Đầu Xuân",
+        nameLatin: "Galanthus nivalis",
+        category: "grasses_herbs",
+        categoryVN: "Thảm Cỏ & Hoa",
+        icon: "🌼",
+        height: "0.18m (Cao)",
+        span: "0.15m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Vươn mình xuyên qua lớp tuyết trắng lạnh giá, cuống hoa cong hình cần câu treo đóa hoa trắng muốt rủ xuống như giọt tuyết ngọc bích, 3 cánh ngoài trắng tinh, 3 cánh trong viền đốm xanh lục.",
+        glbUrl: "../assets/flora/grasses_herbs/flower_snowdrop.glb",
+        blendUrl: "../assets/flora/grasses_herbs/flower_snowdrop.blend",
+        specUrl: "../docs/flora/species/flower_snowdrop.md",
+        turnaroundImg: "flora_images/flower_snowdrop_turnaround.jpg",
+        tags: ["Amaryllidaceae", "Băng tuyết tan", "14,000 tris"]
+      },
+      {
+        id: "shrub_wild_berry",
+        nameVN: "Cây Bụi Quả Mọng Đỏ",
+        nameLatin: "Vaccinium vitis-idaea",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "0.75m (Cao)",
+        span: "0.85m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Bụi cây lùn phân nhánh rậm rạp, lá hình trứng ngược dày bóng như da. Cành trĩu trịt từng chùm 5-10 quả mọng tròn đỏ tươi như ngọc ruby.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_wild_berry.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_wild_berry.blend",
+        specUrl: "../docs/flora/species/shrub_wild_berry.md",
+        turnaroundImg: "flora_images/shrub_wild_berry_turnaround.jpg",
+        tags: ["Ericaceae", "Dưới tán rừng thông sỏi đá (Z: 6m - 14m)", "38,000 tris"]
+      },
+      {
+        id: "shrub_alpine_rose",
+        nameVN: "Đỗ Quyên Rừng Núi Cao",
+        nameLatin: "Rhododendron ferrugineum",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌼",
+        height: "1.25m (Cao)",
+        span: "1.45m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây bụi tán tròn chắc khỏe, cành khúc khuỷu. Đỉnh cành nở rộ chùm 6-12 hoa hình phễu màu hồng cánh sen rực rỡ, lá mặt trên xanh thẫm, mặt dưới rỉ sắt nâu đồng.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_alpine_rose.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_alpine_rose.blend",
+        specUrl: "../docs/flora/species/shrub_alpine_rose.md",
+        turnaroundImg: "flora_images/shrub_alpine_rose_turnaround.jpg",
+        tags: ["Ericaceae", "Sườn dốc núi đá vôi", "45,000 tris"]
+      },
+      {
+        id: "shrub_elderberry",
+        nameVN: "Bụi Cơm Cháy Quả Đen",
+        nameLatin: "Sambucus nigra",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "2.6m (Cao)",
+        span: "2.3m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Bụi cây cao thân gỗ vỏ xốp có nhiều lỗ bì, cành xòe vòm. Chùm quả hình tán phẳng rộng lớn trĩu nặng hàng trăm quả mọng đen bóng như hạt cườm.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_elderberry.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_elderberry.blend",
+        specUrl: "../docs/flora/species/shrub_elderberry.md",
+        turnaroundImg: "flora_images/shrub_elderberry_turnaround.jpg",
+        tags: ["Adoxaceae", "Bìa rừng", "52,000 tris"]
+      },
+      {
+        id: "shrub_stinging_nettle",
+        nameVN: "Cây Tầm Ma Gai Bảo Vệ",
+        nameLatin: "Urtica dioica",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "1.15m (Cao)",
+        span: "0.72m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân mọc đứng 4 cạnh cứng cáp, lá mọc đối hình tim mũi mác với răng cưa nhọn kép sâu. Toàn thân và lá phủ dày đặc lông gai rỗng chứa dịch châm chích.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_stinging_nettle.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_stinging_nettle.blend",
+        specUrl: "../docs/flora/species/shrub_stinging_nettle.md",
+        turnaroundImg: "flora_images/shrub_stinging_nettle_turnaround.jpg",
+        tags: ["Urticaceae", "Vùng đất trũng ven rừng giàu đạm (Z: 3m - 7m)", "28,000 tris"]
+      },
+      {
+        id: "shrub_creeping_juniper",
+        nameVN: "Bách Bò Phủ Đất",
+        nameLatin: "Juniperus procumbens",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "0.42m (Cao)",
+        span: "2.1m (Tán lan)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cành nhánh bò lan sát sạt mặt đất uốn lượn theo từng kẽ đá, đan kết thành tấm thảm gai xanh ngọc lam bảo vệ đất chống xói mòn sạt lở.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_creeping_juniper.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_creeping_juniper.blend",
+        specUrl: "../docs/flora/species/shrub_creeping_juniper.md",
+        turnaroundImg: "flora_images/shrub_creeping_juniper_turnaround.jpg",
+        tags: ["Cupressaceae", "Bờ đá dốc", "36,000 tris"]
+      },
+      {
+        id: "shrub_birds_nest_fern",
+        nameVN: "Dương Xỉ Tổ Chim Rừng Mưa",
+        nameLatin: "Asplenium nidus",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "1.1m (Cao)",
+        span: "1.3m (Tán tròn)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Các phiến lá đơn nguyên lớn hình dải thuôn màu xanh nõn chuối bóng loáng mọc tỏa tròn tạo thành hình chiếc tổ chim hứng lá rụng làm mùn dinh dưỡng.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_birds_nest_fern.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_birds_nest_fern.blend",
+        specUrl: "../docs/flora/species/shrub_birds_nest_fern.md",
+        turnaroundImg: "flora_images/shrub_birds_nest_fern_turnaround.jpg",
+        tags: ["Aspleniaceae", "Bám trên chạc ba cây to", "32,000 tris"]
+      },
+      {
+        id: "shrub_wild_hydrangea",
+        nameVN: "Bụi Cẩm Tú Cầu Rừng",
+        nameLatin: "Hydrangea macrophylla",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "1.6m (Cao)",
+        span: "1.8m (Tán tròn)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Bụi cây tán tròn rậm rạp mang những quả cầu hoa khổng lồ đường kính 25cm chuyển sắc kỳ ảo giữa xanh lam, tím thạch anh và hồng phấn tùy độ phèn đất.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_wild_hydrangea.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_wild_hydrangea.blend",
+        specUrl: "../docs/flora/species/shrub_wild_hydrangea.md",
+        turnaroundImg: "flora_images/shrub_wild_hydrangea_turnaround.jpg",
+        tags: ["Hydrangeaceae", "Khe núi suối ẩm", "48,000 tris"]
+      },
+      {
+        id: "shrub_wild_blackberry",
+        nameVN: "Cây Dâu Rừng Gai Đen",
+        nameLatin: "Rubus fruticosus",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "1.8m (Cao)",
+        span: "2.2m (Tán gai)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cành nhánh dạng cung vươn dài chằng chịt vũ trang bằng vô số gai móc câu sắc nhọn. Chùm quả mọng chuyển từ xanh sang đỏ và đen bóng căng mọng khi chín.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_wild_blackberry.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_wild_blackberry.blend",
+        specUrl: "../docs/flora/species/shrub_wild_blackberry.md",
+        turnaroundImg: "flora_images/shrub_wild_blackberry_turnaround.jpg",
+        tags: ["Rosaceae", "Bìa rừng", "46,000 tris"]
+      },
+      {
+        id: "shrub_bay_laurel",
+        nameVN: "Bụi Nguyệt Quế Thơm",
+        nameLatin: "Laurus nobilis",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "2.8m (Cao)",
+        span: "2.2m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây bụi thường xanh tán dày, lá bầu dục dày cứng mép lượn sóng màu xanh đậm bóng loáng chứa nhiều tinh dầu thơm, quả mọng hình trứng đen bóng.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_bay_laurel.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_bay_laurel.blend",
+        specUrl: "../docs/flora/species/shrub_bay_laurel.md",
+        turnaroundImg: "flora_images/shrub_bay_laurel_turnaround.jpg",
+        tags: ["Lauraceae", "Sườn đồi đón nắng", "38,000 tris"]
+      },
+      {
+        id: "shrub_wild_briar_rose",
+        nameVN: "Cây Tầm Xuân Hoa Dại",
+        nameLatin: "Rosa canina",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌼",
+        height: "2.1m (Cao)",
+        span: "1.9m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cành dài uốn cong cong có gai móc sắc, hoa 5 cánh màu hồng nhạt dịu dàng hương thơm thoang thoảng. Mùa thu đơm những quả tầm xuân đỏ tươi hình bầu dục.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_wild_briar_rose.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_wild_briar_rose.blend",
+        specUrl: "../docs/flora/species/shrub_wild_briar_rose.md",
+        turnaroundImg: "flora_images/shrub_wild_briar_rose_turnaround.jpg",
+        tags: ["Rosaceae", "Bờ bụi", "42,000 tris"]
+      },
+      {
+        id: "shrub_dwarf_bamboo",
+        nameVN: "Tre Trúc Tầng Dưới Núi Cao",
+        nameLatin: "Sasa kurilensis",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🎋",
+        height: "1.7m (Cao)",
+        span: "1.4m (Bụi rậm)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân ngầm bò lan phóng lên các dóng trúc nhỏ dẻo dai màu xanh ngọc, lá tre lớn hình thuôn dài bản rộng xếp xòe hình lòng máng đón tuyết.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_dwarf_bamboo.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_dwarf_bamboo.blend",
+        specUrl: "../docs/flora/species/shrub_dwarf_bamboo.md",
+        turnaroundImg: "flora_images/shrub_dwarf_bamboo_turnaround.jpg",
+        tags: ["Poaceae", "Tầng dưới rừng linh sam tuyết (Z: 9m - 16m)", "36,000 tris"]
+      },
+      {
+        id: "shrub_dogwood",
+        nameVN: "Bụi Gai Sơn Thù Du Cành Đỏ",
+        nameLatin: "Cornus sericea",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌿",
+        height: "2.2m (Cao)",
+        span: "2.4m (Tán cành đỏ)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây bụi nổi bật vào mùa đông với toàn bộ hệ cành non chuyển màu đỏ san hô rực rỡ soi bóng xuống mặt nước băng giá, hoa trắng ngà trổ chùm tròn.",
+        glbUrl: "../assets/flora/understory_shrubs/shrub_dogwood.glb",
+        blendUrl: "../assets/flora/understory_shrubs/shrub_dogwood.blend",
+        specUrl: "../docs/flora/species/shrub_dogwood.md",
+        turnaroundImg: "flora_images/shrub_dogwood_turnaround.jpg",
+        tags: ["Cornaceae", "Bờ suối ẩm ướt", "39,000 tris"]
+      },
+      {
+        id: "tree_silver_birch",
+        nameVN: "Bạch Dương Vỏ Bạc Rừng Bắc",
+        nameLatin: "Betula pendula",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "12.5m (Cao)",
+        span: "6.8m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân thon thẳng kiêu hãnh bọc lớp vỏ trắng phấn bong thành từng lớp mỏng như giấy lụa, điểm xuyết các vết nứt nẻ hình thoi màu đen sẫm. Cành nhánh thanh mảnh uốn cong rủ nhẹ mang lá hình tam giác răng cưa rung rinh.",
+        glbUrl: "../assets/flora/canopy_trees/tree_silver_birch.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_silver_birch.blend",
+        specUrl: "../docs/flora/species/tree_silver_birch.md",
+        turnaroundImg: "flora_images/tree_silver_birch_turnaround.jpg",
+        tags: ["Betulaceae", "Ven đồi thông", "58,000 tris"]
+      },
+      {
+        id: "tree_red_maple",
+        nameVN: "Phong Đỏ Mùa Thu Rực Rỡ",
+        nameLatin: "Acer palmatum",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "7.8m (Cao)",
+        span: "7.2m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân uốn lượn khúc khuỷu nghệ thuật như cây cảnh bonsai tự nhiên, phân nhiều nhánh thấp. Tán lá xòe nhiều tầng lớp như bậc thang mây màu đỏ thắm rực lửa.",
+        glbUrl: "../assets/flora/canopy_trees/tree_red_maple.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_red_maple.blend",
+        specUrl: "../docs/flora/species/tree_red_maple.md",
+        turnaroundImg: "flora_images/tree_red_maple_turnaround.jpg",
+        tags: ["Sapindaceae", "Thung lũng ven suối róc rách", "62,000 tris"]
+      },
+      {
+        id: "tree_jungle_palm",
+        nameVN: "Cọ Rừng Nhiệt Đới",
+        nameLatin: "Arecaceae sylvestris",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌴",
+        height: "9.5m (Cao)",
+        span: "5.2m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân cột dẻo dai nghiêng cong tự nhiên chống gió bão, thân mang các ngấn sẹo tròn vòng quanh. Đỉnh thân trổ vòm 18-24 tàu lá xòe hình quạt lông chim hùng dũng.",
+        glbUrl: "../assets/flora/canopy_trees/tree_jungle_palm.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_jungle_palm.blend",
+        specUrl: "../docs/flora/species/tree_jungle_palm.md",
+        turnaroundImg: "flora_images/tree_jungle_palm_turnaround.jpg",
+        tags: ["Arecaceae", "Ven biển nhiệt đới", "42,000 tris"]
+      },
+      {
+        id: "tree_mountain_cherry",
+        nameVN: "Anh Đào Rừng Hoa Tuyết",
+        nameLatin: "Prunus serrulata",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "8.8m (Cao)",
+        span: "8.4m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân vỏ nâu bóng có nhiều lỗ bì ngang màu đồng. Cành nhánh khẳng khiu vươn ngang nở rộ hàng ngàn đóa hoa 5 cánh màu hồng phấn bồng bềnh phủ kín cây.",
+        glbUrl: "../assets/flora/canopy_trees/tree_mountain_cherry.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_mountain_cherry.blend",
+        specUrl: "../docs/flora/species/tree_mountain_cherry.md",
+        turnaroundImg: "flora_images/tree_mountain_cherry_turnaround.jpg",
+        tags: ["Rosaceae", "Sườn núi đá đón nắng xuân (Z: 6m - 13m)", "68,000 tris"]
+      },
+      {
+        id: "tree_blue_gum",
+        nameVN: "Dầu Khuynh Diệp Bạc Cao Vút",
+        nameLatin: "Eucalyptus globulus",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "18.5m (Cao)",
+        span: "8.2m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân cây cao vút đồ sộ, lớp vỏ già bong tróc thành từng dải dài treo lơ lửng để lộ lớp thân non nhẵn mịn loang lổ các mảng màu trắng kem, xanh rêu và xám bạc. Tán lá thưa mang lá liềm cong rủ.",
+        glbUrl: "../assets/flora/canopy_trees/tree_blue_gum.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_blue_gum.blend",
+        specUrl: "../docs/flora/species/tree_blue_gum.md",
+        turnaroundImg: "flora_images/tree_blue_gum_turnaround.jpg",
+        tags: ["Myrtaceae", "Đồi dốc thoai thoải", "54,000 tris"]
+      },
+      {
+        id: "tree_italian_cypress",
+        nameVN: "Bách Tùng Cột Tháp",
+        nameLatin: "Cupressus sempervirens",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "14.5m (Cao)",
+        span: "2.4m (Tán tháp)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Dáng cây hình ngọn tháp nhọn cao vút kiên cường, các cành nhánh áp sát thân vươn thẳng lên trời tạo thành hình ngọn nến xanh thẫm uy nghi.",
+        glbUrl: "../assets/flora/canopy_trees/tree_italian_cypress.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_italian_cypress.blend",
+        specUrl: "../docs/flora/species/tree_italian_cypress.md",
+        turnaroundImg: "flora_images/tree_italian_cypress_turnaround.jpg",
+        tags: ["Cupressaceae", "Lối vào làng cổ", "38,000 tris"]
+      },
+      {
+        id: "tree_sweet_chestnut",
+        nameVN: "Cây Hạt Dẻ Gai Rừng",
+        nameLatin: "Castanea sativa",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "15.0m (Cao)",
+        span: "12.0m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân vỏ nứt xoắn ốc tuyệt đẹp theo chiều kim đồng hồ. Tán lá rộng gồm các lá hình mũi mác dài có răng cưa nhọn như móc câu, mang các quả cầu gai nhọn tròn xoe chứa hạt dẻ nâu bóng.",
+        glbUrl: "../assets/flora/canopy_trees/tree_sweet_chestnut.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_sweet_chestnut.blend",
+        specUrl: "../docs/flora/species/tree_sweet_chestnut.md",
+        turnaroundImg: "flora_images/tree_sweet_chestnut_turnaround.jpg",
+        tags: ["Fagaceae", "Sườn đồi đất chua ẩm mát (Z: 5m - 12m)", "64,000 tris"]
+      },
+      {
+        id: "tree_chinese_hackberry",
+        nameVN: "Cây Cơm Nguội Cổ Thụ",
+        nameLatin: "Celtis sinensis",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "13.0m (Cao)",
+        span: "14.0m (Tán vòm)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân bọc lớp vỏ xám nhẵn có các nốt sần nhỏ, cành nhánh xòe vòm bóng râm rợp lối. Mùa quả kết từng chùm quả mọng tròn màu cam đỏ ngọt lành thu hút chim chóc.",
+        glbUrl: "../assets/flora/canopy_trees/tree_chinese_hackberry.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_chinese_hackberry.blend",
+        specUrl: "../docs/flora/species/tree_chinese_hackberry.md",
+        turnaroundImg: "flora_images/tree_chinese_hackberry_turnaround.jpg",
+        tags: ["Cannabaceae", "Đầu làng", "56,000 tris"]
+      },
+      {
+        id: "tree_jacaranda",
+        nameVN: "Cây Cẩm Quỳ Tím Rực Rỡ",
+        nameLatin: "Jacaranda mimosifolia",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "11.0m (Cao)",
+        span: "10.5m (Tán tím)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Tán cây xòe rộng rực rỡ như đám mây tím biếc mộng mơ, hoa hình chuông kèn dài màu tím hoa cà trổ thành từng chùm lớn rủ kín cây, lá kép lông chim 2 lần mịn như lá dương xỉ.",
+        glbUrl: "../assets/flora/canopy_trees/tree_jacaranda.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_jacaranda.blend",
+        specUrl: "../docs/flora/species/tree_jacaranda.md",
+        turnaroundImg: "flora_images/tree_jacaranda_turnaround.jpg",
+        tags: ["Bignoniaceae", "Thung lũng mùa hạ", "66,000 tris"]
+      },
+      {
+        id: "tree_ginkgo",
+        nameVN: "Ngân Hạnh Rẻ Quạt Vàng",
+        nameLatin: "Ginkgo biloba",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "16.0m (Cao)",
+        span: "9.0m (Tán tháp vàng)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Hóa thạch sống của thế giới thực vật. Thân thẳng đứng, cành mang các chùm lá hình rẻ quạt xẻ đôi độc nhất vô nhị. Mùa thu toàn bộ tán cây đồng loạt biến thành tháp vàng rực lộng lẫy.",
+        glbUrl: "../assets/flora/canopy_trees/tree_ginkgo.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_ginkgo.blend",
+        specUrl: "../docs/flora/species/tree_ginkgo.md",
+        turnaroundImg: "flora_images/tree_ginkgo_turnaround.jpg",
+        tags: ["Ginkgoaceae", "Đền đài cổ", "60,000 tris"]
+      },
+      {
+        id: "tree_magnolia",
+        nameVN: "Mộc Lan Hoa Trắng Đại Đóa",
+        nameLatin: "Magnolia grandiflora",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "14.0m (Cao)",
+        span: "11.0m (Tán tháp tròn)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Tán lá hình kim tự tháp tròn rậm rạp lá xanh quanh năm. Lá to như bàn tay dày cộm bóng loáng, mặt dưới tráng lớp nhung nâu đỏ như gỉ sắt. Đỉnh cành nở những đóa hoa trắng muốt khổng lồ đường kính tới 30cm tỏa hương chanh ngát.",
+        glbUrl: "../assets/flora/canopy_trees/tree_magnolia.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_magnolia.blend",
+        specUrl: "../docs/flora/species/tree_magnolia.md",
+        turnaroundImg: "flora_images/tree_magnolia_turnaround.jpg",
+        tags: ["Magnoliaceae", "Ven hồ nước ấm", "62,000 tris"]
+      },
+      {
+        id: "tree_golden_larch",
+        nameVN: "Thông Rụng Lá Larch Vàng",
+        nameLatin: "Larix decidua",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "15.5m (Cao)",
+        span: "7.5m (Tán thon)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Loài thông lá kim đặc biệt rụng lá theo mùa. Mùa thu lá kim chuyển sang màu vàng cam hổ phách rực rỡ như ngọn đuốc trên nền tuyết trắng, trước khi trút lá trơ cành đón mùa đông giá buốt.",
+        glbUrl: "../assets/flora/canopy_trees/tree_golden_larch.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_golden_larch.blend",
+        specUrl: "../docs/flora/species/tree_golden_larch.md",
+        turnaroundImg: "flora_images/tree_golden_larch_turnaround.jpg",
+        tags: ["Pinaceae", "Vành đai núi tuyết cao (Z: 10m - 17m)", "55,000 tris"]
+      },
+      {
+        id: "tree_oriental_arborvitae",
+        nameVN: "Trắc Bách Diệp Phương Đông",
+        nameLatin: "Platycladus orientalis",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "8.5m (Cao)",
+        span: "4.2m (Tán",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân phân nhánh từ gốc, các cành xếp thành từng phiến phẳng dẹt hình rẻ quạt đứng thẳng song song nhau như những trang sách mở, quả nón có sừng cong ngược kỳ quái.",
+        glbUrl: "../assets/flora/canopy_trees/tree_oriental_arborvitae.glb",
+        blendUrl: "../assets/flora/canopy_trees/tree_oriental_arborvitae.blend",
+        specUrl: "../docs/flora/species/tree_oriental_arborvitae.md",
+        turnaroundImg: "flora_images/tree_oriental_arborvitae_turnaround.jpg",
+        tags: ["Cupressaceae", "Vách đá khô cằn", "44,000 tris"]
+      },
+      {
+        id: "canopy_ancient_banyan",
+        nameVN: "Đa Búp Đỏ Rễ Bạnh Cổ Đại",
+        nameLatin: "Ficus macrophylla",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "17.5m (Cao)",
+        span: "23.0m (Tán trùm)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây chiếm diện tích khổng lồ như một khu rừng nhỏ. Từ các cành lớn buông rủ hàng chục rễ phụ đâm xuống đất hóa thành các cột chống phụ, gốc cây tỏa các phiến rễ bạnh cao ngang ngực người.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_ancient_banyan.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_ancient_banyan.blend",
+        specUrl: "../docs/flora/species/canopy_ancient_banyan.md",
+        turnaroundImg: "flora_images/canopy_ancient_banyan_turnaround.jpg",
+        tags: ["Moraceae", "Rừng nhiệt đới hạ lưu", "95,000 tris"]
+      },
+      {
+        id: "canopy_cedar_lebanon",
+        nameVN: "Tuyết Tùng Lebanon Ngàn Năm",
+        nameLatin: "Cedrus libani",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "15.8m (Cao)",
+        span: "16.5m (Tán tầng bậc)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân cột to lớn phân cành theo phương ngang tuyệt đối, tạo thành các thảm sàn xanh phẳng lì xếp tầng lớp bậc thang vươn rộng như những chiếc bàn bay xanh biếc.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_cedar_lebanon.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_cedar_lebanon.blend",
+        specUrl: "../docs/flora/species/canopy_cedar_lebanon.md",
+        turnaroundImg: "flora_images/canopy_cedar_lebanon_turnaround.jpg",
+        tags: ["Pinaceae", "Rặng núi đá cao đón gió (Z: 8m - 16m)", "78,000 tris"]
+      },
+      {
+        id: "canopy_ancient_ironwood",
+        nameVN: "Thiết Mộc Ngàn Năm",
+        nameLatin: "Guaiacum officinale",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "12.8m (Cao)",
+        span: "13.5m (Tán tròn đặc)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân cây đanh cứng như thép, thớ gỗ xoắn ốc chằng chịt, vỏ tróc từng mảng tròn để lộ lớp giác gỗ màu xanh rêu ô-liu đặc trưng. Tán lá tròn xoe dày đặc như chiếc ô sắt xanh biếc.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_ancient_ironwood.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_ancient_ironwood.blend",
+        specUrl: "../docs/flora/species/canopy_ancient_ironwood.md",
+        turnaroundImg: "flora_images/canopy_ancient_ironwood_turnaround.jpg",
+        tags: ["Zygophyllaceae", "Rừng nhiệt đới cổ xưa", "66,000 tris"]
+      },
+      {
+        id: "canopy_ancient_ginkgo",
+        nameVN: "Bạch Quả Cổ Đại Ngàn Năm",
+        nameLatin: "Ginkgo biloba gigantea",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "22.0m (Cao)",
+        span: "16.0m (Tán vàng rực)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cổ thụ ngàn tuổi thân to 4 người ôm, từ thân buông thõng những bầu nhũ gỗ (chichi) dài hàng mét rủ xuống như thạch nhũ trong hang động. Tán lá rẻ quạt vàng óng trải thảm vàng rực quanh chu vi 30m.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_ancient_ginkgo.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_ancient_ginkgo.blend",
+        specUrl: "../docs/flora/species/canopy_ancient_ginkgo.md",
+        turnaroundImg: "flora_images/canopy_ancient_ginkgo_turnaround.jpg",
+        tags: ["Ginkgoaceae", "Đỉnh đồi thánh địa", "84,000 tris"]
+      },
+      {
+        id: "canopy_sacred_bodhi",
+        nameVN: "Bồ Đề Cổ Thụ Giác Ngộ",
+        nameLatin: "Ficus religiosa",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "18.0m (Cao)",
+        span: "20.0m (Tán vòm thanh tịnh)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân uốn lượn cổ kính với lớp vỏ xám sáng, cành lớn vươn rộng mang hàng triệu chiếc lá hình tim có chóp đuôi nhọn dài độc đáo đung đưa rung rinh dù không có gió thoảng.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_sacred_bodhi.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_sacred_bodhi.blend",
+        specUrl: "../docs/flora/species/canopy_sacred_bodhi.md",
+        turnaroundImg: "flora_images/canopy_sacred_bodhi_turnaround.jpg",
+        tags: ["Moraceae", "Bên bờ sông thiêng", "88,000 tris"]
+      },
+      {
+        id: "canopy_sugar_pine",
+        nameVN: "Thông Trắng Khổng Lồ California",
+        nameLatin: "Pinus lambertiana",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌲",
+        height: "26.0m (Cao)",
+        span: "10.0m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Loài thông cao nhất thế giới lá kim, cành nhánh vươn dài nằm ngang hơi uốn cong ở đầu cành, trĩu nặng những quả thông khổng lồ dài tới 50cm treo lủng lẳng ở đầu cành như đèn lồng.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_sugar_pine.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_sugar_pine.blend",
+        specUrl: "../docs/flora/species/canopy_sugar_pine.md",
+        turnaroundImg: "flora_images/canopy_sugar_pine_turnaround.jpg",
+        tags: ["Pinaceae", "Hẻm vực núi tuyết sâu (Z: 11m - 19m)", "76,000 tris"]
+      },
+      {
+        id: "canopy_bald_cypress",
+        nameVN: "Cây Bách Nước Đầm Lầy",
+        nameLatin: "Taxodium distichum",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "17.0m (Cao)",
+        span: "13.0m (Tán nón rộng)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Gốc cây phình to hình chuông ngâm trong nước, quanh gốc mọc trồi lên hàng chục chiếc rễ thở đầu gối (cypress knees) nhô khỏi mặt nước như đàn măng đá nhấp nhô giúp cây thở trong bùn ngập.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_bald_cypress.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_bald_cypress.blend",
+        specUrl: "../docs/flora/species/canopy_bald_cypress.md",
+        turnaroundImg: "flora_images/canopy_bald_cypress_turnaround.jpg",
+        tags: ["Cupressaceae", "Ngập nước đáy hồ", "82,000 tris"]
+      },
+      {
+        id: "canopy_rainforest_dipterocarp",
+        nameVN: "Cây Thau Thao Cổ Rừng Mưa",
+        nameLatin: "Dipterocarpus grandiflorus",
+        category: "canopy_trees",
+        categoryVN: "Tầng Tán Rừng",
+        icon: "🌳",
+        height: "25.0m (Cao)",
+        span: "15.0m (Tán súp lơ vĩ đại)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Đại thụ tầng vượt tán (emergent layer) vươn cao vượt lên trên thảm rừng chung, thân tròn thẳng tắp như cây cột đình khổng lồ, đỉnh nở tán hình bán cầu như cây súp lơ khổng lồ, quả có 2 cánh dài bay xoay tít như chong chóng khi rụng.",
+        glbUrl: "../assets/flora/canopy_trees/canopy_rainforest_dipterocarp.glb",
+        blendUrl: "../assets/flora/canopy_trees/canopy_rainforest_dipterocarp.blend",
+        specUrl: "../docs/flora/species/canopy_rainforest_dipterocarp.md",
+        turnaroundImg: "flora_images/canopy_rainforest_dipterocarp_turnaround.jpg",
+        tags: ["Dipterocarpaceae", "Rừng mưa nhiệt đới tầng vượt tán (Z: 2m - 10m)", "90,000 tris"]
+      },
+      {
+        id: "aquatic_wetland_reed",
+        nameVN: "Sậy Nước Bờ Hồ",
+        nameLatin: "Phragmites australis",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "2.8m (Cao)",
+        span: "0.85m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân sậy cao rỗng dẻo dai màu xanh bóng có ngấn lóng rõ rệt. Lá dài hình mũi mác vuốt nhọn bay phần phật trong gió, ngọn mang chùy hoa lông tơ màu nâu tía xòe nghiêng.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_wetland_reed.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_wetland_reed.blend",
+        specUrl: "../docs/flora/species/aquatic_wetland_reed.md",
+        turnaroundImg: "flora_images/aquatic_wetland_reed_turnaround.jpg",
+        tags: ["Poaceae", "Bờ cát bùn ven hồ", "28,000 tris"]
+      },
+      {
+        id: "aquatic_hornwort",
+        nameVN: "Rong Đuôi Chồn Đáy Hồ",
+        nameLatin: "Ceratophyllum demersum",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "0.85m (Cao)",
+        span: "0.32m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây chìm hoàn toàn trong nước không có rễ thật, thân uốn lượn mềm mại theo dòng chảy ngầm. Lá chét xẻ đôi hình kim mọc vòng 6-12 lá quanh gióng thân, tạo thành chùm rậm rạp như đuôi chồn.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_hornwort.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_hornwort.blend",
+        specUrl: "../docs/flora/species/aquatic_hornwort.md",
+        turnaroundImg: "flora_images/aquatic_hornwort_turnaround.jpg",
+        tags: ["Ceratophyllaceae", "Chìm dưới đáy nước trong hồ (Z: 1.5m - 4.2m)", "36,000 tris"]
+      },
+      {
+        id: "aquatic_eelgrass",
+        nameVN: "Rong Lươn Nước Sâu",
+        nameLatin: "Vallisneria americana",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "1.35m (Cao)",
+        span: "0.22m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Mọc từ thân bò ngầm dưới bùn cát, phóng lên các dải lá ruy-băng dài thon dẹt uốn lượn uyển chuyển theo nhịp sóng nước, đầu lá tròn viền răng cưa nhỏ.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_eelgrass.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_eelgrass.blend",
+        specUrl: "../docs/flora/species/aquatic_eelgrass.md",
+        turnaroundImg: "flora_images/aquatic_eelgrass_turnaround.jpg",
+        tags: ["Hydrocharitaceae", "Đáy suối", "22,000 tris"]
+      },
+      {
+        id: "aquatic_umbrella_papyrus",
+        nameVN: "Thủy Trúc Dù Ven Suối",
+        nameLatin: "Cyperus alternifolius",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "1.4m (Cao)",
+        span: "0.95m (Tán dù)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân đứng thẳng 3 cạnh nhẵn bóng không lá. Đỉnh thân xòe một vòng 20-30 lá bắc mỏng thuôn dài tỏa tròn đối xứng như chiếc ô xòe râm mát, tâm trổ chùm hoa nâu nhạt.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_umbrella_papyrus.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_umbrella_papyrus.blend",
+        specUrl: "../docs/flora/species/aquatic_umbrella_papyrus.md",
+        turnaroundImg: "flora_images/aquatic_umbrella_papyrus_turnaround.jpg",
+        tags: ["Cyperaceae", "Ven lạch suối đá", "26,000 tris"]
+      },
+      {
+        id: "aquatic_water_hyacinth",
+        nameVN: "Bèo Nhật Bản Hoa Tím",
+        nameLatin: "Eichhornia crassipes",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "0.45m (Cao)",
+        span: "0.65m (Cụm nổi)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây nổi tự do trên mặt nước nhờ cuống lá phình to thành bọng xốp hình bóng bay chứa đầy khí. Chùm hoa màu tím lam nhạt rực rỡ, cánh trên có đốm vàng viền lam như mắt chim công.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_water_hyacinth.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_water_hyacinth.blend",
+        specUrl: "../docs/flora/species/aquatic_water_hyacinth.md",
+        turnaroundImg: "flora_images/aquatic_water_hyacinth_turnaround.jpg",
+        tags: ["Pontederiaceae", "Mặt đầm nước ấm", "28,000 tris"]
+      },
+      {
+        id: "aquatic_red_azolla",
+        nameVN: "Bèo Hoa Dâu Đỏ Thẫm",
+        nameLatin: "Azolla caroliniana",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "0.02m (Cao)",
+        span: "1.8m (Thảm nổi)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Dương xỉ thủy sinh tí hon kết thành tấm thảm đỏ tía bồng bềnh phủ kín mặt nước như tấm nhung gấm hoàng gia, rễ chùm li ti buông lửng trong nước.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_red_azolla.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_red_azolla.blend",
+        specUrl: "../docs/flora/species/aquatic_red_azolla.md",
+        turnaroundImg: "flora_images/aquatic_red_azolla_turnaround.jpg",
+        tags: ["Salviniaceae", "Mặt nước tĩnh", "35,000 tris"]
+      },
+      {
+        id: "aquatic_victoria_lily",
+        nameVN: "Hoa Súng Khổng Lồ Victoria",
+        nameLatin: "Victoria amazonica",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "0.35m (Cao)",
+        span: "2.4m (Đĩa khổng lồ)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Lá nổi khổng lồ đường kính tới 2.2m hình chiếc mâm tròn có thành viền dựng đứng vuông góc 8cm như chiếc bánh ngọt, chịu được sức nặng 40kg. Hoa trắng muốt chuyển hồng vào đêm thứ hai.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_victoria_lily.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_victoria_lily.blend",
+        specUrl: "../docs/flora/species/aquatic_victoria_lily.md",
+        turnaroundImg: "flora_images/aquatic_victoria_lily_turnaround.jpg",
+        tags: ["Nymphaeaceae", "Vịnh hồ nước sâu phẳng lặng (Z: 4.52m)", "48,000 tris"]
+      },
+      {
+        id: "aquatic_elodea",
+        nameVN: "Rong Đuôi Chó Xanh Mướt",
+        nameLatin: "Elodea canadensis",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "0.75m (Cao)",
+        span: "0.18m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân chìm phân nhánh mảnh mai mang các vòng 3 lá nhỏ hình bầu dục màu xanh lục sẫm trong suốt, tạo thành những dải rừng rậm dưới đáy hồ cung cấp oxy cho cá.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_elodea.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_elodea.blend",
+        specUrl: "../docs/flora/species/aquatic_elodea.md",
+        turnaroundImg: "flora_images/aquatic_elodea_turnaround.jpg",
+        tags: ["Hydrocharitaceae", "Đáy nước suối chảy xiết trong vắt (Z: 2m - 4.5m)", "24,000 tris"]
+      },
+      {
+        id: "aquatic_mangrove",
+        nameVN: "Cây Thủy Cúc Rừng Ngập Mặn",
+        nameLatin: "Rhizophora mangle",
+        category: "aquatic_wetland",
+        categoryVN: "Thủy Sinh & Đầm Lầy",
+        icon: "🪷",
+        height: "4.5m (Cao)",
+        span: "4.8m (Tán rễ kiềng)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Hệ thống rễ chống hình vòng cung (stilt roots) cắm chằng chịt xuống bùn lầy như chân nhện khổng lồ nâng bổng thân cây lên khỏi mực nước triều dâng, lá dày bóng chống muối mặn.",
+        glbUrl: "../assets/flora/aquatic_wetland/aquatic_mangrove.glb",
+        blendUrl: "../assets/flora/aquatic_wetland/aquatic_mangrove.blend",
+        specUrl: "../docs/flora/species/aquatic_mangrove.md",
+        turnaroundImg: "flora_images/aquatic_mangrove_turnaround.jpg",
+        tags: ["Rhizophoraceae", "Cửa biển nước lợ", "58,000 tris"]
+      },
+      {
+        id: "succulent_cape_aloe",
+        nameVN: "Nha Đam Gai Khổng Lồ",
+        nameLatin: "Aloe ferox",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "2.3m (Cao)",
+        span: "1.85m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân đơn hóa gỗ bao phủ bởi lớp lá già khô héo rủ xuống như chiếc váy bảo vệ thân. Đỉnh trổ đóa hoa hồng khổng lồ gồm các bẹ lá mọng nước dày cộm viền gai đỏ tía nhọn hoắt. Giữa đóa vươn cành hoa lửa cam rực rỡ.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_cape_aloe.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_cape_aloe.blend",
+        specUrl: "../docs/flora/species/succulent_cape_aloe.md",
+        turnaroundImg: "flora_images/succulent_cape_aloe_turnaround.jpg",
+        tags: ["Asphodelaceae", "Vách đá khô cằn gió nóng", "38,000 tris"]
+      },
+      {
+        id: "succulent_prickly_pear",
+        nameVN: "Xương Rồng Tai Thỏ Hoa Vàng",
+        nameLatin: "Opuntia microdasys",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "1.45m (Cao)",
+        span: "1.55m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Phân nhánh gồm các lóng thân dẹp hình oval tròn trịa xếp tầng so le nhau như những chiếc tai thỏ ngộ nghĩnh. Mặt thân phủ các chấm quầng gai nhung mịn màu vàng tươi, hoa vàng nở rộ ở mép trên đĩa thân.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_prickly_pear.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_prickly_pear.blend",
+        specUrl: "../docs/flora/species/succulent_prickly_pear.md",
+        turnaroundImg: "flora_images/succulent_prickly_pear_turnaround.jpg",
+        tags: ["Cactaceae", "Cồn cát khô", "34,000 tris"]
+      },
+      {
+        id: "succulent_tumbleweed",
+        nameVN: "Bụi Gai Lăn Sa Mạc",
+        nameLatin: "Kali tragus",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "0.95m (Cao)",
+        span: "0.95m (Khung cầu)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Khi chết khô, cây tự đứt lìa gốc để tạo thành một khối cầu gai cành khẳng khiu rỗng ruột tròn xoe, lăn lông lốc theo gió lốc sa mạc để phát tán hạt giống khắp miền hoang dã.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_tumbleweed.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_tumbleweed.blend",
+        specUrl: "../docs/flora/species/succulent_tumbleweed.md",
+        turnaroundImg: "flora_images/succulent_tumbleweed_turnaround.jpg",
+        tags: ["Amaranthaceae", "Đồng cát lộng gió", "30,000 tris"]
+      },
+      {
+        id: "succulent_desert_rose",
+        nameVN: "Sứ Sa Mạc Thân Phình",
+        nameLatin: "Adenium obesum",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌼",
+        height: "1.65m (Cao)",
+        span: "1.25m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Gốc thân phình to dị dạng như bình củ khổng lồ tích nước uốn lượn kỳ quái bọc lớp vỏ xám nhẵn. Đỉnh các cành ngắn bung nở chùm hoa cánh sen đỏ thắm rực rỡ tương phản mạnh mẽ.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_desert_rose.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_desert_rose.blend",
+        specUrl: "../docs/flora/species/succulent_desert_rose.md",
+        turnaroundImg: "flora_images/succulent_desert_rose_turnaround.jpg",
+        tags: ["Apocynaceae", "Khe vách đá sa mạc", "42,000 tris"]
+      },
+      {
+        id: "succulent_burros_tail",
+        nameVN: "Móng Lừa Chuỗi Ngọc Rủ",
+        nameLatin: "Sedum morganianum",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "0.65m (Cao)",
+        span: "0.42m (Chuỗi rủ)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân buông thõng rủ dài xuống vách đá, bọc kín bởi hàng trăm lá mọng nước hình hạt ngọc thuôn dài xếp chồng so le nhau như vảy rồng hay bím tóc xanh lam.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_burros_tail.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_burros_tail.blend",
+        specUrl: "../docs/flora/species/succulent_burros_tail.md",
+        turnaroundImg: "flora_images/succulent_burros_tail_turnaround.jpg",
+        tags: ["Crassulaceae", "Vách đá dốc cheo leo", "28,000 tris"]
+      },
+      {
+        id: "succulent_living_stones",
+        nameVN: "Thạch Lan Sỏi Sống Sa Mạc",
+        nameLatin: "Lithops dorotheae",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "0.05m (Cao)",
+        span: "0.08m (Cặp sỏi)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Cây ngụy trang hoàn hảo thành hai viên sỏi cuội tròn nứt đôi ở giữa. Mặt trên phẳng có hoa văn vân đá cửa sổ quang học đón ánh sáng ngầm, giữa khe nứt trổ đóa cúc vàng rực rỡ.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_living_stones.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_living_stones.blend",
+        specUrl: "../docs/flora/species/succulent_living_stones.md",
+        turnaroundImg: "flora_images/succulent_living_stones_turnaround.jpg",
+        tags: ["Aizoaceae", "Bãi sỏi cuội nung lửa sa mạc (Z: 4m - 8m)", "18,000 tris"]
+      },
+      {
+        id: "succulent_golden_barrel",
+        nameVN: "Xương Rồng Thùng Tròn Vàng",
+        nameLatin: "Echinocactus grusonii",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "0.95m (Cao)",
+        span: "0.95m (Quả cầu gai)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân hình cầu tròn xoe hoàn hảo màu xanh tươi có 25-35 nếp khía dọc sâu, phủ đầy gai cong màu vàng óng ánh như sợi chỉ vàng dệt nên chiếc vương miện hoàng gia.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_golden_barrel.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_golden_barrel.blend",
+        specUrl: "../docs/flora/species/succulent_golden_barrel.md",
+        turnaroundImg: "flora_images/succulent_golden_barrel_turnaround.jpg",
+        tags: ["Cactaceae", "Sườn đồi cát sỏi khô hạn (Z: 6m - 12m)", "38,000 tris"]
+      },
+      {
+        id: "succulent_joshua_tree",
+        nameVN: "Cây Joshua Sa Mạc Gai",
+        nameLatin: "Yucca brevifolia",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "6.5m (Cao)",
+        span: "4.8m (Tán cành gai)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân gỗ xù xì phân cành ngoằn ngoèo kỳ dị như cánh tay người khổng lồ chắp tay cầu nguyện, đầu các cành mang chùm túm lá hình kiếm gai nhọn hoắt dày đặc.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_joshua_tree.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_joshua_tree.blend",
+        specUrl: "../docs/flora/species/succulent_joshua_tree.md",
+        turnaroundImg: "flora_images/succulent_joshua_tree_turnaround.jpg",
+        tags: ["Asparagaceae", "Bình nguyên đá sa mạc lộng gió (Z: 7m - 14m)", "52,000 tris"]
+      },
+      {
+        id: "succulent_bottle_tree",
+        nameVN: "Cây Bao Báp Bình Rượu",
+        nameLatin: "Pachypodium geayi",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "5.5m (Cao)",
+        span: "2.2m (Thân bình)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân phình to hình cổ chai thon dần lên đỉnh, toàn bộ thân vỏ xám bạc phủ kín bởi lớp gai thép sắc nhọn, ngọn mang chùm lá dài hẹp như chiếc vương miện cọ.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_bottle_tree.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_bottle_tree.blend",
+        specUrl: "../docs/flora/species/succulent_bottle_tree.md",
+        turnaroundImg: "flora_images/succulent_bottle_tree_turnaround.jpg",
+        tags: ["Apocynaceae", "Đá vôi khô cằn Madagascar (Z: 5m - 10m)", "44,000 tris"]
+      },
+      {
+        id: "succulent_ghost_echeveria",
+        nameVN: "Sen Đá Hồng Ngọc Sa Mạc",
+        nameLatin: "Echeveria elegans",
+        category: "arid_succulents",
+        categoryVN: "Sa Mạc & Mọng Nước",
+        icon: "🌵",
+        height: "0.15m (Cao)",
+        span: "0.22m (Đóa hoa hồng)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Đóa hoa hồng ngọc bích xếp cánh sít sao hoàn hảo, các lá mọng nước dày khum lòng thuyền viền trong mờ như ngọc thạch phủ lớp phấn trắng mờ ảo kiêu sa.",
+        glbUrl: "../assets/flora/arid_succulents/succulent_ghost_echeveria.glb",
+        blendUrl: "../assets/flora/arid_succulents/succulent_ghost_echeveria.blend",
+        specUrl: "../docs/flora/species/succulent_ghost_echeveria.md",
+        turnaroundImg: "flora_images/succulent_ghost_echeveria_turnaround.jpg",
+        tags: ["Crassulaceae", "Kẽ đá vôi nứt", "22,000 tris"]
+      },
+      {
+        id: "carnivorous_sundew",
+        nameVN: "Cây Bắt Ruồi Bọt Nước",
+        nameLatin: "Drosera capensis",
+        category: "carnivorous_vines",
+        categoryVN: "Cây Bắt Mồi",
+        icon: "🪴",
+        height: "0.32m (Cao)",
+        span: "0.28m (Tán)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Các dải lá thuôn dài mọc tỏa từ gốc, toàn bộ mặt trên lá phủ dày đặc hàng trăm xúc tu lông tuyến màu đỏ hồng, đỉnh mỗi xúc tu mang giọt chất nhầy trong suốt lấp lánh như giọt sương mai dưới nắng.",
+        glbUrl: "../assets/flora/carnivorous_vines/carnivorous_sundew.glb",
+        blendUrl: "../assets/flora/carnivorous_vines/carnivorous_sundew.blend",
+        specUrl: "../docs/flora/species/carnivorous_sundew.md",
+        turnaroundImg: "flora_images/carnivorous_sundew_turnaround.jpg",
+        tags: ["Droseraceae", "Bãi rêu bùn ẩm ướt nghèo dinh dưỡng (Z: 3m - 7m)", "42,000 tris"]
+      },
+      {
+        id: "carnivorous_jungle_liana",
+        nameVN: "Dây Leo Cổ Đại Liana Rừng Già",
+        nameLatin: "Liana gigantica",
+        category: "carnivorous_vines",
+        categoryVN: "Cây Bắt Mồi",
+        icon: "🪴",
+        height: "16.0m (Dài)",
+        span: "2.2m (Tán leo)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân dây leo hóa gỗ to bằng bắp đùi uốn lượn thắt nút xoắn ốc như dây thừng khổng lồ leo quanh thân đại thụ vươn lên đón nắng tầng tán rừng. Dọc thân rủ các chùm hoa hình kèn màu cam cháy lộng lẫy.",
+        glbUrl: "../assets/flora/carnivorous_vines/carnivorous_jungle_liana.glb",
+        blendUrl: "../assets/flora/carnivorous_vines/carnivorous_jungle_liana.blend",
+        specUrl: "../docs/flora/species/carnivorous_jungle_liana.md",
+        turnaroundImg: "flora_images/carnivorous_jungle_liana_turnaround.jpg",
+        tags: ["Bignoniaceae", "Ký sinh vòm đại thụ", "58,000 tris"]
+      },
+      {
+        id: "cave_luminescent_moss",
+        nameVN: "Thảm Rêu Huỳnh Quang Động Karst",
+        nameLatin: "Schistostega pennata",
+        category: "cave_bioluminescent",
+        categoryVN: "Hang Động Phát Quang",
+        icon: "🍄",
+        height: "0.06m (Cao)",
+        span: "1.1m (Thảm mảng)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Bám thành từng mảng xanh ngọc phát sáng lấp lánh trên vách đá hang ẩm ướt như những viên ngọc lục bảo ẩn giấu trong lòng đất.",
+        glbUrl: "../assets/flora/cave_bioluminescent/cave_luminescent_moss.glb",
+        blendUrl: "../assets/flora/cave_bioluminescent/cave_luminescent_moss.blend",
+        specUrl: "../docs/flora/species/cave_luminescent_moss.md",
+        turnaroundImg: "flora_images/cave_luminescent_moss_turnaround.jpg",
+        tags: ["Schistostegaceae", "Vách đá hang ngầm", "32,000 tris"]
+      },
+      {
+        id: "cave_bracket_fungi",
+        nameVN: "Nấm Vành Tầng Động Tiên",
+        nameLatin: "Trametes versicolor",
+        category: "cave_bioluminescent",
+        categoryVN: "Hang Động Phát Quang",
+        icon: "🍄",
+        height: "0.35m (Cao)",
+        span: "0.85m (Tầng quạt)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Các phiến nấm dạng quạt vỏ sò xếp tầng chồng lên nhau bậc thang trên vách đá. Mặt trên mũ nấm có các dải màu vân tròn đồng tâm tuyệt đẹp đan xen giữa xanh lam, tím, nâu sẫm và viền trắng sứ phát quang.",
+        glbUrl: "../assets/flora/cave_bioluminescent/cave_bracket_fungi.glb",
+        blendUrl: "../assets/flora/cave_bioluminescent/cave_bracket_fungi.blend",
+        specUrl: "../docs/flora/species/cave_bracket_fungi.md",
+        turnaroundImg: "flora_images/cave_bracket_fungi_turnaround.jpg",
+        tags: ["Polyporaceae", "Vách đá hang ẩm", "28,000 tris"]
+      },
+      {
+        id: "carnivorous_cobra_lily",
+        nameVN: "Cây Bắt Mồi Rắn Hổ Mang",
+        nameLatin: "Darlingtonia californica",
+        category: "carnivorous_vines",
+        categoryVN: "Cây Bắt Mồi",
+        icon: "🪴",
+        height: "0.85m (Cao)",
+        span: "0.65m (Cụm bẫy)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Ống bẫy hình rắn hổ mang ngóc đầu phồng mang màu xanh vàng điểm đốm tím, đỉnh đầu có chiếc lưỡi chẻ đôi buông rủ như lưỡi rắn thè ra dẫn dụ côn trùng bò vào họng bẫy.",
+        glbUrl: "../assets/flora/carnivorous_vines/carnivorous_cobra_lily.glb",
+        blendUrl: "../assets/flora/carnivorous_vines/carnivorous_cobra_lily.blend",
+        specUrl: "../docs/flora/species/carnivorous_cobra_lily.md",
+        turnaroundImg: "flora_images/carnivorous_cobra_lily_turnaround.jpg",
+        tags: ["Sarraceniaceae", "Đầm than bùn suối lạnh râm mát (Z: 4m - 9m)", "45,000 tris"]
+      },
+      {
+        id: "carnivorous_wild_orchid",
+        nameVN: "Lan Rừng Biểu Sinh Vũ Nữ",
+        nameLatin: "Oncidium flexuosum",
+        category: "carnivorous_vines",
+        categoryVN: "Cây Bắt Mồi",
+        icon: "🪴",
+        height: "0.65m (Cao)",
+        span: "0.85m (Chùm hoa)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Giả hành hình dẹt tích nước bám rễ gió trắng mập vào vỏ đại thụ, cành hoa mảnh uốn lượn phân nhánh mang hàng chục đóa hoa vàng tươi có cánh môi xòe rộng như chiếc váy vũ nữ đang xoay tròn múa.",
+        glbUrl: "../assets/flora/carnivorous_vines/carnivorous_wild_orchid.glb",
+        blendUrl: "../assets/flora/carnivorous_vines/carnivorous_wild_orchid.blend",
+        specUrl: "../docs/flora/species/carnivorous_wild_orchid.md",
+        turnaroundImg: "flora_images/carnivorous_wild_orchid_turnaround.jpg",
+        tags: ["Orchidaceae", "Ký sinh chạc ba cổ thụ", "38,000 tris"]
+      },
+      {
+        id: "cave_jack_o_lantern",
+        nameVN: "Nấm Quỷ Lập Lòe Ma Quái",
+        nameLatin: "Omphalotus olearius",
+        category: "cave_bioluminescent",
+        categoryVN: "Hang Động Phát Quang",
+        icon: "🍄",
+        height: "0.55m (Cao)",
+        span: "0.65m (Cụm phễu)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Mọc cụm chùm lớn màu cam cháy rực rỡ vào ban ngày. Đêm xuống, toàn bộ các phiến nấm dưới mũ phát ra luồng ánh sáng huỳnh quang xanh lục ma mị rọi sáng chân vách đá.",
+        glbUrl: "../assets/flora/cave_bioluminescent/cave_jack_o_lantern.glb",
+        blendUrl: "../assets/flora/cave_bioluminescent/cave_jack_o_lantern.blend",
+        specUrl: "../docs/flora/species/cave_jack_o_lantern.md",
+        turnaroundImg: "flora_images/cave_jack_o_lantern_turnaround.jpg",
+        tags: ["Omphalotaceae", "Gốc cây mục tối tăm", "34,000 tris"]
+      },
+      {
+        id: "cave_ghost_pipe",
+        nameVN: "Cây Ma Cà Rồng Hút Nhựa",
+        nameLatin: "Monotropa uniflora",
+        category: "cave_bioluminescent",
+        categoryVN: "Hang Động Phát Quang",
+        icon: "🍄",
+        height: "0.22m (Cao)",
+        span: "0.18m (Cụm trắng)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Loài thực vật kỳ dị hoàn toàn không có diệp lục, toàn thân trắng muốt như tượng sáp hoặc thạch cao trong suốt. Cây sống ký sinh hút chất dinh dưỡng từ mạng lưới nấm ngầm rễ sồi, hoa hình ống rủ xuống như chiếc tẩu thuốc ma.",
+        glbUrl: "../assets/flora/cave_bioluminescent/cave_ghost_pipe.glb",
+        blendUrl: "../assets/flora/cave_bioluminescent/cave_ghost_pipe.blend",
+        specUrl: "../docs/flora/species/cave_ghost_pipe.md",
+        turnaroundImg: "flora_images/cave_ghost_pipe_turnaround.jpg",
+        tags: ["Ericaceae", "Nền rừng râm tối mịt mù", "18,000 tris"]
+      },
+      {
+        id: "carnivorous_bladderwort",
+        nameVN: "Cây Bắt Côn Trùng Bọng Khí",
+        nameLatin: "Utricularia vulgaris",
+        category: "carnivorous_vines",
+        categoryVN: "Cây Bắt Mồi",
+        icon: "🪴",
+        height: "0.4m (Cao hoa)",
+        span: "0.6m (Tán bọng nước)",
+        lifespan: "Thực vật tự nhiên",
+        desc: "Thân chìm dưới nước mang hàng ngàn bọng hút chân không tí hon trong suốt. Khi bọ gậy chạm lông cảm ứng, nắp bẫy mở ra hút trọn con mồi và nước vào trong tích tắc 1/1000 giây (nhanh nhất giới thực vật), ngọn vươn cành hoa vàng rực lên khỏi mặt nước.",
+        glbUrl: "../assets/flora/carnivorous_vines/carnivorous_bladderwort.glb",
+        blendUrl: "../assets/flora/carnivorous_vines/carnivorous_bladderwort.blend",
+        specUrl: "../docs/flora/species/carnivorous_bladderwort.md",
+        turnaroundImg: "flora_images/carnivorous_bladderwort_turnaround.jpg",
+        tags: ["Lentibulariaceae", "Nước hồ cạn ngập nắng", "30,000 tris"]
+      },
+      {
+        id: "endemic_paphiopedilum_vietnamense",
+        nameVN: "Lan Hài Việt Nam",
+        nameLatin: "Paphiopedilum vietnamense",
+        category: "understory_shrubs",
+        categoryVN: "Tầng Dưới Tán",
+        icon: "🌺",
+        height: "0.35 m",
+        span: "0.45 m",
+        lifespan: "50 - 100 năm",
+        desc: "Loài lan hài cực kỳ quý hiếm đặc hữu của vùng núi đá vôi Cao Bằng, Việt Nam. Cánh đài lưng trắng phớt hồng, cánh môi phồng to màu hồng tím đậm như chiếc hài nhung tuyệt mỹ.",
+        glbUrl: "../assets/flora/understory_shrubs/endemic_paphiopedilum_vietnamense.glb",
+        blendUrl: "../assets/flora/understory_shrubs/endemic_paphiopedilum_vietnamense.blend",
+        specUrl: "../docs/flora/species/endemic_paphiopedilum_vietnamense.md",
+        turnaroundImg: "flora_images/endemic_paphiopedilum_vietnamense_turnaround.jpg",
+        tags: ["Orchidaceae", "Đặc hữu Cao Bằng", "Sách Đỏ CR", "Lan Hài"]
+      }
+    ];
+
+    /* ==========================================================================
+       2. Application State & Three.js Runtime
+       ========================================================================== */
+    let currentPlantIndex = 0;
+    let scene, camera, renderer;
+    let currentLoadedModel = null;
+    let pedestalMesh, gridHelper;
+    let dirLight, hemiLight, ambientLight, pointLight1, pointLight2;
+    let currentLightingMode = 'studio';
+    let isWireframeMode = false;
+    let isTurntableActive = false;
+
+    // Smooth Orbit & Pan Camera State
+    let isDragging = false;
+    let isPanning = false;
+    let prevMouseX = 0, prevMouseY = 0;
+    let lookAtTarget = new THREE.Vector3(0, 5, 0);
+    let desiredLookAt = new THREE.Vector3(0, 5, 0);
+    let spherical = { radius: 35, theta: Math.PI / 4, phi: Math.PI / 2.8 };
+    let desiredSpherical = { radius: 35, theta: Math.PI / 4, phi: Math.PI / 2.8 };
+
+    const gltfLoader = new THREE.GLTFLoader();
+
+    /* ==========================================================================
+       3. Initialization
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      initThreeViewport();
+      buildCatalogSidebar();
+      setupEventListeners();
+      setupDragAndDrop();
+
+      // Load initial model (Ancient Oak)
+      selectPlant(0);
+    });
+
+    function initThreeViewport() {
+      const container = document.getElementById('viewport-container');
+
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color('#060913');
+      scene.fog = new THREE.FogExp2('#060913', 0.003);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.05, 2000);
+      updateCameraPosition();
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      // Studio Pedestal Floor
+      const pedGeo = new THREE.CylinderGeometry(20, 22, 0.6, 64);
+      const pedMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.85,
+        metalness: 0.1
+      });
+      pedestalMesh = new THREE.Mesh(pedGeo, pedMat);
+      pedestalMesh.position.y = -0.3;
+      pedestalMesh.receiveShadow = true;
+      scene.add(pedestalMesh);
+
+      // Subtle Circular Grid
+      gridHelper = new THREE.PolarGridHelper(20, 16, 8, 64, 0x1e293b, 0x0f172a);
+      gridHelper.position.y = 0.02;
+      scene.add(gridHelper);
+
+      // Lighting Rig
+      hemiLight = new THREE.HemisphereLight(0xdff2ff, 0x0f172a, 0.85);
+      scene.add(hemiLight);
+
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      scene.add(ambientLight);
+
+      dirLight = new THREE.DirectionalLight(0xfff8ed, 1.8);
+      dirLight.position.set(40, 60, 35);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.camera.near = 1;
+      dirLight.shadow.camera.far = 250;
+      const d = 40;
+      dirLight.shadow.camera.left = -d;
+      dirLight.shadow.camera.right = d;
+      dirLight.shadow.camera.top = d;
+      dirLight.shadow.camera.bottom = -d;
+      dirLight.shadow.bias = -0.0005;
+      scene.add(dirLight);
+
+      // Accent Point Lights for Night / Bioluminescent Showcase
+      pointLight1 = new THREE.PointLight(0x38bdf8, 0, 40);
+      pointLight1.position.set(-10, 8, 10);
+      scene.add(pointLight1);
+
+      pointLight2 = new THREE.PointLight(0xa855f7, 0, 40);
+      pointLight2.position.set(10, 5, -8);
+      scene.add(pointLight2);
+
+      // Start Render Loop
+      requestAnimationFrame(renderLoop);
+    }
+
+    /* ==========================================================================
+       4. Camera & Render Loop
+       ========================================================================== */
+    function updateCameraPosition() {
+      spherical.phi = Math.max(0.05, Math.min(Math.PI / 2 - 0.02, spherical.phi));
+      spherical.radius = Math.max(0.2, Math.min(500, spherical.radius));
+
+      const x = lookAtTarget.x + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+      const y = lookAtTarget.y + spherical.radius * Math.cos(spherical.phi);
+      const z = lookAtTarget.z + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+
+      camera.position.set(x, y, z);
+      camera.lookAt(lookAtTarget);
+    }
+
+    function renderLoop() {
+      requestAnimationFrame(renderLoop);
+
+      // Turntable Auto-spin
+      if (isTurntableActive) {
+        desiredSpherical.theta += 0.006;
+      }
+
+      // Smooth Camera Interpolation (Damping)
+      spherical.theta += (desiredSpherical.theta - spherical.theta) * 0.1;
+      spherical.phi += (desiredSpherical.phi - spherical.phi) * 0.1;
+      spherical.radius += (desiredSpherical.radius - spherical.radius) * 0.1;
+      lookAtTarget.lerp(desiredLookAt, 0.1);
+
+      updateCameraPosition();
+      renderer.render(scene, camera);
+    }
+
+    /* ==========================================================================
+       5. Model Loading & Geometry Analysis
+       ========================================================================== */
+    function selectPlant(index) {
+      currentPlantIndex = index;
+      const plant = FLORA_DATABASE[index];
+
+      // Update Active UI State
+      document.querySelectorAll('.flora-card').forEach((el, i) => {
+        el.classList.toggle('active', i === index);
+      });
+
+      // Update Inspector Panel Header & Details
+      document.getElementById('insp-name-vn').textContent = plant.nameVN;
+      document.getElementById('insp-name-latin').textContent = plant.nameLatin;
+      const isMaster = (typeof window !== 'undefined' && window.FLORA_MODELS_BASE64 && window.FLORA_MODELS_BASE64[plant.id]);
+      document.getElementById('insp-category-badge').textContent = plant.categoryVN + ' · 🌟 3D Master';
+      document.getElementById('insp-desc').textContent = plant.desc;
+      document.getElementById('bio-span').textContent = plant.span;
+      document.getElementById('bio-lifespan').textContent = plant.lifespan;
+
+      // Populate Tags
+      const tagsContainer = document.getElementById('insp-tags');
+      tagsContainer.innerHTML = plant.tags.map(t => `<span class="tag-pill">${t}</span>`).join('');
+
+      // Update Download Links
+      const btnBlend = document.getElementById('btn-download-blend');
+      btnBlend.href = plant.blendUrl;
+      btnBlend.setAttribute('download', plant.blendUrl.split('/').pop());
+
+      const btnGlb = document.getElementById('btn-download-glb');
+      btnGlb.href = plant.glbUrl;
+      btnGlb.setAttribute('download', plant.glbUrl.split('/').pop());
+
+      const btnDoc = document.getElementById('btn-view-doc');
+      btnDoc.href = plant.specUrl;
+
+      // Turnaround Button State
+      const btnTurnaround = document.getElementById('btn-open-turnaround');
+      if (plant.turnaroundImg) {
+        btnTurnaround.style.display = 'flex';
+        btnTurnaround.onclick = () => openTurnaroundModal(plant);
+      } else {
+        btnTurnaround.style.display = 'none';
+      }
+
+      // If plant is Bioluminescent Cave Mushroom, auto-switch to night mode for maximum drama
+      if (plant.category === 'cave_bioluminescent') {
+        setLighting('night');
+      } else if (currentLightingMode === 'night') {
+        setLighting('studio');
+      }
+
+      // Load 3D Asset
+      loadPlantModel(plant);
+    }
+
+    function base64ToArrayBuffer(base64) {
+      const binary_string = window.atob(base64);
+      const len = binary_string.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    function loadPlantModel(plant) {
+      showLoading(`Đang nạp mô hình 3D: ${plant.nameVN}...`);
+
+      // 1. Ưu tiên giải mã nhị phân Base64 nhúng sẵn (Chạy offline 100% không bị chặn CORS file://)
+      let b64Data = (typeof window !== 'undefined' && window.FLORA_MODELS_BASE64) ? window.FLORA_MODELS_BASE64[plant.id] : null;
+      // Nếu loài thuộc danh mục 103 loài chưa có 3D riêng, nạp mô hình đại diện chi/họ tương ứng
+      if (!b64Data && plant.representativeId && window.FLORA_MODELS_BASE64) {
+        b64Data = window.FLORA_MODELS_BASE64[plant.representativeId];
+      }
+      if (b64Data) {
+        try {
+          const buffer = base64ToArrayBuffer(b64Data);
+          gltfLoader.parse(
+            buffer,
+            '',
+            (gltf) => {
+              onModelLoaded(gltf, plant.nameVN);
+            },
+            (err) => {
+              console.warn("Lỗi parse Base64, thử nạp qua URL:", err);
+              loadModelViaUrl(plant.glbUrl, plant.nameVN);
+            }
+          );
+          return;
+        } catch (e) {
+          console.warn("Base64 decode failed:", e);
+        }
+      }
+
+      // 2. Dự phòng nạp qua đường dẫn URL nếu mở qua máy chủ HTTP
+      loadModelViaUrl(plant.glbUrl, plant.nameVN);
+    }
+
+    function onModelLoaded(gltf, displayName) {
+      if (currentLoadedModel) {
+        scene.remove(currentLoadedModel);
+        // Dọn dẹp tài nguyên cũ
+        currentLoadedModel.traverse((child) => {
+          if (child.isMesh) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else if (child.material) {
+              child.material.dispose();
+            }
+          }
+        });
+      }
+
+      currentLoadedModel = gltf.scene;
+      scene.add(currentLoadedModel);
+
+      // Thu thập thông số lưới và bật đổ bóng
+      let totalVertices = 0;
+      let totalFaces = 0;
+      let meshCount = 0;
+
+      currentLoadedModel.traverse((child) => {
+        if (child.isMesh) {
+          meshCount++;
+          child.castShadow = true;
+          child.receiveShadow = true;
+
+          if (child.geometry) {
+            const geo = child.geometry;
+            if (geo.attributes && geo.attributes.position) {
+              totalVertices += geo.attributes.position.count;
+            }
+            if (geo.index) {
+              totalFaces += geo.index.count / 3;
+            } else if (geo.attributes && geo.attributes.position) {
+              totalFaces += geo.attributes.position.count / 3;
+            }
+          }
+        }
+      });
+
+      // Tính toán Bounding Box & Căn chỉnh chân cây tiếp đất (y = 0)
+      const box = new THREE.Box3().setFromObject(currentLoadedModel);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+
+      currentLoadedModel.position.x = -center.x;
+      currentLoadedModel.position.y = -box.min.y;
+      currentLoadedModel.position.z = -center.z;
+
+      // Điều chỉnh đĩa bệ và lưới toạ độ thích ứng theo kích thước cây
+      const maxHoriz = Math.max(size.x, size.z);
+      const pedRadius = Math.max(8, maxHoriz * 1.5);
+      pedestalMesh.scale.set(pedRadius / 20, 1, pedRadius / 20);
+      gridHelper.scale.set(pedRadius / 20, 1, pedRadius / 20);
+
+      // Căn chỉnh camera tiêu cự tự động
+      const maxDim = Math.max(size.x, size.y, size.z);
+      desiredLookAt.set(0, size.y * 0.45, 0);
+      desiredSpherical.radius = Math.max(2, maxDim * 1.6);
+      desiredSpherical.phi = Math.PI / 2.8;
+
+      // Áp dụng trạng thái wireframe nếu đang bật
+      if (isWireframeMode) applyWireframeState();
+
+      // Cập nhật HUD hiển thị
+      document.getElementById('mesh-vertices').textContent = totalVertices.toLocaleString();
+      document.getElementById('mesh-faces').textContent = Math.round(totalFaces).toLocaleString();
+      document.getElementById('mesh-objects').textContent = meshCount;
+      document.getElementById('mesh-height').textContent = size.y.toFixed(2) + ' m';
+
+      hideLoading();
+    }
+
+    function loadModelViaUrl(url, displayName) {
+      gltfLoader.load(
+        url,
+        (gltf) => {
+          onModelLoaded(gltf, displayName);
+        },
+        undefined,
+        (error) => {
+          console.error("Error loading GLB via URL:", error);
+          if (url.startsWith('../')) {
+            gltfLoader.load(
+              url.replace('../', '/'),
+              (gltf) => onModelLoaded(gltf, displayName),
+              undefined,
+              (err2) => {
+                showLoading(`Không thể nạp file ${url}. Khi mở bằng file://, trình duyệt chặn đọc file ngoài. Vui lòng kéo thả file .glb vào trình duyệt.`);
+                setTimeout(hideLoading, 4000);
+              }
+            );
+          } else {
+            showLoading(`Không thể nạp file ${url}. Vui lòng thử kéo thả file trực tiếp.`);
+            setTimeout(hideLoading, 3000);
+          }
+        }
+      );
+    }
+
+    /* ==========================================================================
+       6. Lighting Presets & Shading Controls
+       ========================================================================== */
+    function setLighting(mode) {
+      currentLightingMode = mode;
+      document.querySelectorAll('.viewport-toolbar .tool-btn').forEach(btn => {
+        if (btn.id.startsWith('btn-lighting-')) btn.classList.remove('active');
+      });
+
+      const activeBtn = document.getElementById(`btn-lighting-${mode}`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (mode === 'studio') {
+        scene.background.set('#060913');
+        scene.fog.color.set('#060913');
+        hemiLight.intensity = 0.85;
+        ambientLight.intensity = 0.4;
+        dirLight.intensity = 1.8;
+        dirLight.color.set(0xfff8ed);
+        dirLight.position.set(40, 60, 35);
+        pointLight1.intensity = 0;
+        pointLight2.intensity = 0;
+        renderer.toneMappingExposure = 1.15;
+      } else if (mode === 'sunset') {
+        scene.background.set('#1a0f1d');
+        scene.fog.color.set('#1a0f1d');
+        hemiLight.intensity = 0.6;
+        ambientLight.intensity = 0.3;
+        dirLight.intensity = 2.2;
+        dirLight.color.set(0xff9944);
+        dirLight.position.set(50, 20, 20);
+        pointLight1.intensity = 1.5;
+        pointLight1.color.set(0xffaa44);
+        pointLight2.intensity = 0.8;
+        pointLight2.color.set(0xec4899);
+        renderer.toneMappingExposure = 1.25;
+      } else if (mode === 'night') {
+        scene.background.set('#03050c');
+        scene.fog.color.set('#03050c');
+        hemiLight.intensity = 0.2;
+        ambientLight.intensity = 0.12;
+        dirLight.intensity = 0.35;
+        dirLight.color.set(0x60a5fa);
+        dirLight.position.set(-20, 40, -20);
+        pointLight1.intensity = 4.5;
+        pointLight1.color.set(0x38bdf8);
+        pointLight2.intensity = 3.5;
+        pointLight2.color.set(0xa855f7);
+        renderer.toneMappingExposure = 1.4;
+      }
+    }
+
+    function toggleWireframe() {
+      isWireframeMode = !isWireframeMode;
+      const btn = document.getElementById('btn-wireframe');
+      btn.classList.toggle('active', isWireframeMode);
+      applyWireframeState();
+    }
+
+    function applyWireframeState() {
+      if (!currentLoadedModel) return;
+      currentLoadedModel.traverse((child) => {
+        if (child.isMesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.wireframe = isWireframeMode);
+          } else {
+            child.material.wireframe = isWireframeMode;
+          }
+        }
+      });
+    }
+
+    function toggleTurntable() {
+      isTurntableActive = !isTurntableActive;
+      const btn = document.getElementById('btn-turntable');
+      btn.classList.toggle('active', isTurntableActive);
+    }
+
+    function resetCameraView() {
+      if (!currentLoadedModel) return;
+      const box = new THREE.Box3().setFromObject(currentLoadedModel);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+
+      desiredLookAt.set(0, size.y * 0.45, 0);
+      desiredSpherical.theta = Math.PI / 4;
+      desiredSpherical.phi = Math.PI / 2.8;
+      desiredSpherical.radius = Math.max(2, maxDim * 1.6);
+    }
+
+    /* ==========================================================================
+       7. UI Construction & Catalog Filtering
+       ========================================================================== */
+    function buildCatalogSidebar() {
+      const listEl = document.getElementById('flora-list');
+      listEl.innerHTML = '';
+
+      FLORA_DATABASE.forEach((plant, index) => {
+        const card = document.createElement('div');
+        card.className = `flora-card ${index === currentPlantIndex ? 'active' : ''}`;
+        card.dataset.id = plant.id;
+        card.dataset.category = plant.category;
+
+        card.innerHTML = `
+          <div class="icon-wrapper">${plant.icon}</div>
+          <div class="card-info">
+            <div class="name-vn">${plant.nameVN}</div>
+            <div class="name-latin">${plant.nameLatin}</div>
+            <div class="badge-group">
+              <span class="badge-biome">${plant.categoryVN}</span>
+              ${plant.turnaroundImg ? '<span class="badge-turnaround">4 Góc 📷</span>' : ''}
+            </div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => selectPlant(index));
+        listEl.appendChild(card);
+      });
+
+      // Filter tabs
+      const tabs = document.querySelectorAll('#category-tabs .tab-btn');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          filterCatalog();
+        });
+      });
+
+      // Search input
+      document.getElementById('search-input').addEventListener('input', filterCatalog);
+    }
+
+    function filterCatalog() {
+      const activeTab = document.querySelector('#category-tabs .tab-btn.active');
+      const selectedCategory = activeTab ? activeTab.dataset.cat : 'all';
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+
+      const cards = document.querySelectorAll('.flora-card');
+      let visibleCount = 0;
+
+      cards.forEach((card, index) => {
+        const plant = FLORA_DATABASE[index];
+        const matchCategory = (selectedCategory === 'all' || plant.category === selectedCategory);
+        const matchQuery = !query ||
+          plant.nameVN.toLowerCase().includes(query) ||
+          plant.nameLatin.toLowerCase().includes(query) ||
+          plant.categoryVN.toLowerCase().includes(query) ||
+          plant.tags.some(t => t.toLowerCase().includes(query));
+
+        if (matchCategory && matchQuery) {
+          card.style.display = 'flex';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      document.getElementById('flora-count').textContent = visibleCount;
+    }
+
+    /* ==========================================================================
+       8. Modal & Concept Sheet Preview
+       ========================================================================== */
+    function openTurnaroundModal(plant) {
+      if (!plant.turnaroundImg) return;
+      const modal = document.getElementById('turnaround-modal');
+      const img = document.getElementById('modal-turnaround-img');
+      const title = document.getElementById('modal-plant-title');
+      const caption = document.getElementById('modal-turnaround-caption');
+
+      title.innerHTML = `📷 Bản Vẽ Thiết Kế 4 Góc: ${plant.nameVN} (<i>${plant.nameLatin}</i>)`;
+      img.src = plant.turnaroundImg;
+      caption.innerHTML = `Bản vẽ thiết kế 4 góc độ chuẩn Hyper-Realistic Scan: Phối cảnh 3/4 chính, Trực giao mặt trước (Front), Trực giao mặt bên (Side), Trực giao nhìn từ trên (Top-Down). Mô hình 3D thực tế bám sát 100% hình thái này.`;
+
+      modal.showModal();
+    }
+
+    function closeTurnaroundModal() {
+      const modal = document.getElementById('turnaround-modal');
+      modal.close();
+    }
+
+    // Light dismiss for dialog
+    document.getElementById('turnaround-modal').addEventListener('click', (e) => {
+      const rect = e.target.getBoundingClientRect();
+      const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+                          rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+      if (!isInDialog) closeTurnaroundModal();
+    });
+
+    /* ==========================================================================
+       9. Event Listeners (Orbit Controls, Panels, Drag & Drop)
+       ========================================================================== */
+    function setupEventListeners() {
+      const container = document.getElementById('viewport-container');
+
+      // Mouse Orbit & Pan
+      container.addEventListener('mousedown', (e) => {
+        if (e.button === 2 || e.shiftKey) {
+          isPanning = true;
+        } else if (e.button === 0) {
+          isDragging = true;
+        }
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        const deltaX = e.clientX - prevMouseX;
+        const deltaY = e.clientY - prevMouseY;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+
+        if (isDragging) {
+          desiredSpherical.theta -= deltaX * 0.007;
+          desiredSpherical.phi -= deltaY * 0.007;
+          desiredSpherical.phi = Math.max(0.05, Math.min(Math.PI / 2 - 0.02, desiredSpherical.phi));
+        } else if (isPanning) {
+          // Pan camera plane
+          const panSpeed = desiredSpherical.radius * 0.0012;
+          const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0);
+          const up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+
+          desiredLookAt.addScaledVector(right, -deltaX * panSpeed);
+          desiredLookAt.addScaledVector(up, deltaY * panSpeed);
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false;
+        isPanning = false;
+      });
+
+      // Context menu prevention
+      container.addEventListener('contextmenu', e => e.preventDefault());
+
+      // Mouse Wheel Zoom
+      container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 1.1 : 0.9;
+        desiredSpherical.radius = Math.max(0.4, Math.min(450, desiredSpherical.radius * factor));
+      }, { passive: false });
+
+      // Touch events for mobile/tablet
+      let touchStartDist = 0;
+      container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          prevMouseX = e.touches[0].clientX;
+          prevMouseY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          touchStartDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      });
+
+      container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && isDragging) {
+          const deltaX = e.touches[0].clientX - prevMouseX;
+          const deltaY = e.touches[0].clientY - prevMouseY;
+          prevMouseX = e.touches[0].clientX;
+          prevMouseY = e.touches[0].clientY;
+
+          desiredSpherical.theta -= deltaX * 0.008;
+          desiredSpherical.phi -= deltaY * 0.008;
+          desiredSpherical.phi = Math.max(0.05, Math.min(Math.PI / 2 - 0.02, desiredSpherical.phi));
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          if (touchStartDist > 0) {
+            const factor = touchStartDist / dist;
+            desiredSpherical.radius = Math.max(0.4, Math.min(450, desiredSpherical.radius * factor));
+          }
+          touchStartDist = dist;
+        }
+      });
+
+      window.addEventListener('touchend', () => {
+        isDragging = false;
+        touchStartDist = 0;
+      });
+
+      // Window resize
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // Toggle Sidebar Panel
+      const sidebar = document.getElementById('flora-sidebar');
+      const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
+      toggleSidebarBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('collapsed');
+        toggleSidebarBtn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+      });
+
+      // Toggle Inspector Panel
+      const inspector = document.getElementById('inspector-panel');
+      const toggleInspectorBtn = document.getElementById('toggle-inspector-btn');
+      toggleInspectorBtn.addEventListener('click', () => {
+        inspector.classList.toggle('collapsed');
+        toggleInspectorBtn.textContent = inspector.classList.contains('collapsed') ? '◀' : '▶';
+      });
+
+      // Local file picker
+      document.getElementById('local-file-input').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) handleUploadedFile(file);
+      });
+    }
+
+    function setupDragAndDrop() {
+      const dropZone = document.getElementById('drop-zone-overlay');
+
+      window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.display = 'flex';
+      });
+
+      window.addEventListener('dragleave', (e) => {
+        if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+          dropZone.style.display = 'none';
+        }
+      });
+
+      window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.display = 'none';
+        const file = e.dataTransfer.files[0];
+        if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
+          handleUploadedFile(file);
+        }
+      });
+    }
+
+    function handleUploadedFile(file) {
+      showLoading(`Đang mở file tải lên: ${file.name}...`);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const contents = e.target.result;
+        gltfLoader.parse(
+          contents,
+          '',
+          (gltf) => {
+            onModelLoaded(gltf, file.name);
+            document.getElementById('insp-name-vn').textContent = file.name;
+            document.getElementById('insp-name-latin').textContent = "Mô hình người dùng nạp vào";
+            document.getElementById('insp-desc').textContent = `File 3D tuỳ chỉnh tải từ máy tính (${(file.size / 1024).toFixed(1)} KB).`;
+          },
+          (err) => {
+            console.error(err);
+            alert("Lỗi khi giải mã file GLB/GLTF tải lên.");
+            hideLoading();
+          }
+        );
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function showLoading(msg) {
+      const overlay = document.getElementById('loading-overlay');
+      const text = document.getElementById('loading-text');
+      text.textContent = msg;
+      overlay.classList.add('visible');
+    }
+
+    function hideLoading() {
+      const overlay = document.getElementById('loading-overlay');
+      overlay.classList.remove('visible');
+    }
+  </script>
+</body>
+</html>

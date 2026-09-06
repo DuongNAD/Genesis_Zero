@@ -10,7 +10,21 @@ Lõi Python **chạy được nguyên trạng**: không có `os.fork`, không `f
 | `Makefile` | gọi thẳng lệnh Python (bảng dưới) |
 | `deploy/systemd/` | không dùng; chạy tay hoặc NSSM/Task Scheduler |
 
-## Cài
+## Khởi chạy 1-Chạm trên Windows (< 60 giây)
+
+Chỉ cần mở PowerShell hoặc CMD tại thư mục dự án và chạy:
+
+```powershell
+# PowerShell:
+.\run.ps1
+
+# Hoặc CMD:
+run.bat
+```
+
+Script sẽ tự động phát hiện Python >= 3.11, tạo môi trường ảo `.venv`, cài đặt thư viện cần thiết, kiểm tra tiền khởi chạy và mở trình đơn khởi động.
+
+### Cài đặt và chạy thủ công
 
 ```powershell
 py -3.11 -m venv .venv

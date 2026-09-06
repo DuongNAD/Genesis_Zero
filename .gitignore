@@ -23,3 +23,9 @@ venv/
 .env
 .env.*
 !.env.example
+
+# Blender autosave backup files
+*.blend1
+
+# Symlink to local gguf models folder
+web/models

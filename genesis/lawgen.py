@@ -375,10 +375,17 @@ def live_fire_counts(laws: list[Law], seed: int, ticks: int,
     from genesis.tick import build_match  # nhập trong thân: tránh vòng
     from genesis.tick import tick as run_tick
 
-    world, creatures, state, rng = build_match(seed=seed, map_name=map_name)
+    world, creatures, state, rng = build_match(
+        seed=seed, map_name=map_name, reproduction=False
+    )
     counts = [0] * len(laws)
-    for t in range(ticks):
-        run_tick(world, creatures, t, rng, state, laws=laws, log=_ProbeLog(counts))
+    orig_rep = config.REPRODUCTION_ENABLED
+    try:
+        config.REPRODUCTION_ENABLED = False
+        for t in range(ticks):
+            run_tick(world, creatures, t, rng, state, laws=laws, log=_ProbeLog(counts))
+    finally:
+        config.REPRODUCTION_ENABLED = orig_rep
     return counts
 
 

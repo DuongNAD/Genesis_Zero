@@ -13,14 +13,24 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-# `from net import state`, KHÔNG `from net.state import runner`: hàm xử lý route
-# bên dưới từng tên là `state` và đã che mất module này — lỗi hiện ra tận trong
-# `lifespan` với thông báo "'function' object has no attribute 'runner'".
+# Tải cấu hình từ .env nếu có (file bị .gitignore, không chứa khoá trong repo)
+_env_file = Path(__file__).resolve().parent.parent / ".env"
+if _env_file.is_file():
+    try:
+        for _line in _env_file.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+    except Exception:
+        pass
+
 from net import state
 from net.ratelimit import middleware as ratelimit_middleware
 from net.routes_decision import router as router_decision
@@ -59,6 +69,10 @@ app.include_router(router_spectate)
 _WEB = Path(__file__).resolve().parent.parent / "web"
 if _WEB.is_dir():
     app.mount("/watch", StaticFiles(directory=str(_WEB), html=True), name="watch")
+
+_ASSETS = Path(__file__).resolve().parent.parent / "assets"
+if _ASSETS.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_ASSETS)), name="assets")
 
 
 @app.get("/v1/state")

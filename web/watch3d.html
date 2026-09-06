@@ -3,47 +3,809 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Genesis Zero · Xem 3D</title>
+<title>Genesis Zero · 3D Spectator & Diorama Experience</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #06080f; color: #e2e8f0; font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-         height: 100vh; overflow: hidden; }
-  #scene { position: absolute; inset: 0; }
-  header { position: absolute; top: 0; left: 0; right: 0; padding: 10px 18px; z-index: 2;
-           display: flex; gap: 18px; align-items: center;
-           background: linear-gradient(#06080fcc, #06080f00); font-size: .85rem; }
-  h1 { font-size: 1rem; color: #38bdf8; letter-spacing: .06em; }
-  .val { font-family: ui-monospace, Menlo, monospace; color: #f8fafc; font-weight: 700; }
-  .badge { padding: 2px 8px; border-radius: 4px; font-size: .72rem; font-weight: 700;
-           background: #475569; }
-  .badge.RUNNING { background: #10b981; } .badge.REVEAL { background: #f59e0b; }
-  .badge.SEEDING { background: #8b5cf6; }
-  #hint { position: absolute; bottom: 12px; left: 18px; z-index: 2; font-size: .72rem;
-          color: #64748b; line-height: 1.5; }
-  #log { position: absolute; right: 0; top: 44px; bottom: 0; width: 300px; z-index: 2;
-         overflow-y: auto; padding: 12px; font-size: .7rem;
-         font-family: ui-monospace, Menlo, monospace;
-         background: #0b1120cc; border-left: 1px solid #1e293b;
-         display: flex; flex-direction: column-reverse; gap: 5px; }
-  .ev { padding: 4px 6px; border-radius: 3px; background: #020617; border-left: 3px solid #475569; }
-  .ev.SPEAK { border-left-color: #38bdf8; } .ev.LAW_FIRED { border-left-color: #f59e0b; }
-  .ev.DEATH { border-left-color: #ef4444; } .ev.EAT { border-left-color: #22c55e; }
+  body {
+    background: #06080f;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+  #scene { position: absolute; inset: 0; z-index: 1; outline: none; }
+
+  /* Header Bar */
+  header {
+    position: absolute; top: 0; left: 0; right: 0; padding: 10px 18px; z-index: 10;
+    display: flex; gap: 16px; align-items: center; justify-content: space-between;
+    background: linear-gradient(180deg, rgba(6, 8, 15, 0.94) 0%, rgba(6, 8, 15, 0.75) 70%, rgba(6, 8, 15, 0) 100%);
+    font-size: .82rem; backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+  }
+  .header-left, .header-center, .header-right { display: flex; align-items: center; gap: 14px; }
+  h1 {
+    font-size: 1rem; color: #38bdf8; letter-spacing: .08em; font-weight: 800;
+    display: flex; align-items: center; gap: 6px;
+    text-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+  }
+  .stat-group { display: flex; align-items: center; gap: 6px; color: #94a3b8; }
+  .val { font-family: ui-monospace, Menlo, Consolas, monospace; color: #f8fafc; font-weight: 700; }
+  .badge {
+    padding: 2px 8px; border-radius: 4px; font-size: .72rem; font-weight: 700;
+    background: #475569; text-transform: uppercase; letter-spacing: .05em;
+  }
+  .badge.RUNNING { background: #10b981; color: #022c22; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+  .badge.REVEAL { background: #f59e0b; color: #451a03; box-shadow: 0 0 12px rgba(245, 158, 11, 0.6); }
+  .badge.SEEDING, .badge.LOBBY { background: #8b5cf6; color: #2e1065; }
+  .badge.COOLDOWN { background: #64748b; color: #0f172a; }
+
+  /* Toolbar buttons */
+  .btn-tool {
+    background: rgba(15, 23, 42, 0.8); color: #94a3b8; border: 1px solid #334155;
+    padding: 4px 10px; border-radius: 5px; font-size: .75rem; font-weight: 600;
+    cursor: pointer; transition: all .15s ease; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn-tool:hover { background: #1e293b; color: #f8fafc; border-color: #38bdf8; }
+  .btn-tool.active { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.2); }
+
+  /* Left Panel: Law Journal / Codex HUD */
+  #journal-panel {
+    position: absolute; left: 16px; top: 56px; width: 310px; max-height: calc(100vh - 120px);
+    z-index: 9; background: rgba(11, 17, 32, 0.88); border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px; backdrop-filter: blur(12px); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    display: flex; flex-direction: column; overflow: hidden; transition: all .2s ease;
+  }
+  #journal-panel.collapsed { height: 38px; overflow: hidden; }
+  .panel-header {
+    padding: 8px 12px; background: rgba(15, 23, 42, 0.9); border-bottom: 1px solid #1e293b;
+    display: flex; justify-content: space-between; align-items: center; font-size: .78rem; font-weight: 700;
+    color: #38bdf8; letter-spacing: .04em; cursor: pointer;
+  }
+  .panel-body { padding: 10px 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: .74rem; }
+  .journal-stat-row { display: flex; justify-content: space-between; color: #94a3b8; padding-bottom: 6px; border-bottom: 1px dashed #1e293b; }
+  .hypothesis-card {
+    background: rgba(2, 6, 23, 0.7); border: 1px solid #1e293b; border-radius: 6px;
+    padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .hypothesis-card.active { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.05); }
+  .hyp-species { font-weight: 700; color: #f8fafc; display: flex; justify-content: space-between; }
+  .hyp-conf { color: #f59e0b; font-size: .7rem; }
+  .hyp-text { color: #cbd5e1; font-family: ui-monospace, Menlo, monospace; font-size: .7rem; line-height: 1.4; }
+
+  /* Right Panel: Event Log */
+  #log-panel {
+    position: absolute; right: 16px; top: 56px; width: 300px; height: 320px; z-index: 9;
+    background: rgba(11, 17, 32, 0.88); border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px; backdrop-filter: blur(12px); box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #log {
+    flex: 1; overflow-y: auto; padding: 10px 12px; font-size: .7rem;
+    font-family: ui-monospace, Menlo, monospace;
+    display: flex; flex-direction: column-reverse; gap: 5px;
+  }
+  .ev { padding: 4px 7px; border-radius: 4px; background: rgba(2, 6, 23, 0.8); border-left: 3px solid #475569; }
+  .ev.SPEAK { border-left-color: #38bdf8; color: #e0f2fe; }
+  .ev.LAW_FIRED { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.1); color: #fef3c7; font-weight: 700; }
+  .ev.DEATH { border-left-color: #ef4444; color: #fee2e2; }
+  .ev.EAT { border-left-color: #22c55e; color: #dcfce7; }
+  .ev.ATTACK { border-left-color: #f97316; color: #ffedd5; }
+
+  /* Bottom Left: Tactical Minimap */
+  #minimap-container {
+    position: absolute; bottom: 44px; left: 16px; z-index: 9;
+    background: rgba(11, 17, 32, 0.9); border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 8px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .minimap-title { font-size: .68rem; font-weight: 700; color: #38bdf8; display: flex; justify-content: space-between; }
+  #minimap { width: 132px; height: 132px; border-radius: 4px; background: #020617; display: block; image-rendering: pixelated; }
+
+  /* Creature Inspection Card */
+  #inspect-card {
+    position: absolute; right: 16px; bottom: 44px; width: 300px; z-index: 9;
+    background: rgba(11, 17, 32, 0.94); border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 8px; padding: 12px; backdrop-filter: blur(14px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7); display: none; flex-direction: column; gap: 8px; font-size: .75rem;
+  }
+  .insp-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: .84rem; color: #38bdf8; }
+  .insp-domain-tag { font-size: .68rem; padding: 2px 6px; border-radius: 4px; background: #1e293b; color: #cbd5e1; }
+  .stat-bar-box { display: flex; flex-direction: column; gap: 3px; font-size: .68rem; color: #94a3b8; }
+  .stat-bar-label { display: flex; justify-content: space-between; }
+  .bar-bg { height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width .2s ease; }
+  .bar-fill.hp { background: linear-gradient(90deg, #ef4444, #22c55e); }
+  .bar-fill.energy { background: linear-gradient(90deg, #eab308, #38bdf8); }
+  .traits-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: rgba(2, 6, 23, 0.6); padding: 6px; border-radius: 6px; }
+  .trait-item { font-size: .68rem; color: #cbd5e1; display: flex; justify-content: space-between; }
+  .trait-val { font-family: ui-monospace, Menlo, monospace; font-weight: 700; color: #38bdf8; }
+  .feature-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+  .feat-badge { font-size: .65rem; background: rgba(56, 189, 248, 0.12); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 4px; padding: 2px 5px; }
+
+  /* Reveal Victory Modal */
+  #reveal-modal {
+    position: absolute; inset: 0; z-index: 50; background: rgba(6, 8, 15, 0.85);
+    backdrop-filter: blur(16px); display: none; align-items: center; justify-content: center;
+  }
+  .reveal-content {
+    width: 620px; max-width: 90vw; max-height: 85vh; background: #0b1120; border: 2px solid #f59e0b;
+    border-radius: 12px; padding: 22px; box-shadow: 0 0 40px rgba(245, 158, 11, 0.3);
+    display: flex; flex-direction: column; gap: 16px; overflow-y: auto; text-align: center;
+  }
+  .reveal-title { font-size: 1.25rem; font-weight: 800; color: #fbbf24; letter-spacing: .06em; text-transform: uppercase; }
+  .reveal-subtitle { font-size: .8rem; color: #94a3b8; }
+  .podiums-container { display: flex; gap: 10px; justify-content: center; margin: 10px 0; }
+  .podium-card {
+    flex: 1; background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 8px;
+    padding: 12px 8px; display: flex; flex-direction: column; gap: 6px; align-items: center;
+  }
+  .podium-card.gold { border-color: #fbbf24; background: rgba(245, 158, 11, 0.1); }
+  .podium-card.silver { border-color: #94a3b8; background: rgba(148, 163, 184, 0.1); }
+  .podium-card.bronze { border-color: #b45309; background: rgba(180, 83, 9, 0.1); }
+  .podium-rank { font-size: 1.4rem; font-weight: 900; }
+  .podium-title { font-size: .75rem; font-weight: 700; color: #e2e8f0; }
+  .podium-winner { font-size: .85rem; font-weight: 800; color: #38bdf8; font-family: ui-monospace, Menlo, monospace; }
+  .podium-detail { font-size: .68rem; color: #94a3b8; }
+  .laws-section { text-align: left; display: flex; flex-direction: column; gap: 8px; font-size: .78rem; }
+  .laws-section h3 { font-size: .85rem; color: #38bdf8; }
+  .law-card { background: rgba(2, 6, 23, 0.8); border-left: 3px solid #fbbf24; padding: 8px 10px; border-radius: 4px; font-family: ui-monospace, Menlo, monospace; font-size: .75rem; color: #f8fafc; }
+
+  /* Hint Bar */
+  #hint {
+    position: absolute; bottom: 50px; left: 18px; right: 18px; z-index: 8; font-size: .72rem;
+    color: #64748b; line-height: 1.5; pointer-events: none; display: flex; justify-content: space-between;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: rgba(2, 6, 23, 0.5); }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+  /* Weather HUD Badge */
+  #weather-badge {
+    display: flex; align-items: center; gap: 7px;
+    padding: 3px 10px; border-radius: 6px;
+    background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25);
+    font-size: .74rem; cursor: default;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: all .25s ease;
+  }
+  #weather-icon { font-size: .88rem; }
+  #weather-name { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; color: #38bdf8; letter-spacing: .04em; }
+  .weather-progress-bar {
+    width: 36px; height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden; display: inline-block;
+  }
+  #weather-progress { width: 0%; height: 100%; background: #38bdf8; transition: width .3s ease; }
+  #weather-modifiers {
+    font-size: .64rem; padding: 1px 6px; border-radius: 4px; background: #1e293b; color: #94a3b8;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  /* Timeline Replay Dock */
+  #timeline-dock {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 25; background: rgba(11, 17, 32, 0.94); border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 10px; backdrop-filter: blur(16px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.12);
+    padding: 7px 14px; display: flex; align-items: center; gap: 10px; font-size: .76rem;
+    max-width: 96vw; user-select: none;
+  }
+  .dock-group { display: flex; align-items: center; gap: 5px; }
+  .dock-divider { width: 1px; height: 18px; background: #334155; margin: 0 2px; }
+  .btn-dock {
+    background: rgba(15, 23, 42, 0.9); color: #cbd5e1; border: 1px solid #334155;
+    padding: 4px 9px; border-radius: 6px; font-size: .72rem; font-weight: 600;
+    cursor: pointer; transition: all .15s ease; display: inline-flex; align-items: center; gap: 4px;
+    outline: none;
+  }
+  .btn-dock:hover { background: #1e293b; color: #f8fafc; border-color: #38bdf8; }
+  .btn-dock.active { background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.3); }
+  .btn-dock.live { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+  .btn-dock.live.active { background: #ef4444; color: #ffffff; border-color: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+  .slider-control {
+    -webkit-appearance: none; appearance: none;
+    height: 6px; background: #1e293b; border-radius: 3px; outline: none; cursor: pointer;
+    transition: background .15s; vertical-align: middle;
+  }
+  .slider-control::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%; background: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.6); cursor: pointer; border: none;
+  }
+  .slider-control::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%; background: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.6); cursor: pointer; border: none;
+  }
+  #timeline-slider { width: 200px; }
+  #audio-volume-slider { width: 60px; }
+  #timeline-tick-display {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; color: #f8fafc;
+    min-width: 96px; text-align: center; font-size: .72rem;
+  }
 </style>
 </head>
 <body>
 <div id="scene"></div>
+
+<!-- Header -->
 <header>
-  <h1>GENESIS ZERO · 3D</h1>
-  <div>Pha <span id="phase" class="badge">—</span></div>
-  <div>Lượt <span id="tick" class="val">0</span></div>
-  <div>Sống <span id="alive" class="val">0/0</span></div>
-  <div>Bản đồ <span id="map" class="val">—</span></div>
+  <div class="header-left">
+    <h1><span>GENESIS ZERO</span> <span style="font-weight: 400; font-size: .8rem; color: #94a3b8;">· 3D</span></h1>
+    <div class="stat-group">Pha <span id="phase" class="badge SEEDING">—</span></div>
+    <div class="stat-group">Lượt <span id="tick" class="val">0</span></div>
+    <div class="stat-group">Sống <span id="alive" class="val">0/0</span></div>
+    <div class="stat-group">Bản đồ <span id="map" class="val">—</span></div>
+  </div>
+
+  <div class="header-center">
+    <div class="stat-group" id="tier-breakdown" style="font-size: .75rem;">
+      <span title="Dưới nước">🌊 <b id="cnt-nuoc" class="val">0</b></span>
+      <span title="Trên cạn">🌿 <b id="cnt-can" class="val">0</b></span>
+      <span title="Trên trời">🦅 <b id="cnt-troi" class="val">0</b></span>
+    </div>
+    <div id="weather-badge" title="Khí hậu & Hiện tượng môi trường thời gian thực">
+      <span id="weather-icon">☀️</span>
+      <span id="weather-name">CLEAR</span>
+      <div class="weather-progress-bar">
+        <div id="weather-progress"></div>
+      </div>
+      <span id="weather-modifiers">1.0x</span>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div style="display: flex; align-items: center; gap: 5px;">
+      <label for="select-my-creature" style="font-size: .72rem; color: #94a3b8; font-weight: 600;">Sinh vật:</label>
+      <select id="select-my-creature" class="btn-tool" style="cursor: pointer; padding: 3px 8px; max-width: 136px;" title="Chọn sinh vật để theo dõi góc nhìn riêng">
+        <option value="">— Toàn cảnh —</option>
+      </select>
+    </div>
+    <div style="display: flex; align-items: center; gap: 5px;">
+      <label for="select-camera-rig" style="font-size: .72rem; color: #38bdf8; font-weight: 700;">🎥 Rig 24:</label>
+      <select id="select-camera-rig" class="btn-tool" style="cursor: pointer; padding: 3px 8px; max-width: 165px; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;" title="24-Angle Camera Rig (Master Diorama)">
+        <option value="">— Góc Máy Rig 24 —</option>
+        <optgroup label="Isometric (4 Góc)">
+          <option value="CAM_01_ISO_SE">01. Iso Đông Nam (Showcase)</option>
+          <option value="CAM_02_ISO_SW">02. Iso Tây Nam (Thung Lũng)</option>
+          <option value="CAM_03_ISO_NW">03. Iso Tây Bắc (Sườn Núi)</option>
+          <option value="CAM_04_ISO_NE">04. Iso Đông Bắc (Hẻm Núi)</option>
+        </optgroup>
+        <optgroup label="Bình đồ & Hình chiếu (5 Hướng)">
+          <option value="CAM_05_TOP_ORTHO">05. Bình đồ Từ Trên (Top Ortho)</option>
+          <option value="CAM_06_CARDINAL_NORTH">06. Chiếu đứng Phía Bắc</option>
+          <option value="CAM_07_CARDINAL_EAST">07. Chiếu đứng Phía Đông</option>
+          <option value="CAM_08_CARDINAL_SOUTH">08. Chiếu đứng Phía Nam</option>
+          <option value="CAM_09_CARDINAL_WEST">09. Chiếu đứng Phía Tây</option>
+        </optgroup>
+        <optgroup label="Mặt cắt Địa chất (Cutaways)">
+          <option value="CAM_10_CUTAWAY_AA">10. Mặt cắt Dọc A-A (Địa tầng)</option>
+          <option value="CAM_11_CUTAWAY_BB">11. Mặt cắt Ngang B-B (Hang Karst)</option>
+        </optgroup>
+        <optgroup label="Cận cảnh Sinh thái & Thủy văn">
+          <option value="CAM_12_CLOSEUP_LAKE_BASIN">12. Cận cảnh Hồ Trung Tâm</option>
+          <option value="CAM_13_CLOSEUP_WATERFALL_GORGE">13. Cận cảnh Thác & Hẻm Núi</option>
+          <option value="CAM_14_CLOSEUP_ALPINE_SUMMIT">14. Cận cảnh Đỉnh Núi Alpine</option>
+          <option value="CAM_15_CLOSEUP_LOWLAND_FOREST">15. Cận cảnh Rừng Đồng Bằng</option>
+          <option value="CAM_16_CLOSEUP_SUBTERRANEAN_CAVE">16. Cận cảnh Lòng Hang Karst</option>
+          <option value="CAM_17_CLOSEUP_CAVE_ENTRANCE">17. Cận cảnh Cửa Vòm Hang</option>
+          <option value="CAM_18_CLOSEUP_RIVER_MEANDER">18. Cận cảnh Khúc Sông Uốn Lượn</option>
+          <option value="CAM_19_CLOSEUP_COASTAL_BAY">19. Cận cảnh Vịnh Biển Nông</option>
+        </optgroup>
+        <optgroup label="Phân tích Kỹ thuật & Quang học">
+          <option value="CAM_20_SLOPE_ANALYSIS_VIEW">20. Phân tích Độ Dốc Vách Đá</option>
+          <option value="CAM_21_ELEVATION_HEATMAP_VIEW">21. Toàn cảnh Phân tầng Độ cao</option>
+          <option value="CAM_22_BIOME_TRANSITION_CORRIDOR">22. Hành lang Chuyển tiếp Sinh cảnh</option>
+          <option value="CAM_23_UNDERWATER_SUBMERGED_BED">23. Đáy Nước Hồ Thủy sinh</option>
+          <option value="CAM_24_NIGHT_BIOLUMINESCENCE">24. Phát quang Sinh học Đêm</option>
+        </optgroup>
+      </select>
+    </div>
+    <button id="btn-open-setup" class="btn-tool" style="border-color: #38bdf8; color: #38bdf8; font-weight: 700;" title="Mở Phòng Thí Nghiệm & Setup Sinh Vật (Phím P)">🧬 Setup Sinh Vật</button>
+    <button id="btn-cam-iso" class="btn-tool active" title="Góc nhìn Isometric (Phím 1)">🌐 Iso</button>
+    <button id="btn-cam-top" class="btn-tool" title="Góc nhìn Chiến thuật Từ Trên Xuống (Phím 2)">🎯 Top-Down</button>
+    <button id="btn-cam-free" class="btn-tool" title="Góc nhìn Tự do (Phím 3)">🔍 Tự do</button>
+    <button id="btn-cam-follow" class="btn-tool" title="Góc nhìn Thứ 3 bám theo Sinh vật (Phím 4)">🤾‍♂️ Góc nhìn thứ 3</button>
+    <button id="btn-toggle-fow" class="btn-tool" title="Bật/Tắt Sương mù Tầm nhìn Sinh vật (Phím F)">👁️ Fog of War</button>
+    <button id="btn-toggle-hear" class="btn-tool active" title="Bật/Tắt Đồ thị Nghe (Phím G)">📡 Nghe</button>
+    <button id="btn-toggle-journal" class="btn-tool active" title="Bật/Tắt Sổ Luật (Phím J)">📜 Sổ Luật</button>
+    <button id="btn-toggle-minimap" class="btn-tool active" title="Bật/Tắt Minimap (Phím M)">🗺️ Minimap</button>
+  </div>
 </header>
-<div id="log"></div>
-<div id="hint">
-  chuột trái kéo · xoay &nbsp;·&nbsp; lăn · thu phóng &nbsp;·&nbsp; phím <b>G</b> · bật/tắt đồ thị nghe
-  <br>Sự kiện luật hiện ra thành một tia sáng — <b>không kèm chữ</b>, vì trước REVEAL thì bạn cũng đang đoán như chúng nó.
+
+<!-- Creature 3rd-Person HUD Reticle -->
+<div id="creature-pov-hud" style="position: absolute; inset: 0; pointer-events: none; z-index: 8; display: none;">
+  <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 26px; height: 26px; border: 1.5px solid rgba(56, 189, 248, 0.5); border-radius: 50%; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);">
+    <div style="position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: #38bdf8; border-radius: 50%; transform: translate(-50%, -50%);"></div>
+  </div>
+  <div id="pov-creature-tag" style="position: absolute; top: calc(50% + 22px); left: 50%; transform: translateX(-50%); font-size: .68rem; font-weight: 700; color: #38bdf8; background: rgba(11, 17, 32, 0.88); padding: 2px 10px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3); font-family: ui-monospace, Menlo, monospace; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+    POV: —
+  </div>
 </div>
+
+<!-- Left Panel: Law Journal HUD -->
+<div id="journal-panel">
+  <div class="panel-header" id="journal-header">
+    <span>📜 SỔ LUẬT (LAW JOURNAL)</span>
+    <span id="journal-toggle-icon">▾</span>
+  </div>
+  <div class="panel-body">
+    <div class="journal-stat-row">
+      <span>Tia sáng luật kích hoạt:</span>
+      <span id="law-triggers-count" class="val">0</span>
+    </div>
+    <div class="journal-stat-row">
+      <span>Trạng thái khám phá:</span>
+      <span id="journal-status" style="color: #38bdf8;">Đang quan sát...</span>
+    </div>
+    <div style="font-weight: 700; color: #94a3b8; font-size: .7rem; margin-top: 4px;">GIẢ THUYẾT SINH VẬT TÍCH LUỸ:</div>
+    <div id="journal-hypotheses">
+      <div class="hypothesis-card">
+        <div class="hyp-species"><span>Hệ sinh thái Genesis</span><span class="hyp-conf">★☆☆☆☆</span></div>
+        <div class="hyp-text">Các sinh vật đang tự do khám phá và suy diễn các định luật vật lý ngẫu nhiên ẩn giấu...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Right Panel: Event Feed -->
+<div id="log-panel">
+  <div class="panel-header">
+    <span>⚡ NHẬT KÝ SỰ KIỆN</span>
+    <span style="font-size: .68rem; color: #64748b;">Thời gian thực</span>
+  </div>
+  <div id="log"></div>
+</div>
+
+<!-- Bottom Left: Tactical Minimap -->
+<div id="minimap-container">
+  <div class="minimap-title">
+    <span>🗺️ BẢN ĐỒ CHIẾN THUẬT</span>
+    <span style="font-size: .62rem; color: #64748b;">24×24</span>
+  </div>
+  <canvas id="minimap" width="132" height="132"></canvas>
+</div>
+
+<!-- Creature Inspection Card -->
+<div id="inspect-card">
+  <div class="insp-header">
+    <span id="insp-id">L1:0</span>
+    <span id="insp-domain-tag" class="insp-domain-tag">🌿 CẠN</span>
+  </div>
+  <div class="stat-bar-box">
+    <div class="stat-bar-label"><span>Sinh lực (HP)</span><span id="insp-hp-val" class="val">50 / 50</span></div>
+    <div class="bar-bg"><div id="insp-hp-bar" class="bar-fill hp" style="width: 100%;"></div></div>
+  </div>
+  <div class="stat-bar-box">
+    <div class="stat-bar-label"><span>Năng lượng (Energy)</span><span id="insp-e-val" class="val">80 / 100</span></div>
+    <div class="bar-bg"><div id="insp-e-bar" class="bar-fill energy" style="width: 80%;"></div></div>
+  </div>
+  <div class="traits-grid">
+    <div class="trait-item"><span>🧠 Trí tuệ:</span><span id="insp-tr-brain" class="trait-val">2</span></div>
+    <div class="trait-item"><span>⚔️ Tấn công:</span><span id="insp-tr-attack" class="trait-val">2</span></div>
+    <div class="trait-item"><span>🛡️ Giáp:</span><span id="insp-tr-armor" class="trait-val">2</span></div>
+    <div class="trait-item"><span>⚡ Tốc độ:</span><span id="insp-tr-speed" class="trait-val">2</span></div>
+    <div class="trait-item"><span>👁️ Giác quan:</span><span id="insp-tr-sense" class="trait-val">2</span></div>
+    <div class="trait-item"><span>🍖 Dạ dày:</span><span id="insp-tr-stomach" class="trait-val">2</span></div>
+  </div>
+  <div style="background: rgba(2, 6, 23, 0.6); padding: 6px; border-radius: 6px; display: flex; flex-direction: column; gap: 3px; font-size: .68rem;">
+    <div style="display: flex; justify-content: space-between;">
+      <span style="color: #94a3b8;">Thế hệ (Gen):</span>
+      <span id="insp-gen" class="trait-val">0</span>
+    </div>
+    <div style="display: flex; justify-content: space-between;">
+      <span style="color: #94a3b8;">Cha mẹ (Parent):</span>
+      <span id="insp-parent" class="val" style="color: #a78bfa; font-size: .68rem;">Gốc (Gen 0)</span>
+    </div>
+    <div style="display: flex; justify-content: space-between;">
+      <span style="color: #94a3b8;">Dòng dõi (Lineage):</span>
+      <span id="insp-lineage" class="val" style="color: #38bdf8; font-size: .66rem;">—</span>
+    </div>
+    <div style="display: flex; justify-content: space-between;">
+      <span style="color: #94a3b8;">Biến dị (Δtr):</span>
+      <span id="insp-dtr" class="val" style="color: #f59e0b; font-size: .66rem;">[0, 0, 0, 0, 0, 0]</span>
+    </div>
+  </div>
+  <div style="font-size: .68rem; color: #94a3b8;">Đặc điểm sinh học:</div>
+  <div id="insp-features" class="feature-badges">
+    <span class="feat-badge">Đang tải đặc tính...</span>
+  </div>
+  <div style="display: flex; gap: 6px; margin-top: 4px;">
+    <button id="btn-insp-follow" class="btn-tool" style="flex: 1; justify-content: center;">👁️ Theo dõi (F)</button>
+    <button id="btn-insp-close" class="btn-tool" style="flex: 1; justify-content: center;">✕ Đóng</button>
+  </div>
+</div>
+
+<!-- Pre-Match Creature Setup Lobby & Inferred Laws Modal -->
+<div id="creature-setup-lobby" style="position: fixed; inset: 0; z-index: 100; background: rgba(3, 7, 18, 0.92); backdrop-filter: blur(18px); display: flex; align-items: center; justify-content: center; padding: 16px;">
+  <div style="max-width: 1040px; width: 100%; max-height: 94vh; background: #0b1120; border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9), 0 0 30px rgba(56, 189, 248, 0.2); display: flex; flex-direction: column; overflow: hidden; font-family: system-ui, sans-serif;">
+    <!-- Header -->
+    <div style="padding: 14px 22px; background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #1e293b; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 1.6rem;">🧬</span>
+        <div>
+          <div style="font-size: 1.05rem; font-weight: 800; color: #f8fafc; letter-spacing: 0.5px;">PHÒNG THÍ NGHIỆM TẠO SINH VẬT & QUY LUẬT THẾ GIỚI</div>
+          <div style="font-size: .74rem; color: #94a3b8;">Tạo và cấu hình sinh vật của riêng bạn, xem các quy luật mô hình đã suy luận trước khi khởi sinh vào map.</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button id="btn-close-setup" class="btn-dock" style="font-size: .85rem; padding: 4px 12px;" title="Đóng sảnh setup">✕</button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div style="display: flex; background: #0f172a; border-bottom: 1px solid #1e293b; padding: 0 20px;">
+      <button id="tab-btn-create" class="tab-btn active" style="padding: 10px 18px; font-size: .78rem; font-weight: 700; color: #38bdf8; background: transparent; border: none; border-bottom: 2px solid #38bdf8; cursor: pointer;">🛠️ 1. Tạo & Setup Sinh Vật Của Bạn</button>
+      <button id="tab-btn-laws" class="tab-btn" style="padding: 10px 18px; font-size: .78rem; font-weight: 700; color: #94a3b8; background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer;">🔬 2. Những Gì Model Đã Suy Luận Thu Thập Được</button>
+    </div>
+
+    <!-- Tab 1: Creature Creator & Setup -->
+    <div id="tab-content-create" style="display: flex; flex: 1; overflow: hidden; gap: 1px; background: #1e293b;">
+      <!-- Left Config Sub-panel -->
+      <div style="flex: 1.25; background: #0b1120; padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;">
+        <!-- 1. Identity & Gemini AI Generation -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="setup-creature-name" style="font-size: .72rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">Đặt Tên Sinh Vật / Loài:</label>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <button id="btn-toggle-key-input" class="btn-dock" style="font-size: .66rem; padding: 2px 7px;" title="Cấu hình Gemini API Key riêng (tùy chọn)">🔑 Cấu hình Key</button>
+              <button id="btn-gemini-name" class="btn-dock" style="font-size: .72rem; padding: 3px 10px; background: linear-gradient(135deg, #0284c7, #6366f1); color: #fff; border-color: #38bdf8; font-weight: 700; display: flex; align-items: center; gap: 4px;" title="Tự động sinh khi chọn 3 đặc điểm, hoặc bấm để đổi tên khác">
+                <span id="gemini-name-icon">🎲</span> <span id="gemini-name-text">Đổi tên khác (Gemini AI)</span>
+              </button>
+            </div>
+          </div>
+          <div id="container-gemini-key" style="display: none; margin-top: 6px; background: rgba(15, 23, 42, 0.95); border: 1px dashed #38bdf8; border-radius: 6px; padding: 6px 10px; gap: 6px; align-items: center;">
+            <input type="password" id="input-gemini-key" style="flex: 1; padding: 4px 8px; background: #0b1120; border: 1px solid #334155; border-radius: 4px; color: #f8fafc; font-size: .72rem;" placeholder="Dán Gemini API Key (tùy chọn - mặc định đã có 14 Keys xoay vòng)">
+            <button id="btn-save-gemini-key" class="btn-dock" style="font-size: .68rem; padding: 4px 8px;">Lưu</button>
+          </div>
+          <input type="text" id="setup-creature-name" value="Thỏ Đồng Cỏ" style="width: 100%; margin-top: 6px; padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f8fafc; font-size: .85rem; font-weight: 600; outline: none; box-sizing: border-box;" placeholder="Tên sinh vật tự động tải sau khi chọn 3 đặc điểm...">
+          <div id="naming-status-indicator" style="font-size: .68rem; color: #38bdf8; font-style: italic; min-height: 16px; margin-top: 3px;">✨ Tự động đặt tên khoa học & tự nhiên sau khi chọn 3 đặc điểm</div>
+
+          <!-- Mô Tả Ngoại Hình Cơ Bản (Tối đa 500 ký tự) -->
+          <div style="margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label for="setup-creature-desc" style="font-size: .72rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">Mô Tả Cơ Bản Sinh Vật (Dùng cho AGY AI & Blender 3D):</label>
+              <span id="setup-desc-counter" style="font-size: .66rem; color: #94a3b8; font-family: ui-monospace, monospace;">0 / 500</span>
+            </div>
+            <textarea id="setup-creature-desc" maxlength="500" rows="3" style="width: 100%; margin-top: 5px; padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f8fafc; font-size: .76rem; line-height: 1.4; outline: none; box-sizing: border-box; resize: vertical; font-family: inherit;" placeholder="Nhập đặc điểm ngoại hình cơ bản (tối đa 500 ký tự)... Ví dụ: Thỏ rừng bốn chân nhỏ gọn, lông màu xám tro pha vệt cát ngụy trang, tai dài vểnh nghe ngóng, mắt to tròn đen láy, mõm ngắn có râu cảm biến, chân sau dài bật nhảy thoăn thoắt..."></textarea>
+            <div style="font-size: .64rem; color: #64748b; margin-top: 3px; font-style: italic;">Prompt này sẽ được tổng hợp cùng các chỉ số sinh thái gửi tới AGY AI để vẽ ảnh concept trước, rồi truyền vào Blender dựng 3D và animation.</div>
+          </div>
+        </div>
+
+        <!-- Giới Sinh Học / Dạng Sống (Lifeform Kingdom: Động vật, Thực vật, Nấm, Lai) -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: .72rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">Dạng Sống Sinh Học (Kingdom / Phylum):</span>
+            <span style="font-size: .64rem; color: #94a3b8;">Thực vật, động vật, nấm, dị thể</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-top: 5px;">
+            <div id="kingdom-opt-fauna" class="kingdom-card active" data-kingdom="FAUNA" style="padding: 6px 4px; border-radius: 8px; border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.15); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.15rem;">🐾</div>
+              <div style="font-size: .68rem; font-weight: 700; color: #38bdf8; margin-top: 1px;">ĐỘNG VẬT</div>
+              <div style="font-size: .55rem; color: #94a3b8;">Bò sát, thú, chim, cá</div>
+            </div>
+            <div id="kingdom-opt-flora" class="kingdom-card" data-kingdom="FLORA" style="padding: 6px 4px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.15rem;">🌿</div>
+              <div style="font-size: .68rem; font-weight: 700; color: #cbd5e1; margin-top: 1px;">THỰC VẬT</div>
+              <div style="font-size: .55rem; color: #94a3b8;">Cây ăn thịt, rễ bước, hoa bẫy</div>
+            </div>
+            <div id="kingdom-opt-fungi" class="kingdom-card" data-kingdom="FUNGI" style="padding: 6px 4px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.15rem;">🍄</div>
+              <div style="font-size: .68rem; font-weight: 700; color: #cbd5e1; margin-top: 1px;">NẤM / BÀO TỬ</div>
+              <div style="font-size: .55rem; color: #94a3b8;">Phát quang, bọng acid, trôi dạt</div>
+            </div>
+            <div id="kingdom-opt-hybrid" class="kingdom-card" data-kingdom="HYBRID" style="padding: 6px 4px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.15rem;">🧬</div>
+              <div style="font-size: .68rem; font-weight: 700; color: #cbd5e1; margin-top: 1px;">SINH VẬT LAI</div>
+              <div style="font-size: .55rem; color: #94a3b8;">Cộng sinh thú - thực vật</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Tiêu Chí 1: Môi Trường Sống & Vận Động (Domain / Locomotion) -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: .72rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">1. Môi Trường Sống & Vận Động (Domain):</span>
+            <span style="font-size: .64rem; color: #94a3b8;">Không gian sinh tồn</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-top: 5px;">
+            <div id="domain-opt-can" class="domain-card active" data-domain="CAN" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.15); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🌿</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #38bdf8; margin-top: 2px;">TRÊN CẠN</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Di chuyển phụ thuộc địa hình, tương tác vật cản & cỏ cây</div>
+            </div>
+            <div id="domain-opt-nuoc" class="domain-card" data-domain="NUOC" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🌊</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #cbd5e1; margin-top: 2px;">DƯỚI NƯỚC</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Không gian 3D tự do, tốc độ ổn định, giới hạn vùng nước</div>
+            </div>
+            <div id="domain-opt-troi" class="domain-card" data-domain="TROI" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🦅</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #cbd5e1; margin-top: 2px;">TRÊN KHÔNG</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Cơ động cực cao, bỏ qua địa hình, nhạy cảm với gió bão</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Tiêu Chí 2: Phương Thức Nạp Năng Lượng (Trophic Level / Diet) -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: .72rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">2. Nguồn Dinh Dưỡng (Diet / Trophic Level):</span>
+            <span style="font-size: .64rem; color: #94a3b8;">Vòng lặp chuỗi thức ăn</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-top: 5px;">
+            <div id="diet-opt-herbivore" class="diet-card active" data-diet="HERBIVORE" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.15); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🥗</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #38bdf8; margin-top: 2px;">THỰC VẬT</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Thức ăn cố định, calo thấp, né thú săn mồi & tối ưu lộ trình</div>
+            </div>
+            <div id="diet-opt-carnivore" class="diet-card" data-diet="CARNIVORE" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🥩</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #cbd5e1; margin-top: 2px;">ĂN THỊT</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Năng lượng cao, con mồi chuyển động phản kháng, phục kích rượt đuổi</div>
+            </div>
+            <div id="diet-opt-omnivore" class="diet-card" data-diet="OMNIVORE" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🍲</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #cbd5e1; margin-top: 2px;">ĂN TẠP / XÁC</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Dễ thích nghi, ăn cả quả mọng lẫn xác động vật, chỉ số cân bằng</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Tiêu Chí 3: Chiến Lược Sinh Tồn & Thể Trạng (r-K Selection) -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: .72rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">3. Chiến Lược Sinh Tồn (r/K Selection):</span>
+            <span style="font-size: .64rem; color: #94a3b8;">Duy trì nòi giống</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-top: 5px;">
+            <div id="strat-opt-r" class="strat-card active" data-strat="STRAT_R" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.15); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🐜</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #38bdf8; margin-top: 2px;">CHIẾN LƯỢC r</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Thể trạng nhỏ, sinh sản cực nhanh, lấy số đông bù đắp tử vong</div>
+            </div>
+            <div id="strat-opt-k" class="strat-card" data-strat="STRAT_K" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🦣</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #cbd5e1; margin-top: 2px;">CHIẾN LƯỢC K</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Kích thước lớn, giáp dày máu trâu, sinh sản chậm, cá thể áp đảo</div>
+            </div>
+            <div id="strat-opt-social" class="strat-card" data-strat="STRAT_SOCIAL" style="padding: 7px 5px; border-radius: 8px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); cursor: pointer; text-align: center;">
+              <div style="font-size: 1.25rem;">🐺</div>
+              <div style="font-size: .72rem; font-weight: 700; color: #cbd5e1; margin-top: 2px;">XÃ HỘI (PACK)</div>
+              <div style="font-size: .58rem; color: #94a3b8; margin-top: 1px;">Cân bằng, nhận buff sức mạnh khi đi theo nhóm nhỏ, tương trợ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Archetype Matrix Live Status Banner -->
+        <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span id="setup-archetype-code" style="font-size: .7rem; font-family: ui-monospace, monospace; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-weight: 700;">CAN · HERB · r (1/27)</span>
+              <span id="setup-archetype-title" style="font-size: .82rem; font-weight: 800; color: #f8fafc;">Thỏ Đồng Cỏ</span>
+              <span id="setup-archetype-latin" style="font-size: .72rem; font-style: italic; color: #a78bfa;">(Sylvilagus Campestris)</span>
+            </div>
+            <div id="setup-archetype-niche" style="font-size: .64rem; color: #94a3b8; margin-top: 2px;">Loài gặm nhấm bầy đàn tầng thấp, sinh sản cực nhanh.</div>
+          </div>
+          <button id="btn-load-rec-traits" class="btn-dock" style="font-size: .68rem; padding: 4px 9px; color: #facc15; border-color: rgba(250, 204, 21, 0.4); white-space: nowrap;" title="Nạp 6 chỉ số chuẩn của Archetype này">🎯 Nạp chỉ số chuẩn</button>
+        </div>
+
+        <!-- 5. Trait Allocation -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: .72rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">Phân Bổ Thuộc Tính (Max 7):</span>
+              <div style="display: flex; gap: 4px;" id="container-tier-budgets">
+                <button type="button" class="btn-tier-budget active" data-budget="16" style="padding: 2px 7px; font-size: .64rem; font-weight: 700; border-radius: 4px; border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.2); color: #38bdf8; cursor: pointer;" title="Quỹ điểm Tier 1: Con mồi, bầy đàn r-selection">16đ</button>
+                <button type="button" class="btn-tier-budget" data-budget="20" style="padding: 2px 7px; font-size: .64rem; font-weight: 700; border-radius: 4px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); color: #94a3b8; cursor: pointer;" title="Quỹ điểm Tier 2: Trưởng thành, K-selection">20đ</button>
+                <button type="button" class="btn-tier-budget" data-budget="23" style="padding: 2px 7px; font-size: .64rem; font-weight: 700; border-radius: 4px; border: 1px solid #334155; background: rgba(15, 23, 42, 0.8); color: #94a3b8; cursor: pointer;" title="Quỹ điểm Tier 3: Cự thú Apex đỉnh cao">23đ (Apex)</button>
+              </div>
+            </div>
+            <span style="font-size: .72rem; color: #facc15; font-weight: 700;">Quỹ điểm: <b id="setup-points-left">0</b> / <span id="setup-points-total">16</span></span>
+          </div>
+          <div id="setup-traits-container" style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Render 6 traits with minus, val, plus -->
+          </div>
+        </div>
+
+        <!-- 6. Features Selection -->
+        <div>
+          <span style="font-size: .72rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">Đặc Điểm Sinh Học Đột Biến (Features):</span>
+          <div id="setup-features-container" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px;">
+            <!-- Badges with checkboxes -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Live Preview Sub-panel -->
+      <div style="flex: 0.9; background: #080d1a; padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
+        <span style="font-size: .74rem; font-weight: 700; color: #38bdf8; text-transform: uppercase;">Xem Trước Sinh Vật Của Bạn</span>
+
+        <!-- Card preview -->
+        <div style="background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div id="preview-avatar" style="width: 56px; height: 56px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); border: 1.5px solid #38bdf8; display: flex; align-items: center; justify-content: center; font-size: 2rem;">🌿</div>
+            <div>
+              <div id="preview-name" style="font-size: 1rem; font-weight: 800; color: #f8fafc;">Thỏ Đồng Cỏ</div>
+              <div id="preview-latin" style="font-size: .74rem; font-style: italic; color: #a78bfa; margin-top: 1px;">Sylvilagus Campestris</div>
+              <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
+                <span id="preview-domain-tag" style="font-size: .62rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(74, 222, 128, 0.15); color: #4ade80;">TRÊN CẠN</span>
+                <span id="preview-diet-tag" style="font-size: .62rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8;">THỰC VẬT</span>
+                <span id="preview-strat-tag" style="font-size: .62rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: rgba(250, 204, 21, 0.15); color: #facc15;">CHIẾN LƯỢC r</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Niche Summary Box -->
+          <div style="background: rgba(0,0,0,0.35); padding: 8px 10px; border-radius: 6px; border-left: 2px solid #38bdf8;">
+            <div style="font-size: .62rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">Vị trí sinh thái (Niche):</div>
+            <div id="preview-niche" style="font-size: .7rem; color: #e2e8f0; margin-top: 2px;">Loài gặm nhấm bầy đàn tầng thấp, sinh sản cực nhanh.</div>
+            <div id="preview-lore" style="font-size: .65rem; color: #64748b; margin-top: 3px; font-style: italic;">Gặm cỏ dại và quả mọng trên mặt đất, liên tục di chuyển theo bầy.</div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+            <div>
+              <div style="font-size: .64rem; color: #94a3b8;">Máu Cơ Bản</div>
+              <div id="preview-hp" style="font-size: .92rem; font-weight: 800; color: #4ade80;">100 HP</div>
+            </div>
+            <div>
+              <div style="font-size: .64rem; color: #94a3b8;">Năng Lượng Tối Đa</div>
+              <div id="preview-energy" style="font-size: .92rem; font-weight: 800; color: #facc15;">70 E</div>
+            </div>
+            <div>
+              <div style="font-size: .64rem; color: #94a3b8;">Bán Kính Tầm Nhìn (Fog)</div>
+              <div id="preview-vision" style="font-size: .92rem; font-weight: 800; color: #38bdf8;">6 ô</div>
+            </div>
+            <div>
+              <div style="font-size: .64rem; color: #94a3b8;">Tốc Độ Di Chuyển</div>
+              <div id="preview-speed" style="font-size: .92rem; font-weight: 800; color: #c084fc;">4 / 5</div>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: .66rem; font-weight: 700; color: #94a3b8; margin-bottom: 4px;">Đặc Điểm Sinh Học Đã Kích Hoạt:</div>
+            <div id="preview-features-list" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
+          </div>
+
+          <!-- User Custom Description & Concept Status -->
+          <div id="preview-user-desc-container" style="background: rgba(0,0,0,0.35); border-left: 2px solid #8b5cf6; padding: 7px 10px; border-radius: 6px; display: none;">
+            <div style="font-size: .62rem; color: #a78bfa; font-weight: 700; text-transform: uppercase;">Mô tả sinh vật của bạn:</div>
+            <div id="preview-user-desc-content" style="font-size: .68rem; color: #e2e8f0; margin-top: 2px; line-height: 1.35; font-style: italic;"></div>
+          </div>
+
+          <!-- AGY Concept Image Container (nếu có) -->
+          <div id="preview-concept-box" style="display: none; background: rgba(0,0,0,0.4); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 8px; overflow: hidden; padding: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: .64rem; font-weight: 700; color: #c084fc; text-transform: uppercase;">🎨 Ảnh Concept Sinh Vật (AGY AI):</span>
+              <span id="preview-concept-badge" style="font-size: .60rem; color: #4ade80; background: rgba(74, 222, 128, 0.15); padding: 1px 6px; border-radius: 3px;">Hoàn tất</span>
+            </div>
+            <img id="preview-concept-image" src="" alt="Creature Concept" style="width: 100%; max-height: 160px; object-fit: contain; border-radius: 6px; background: #0b1120;" />
+          </div>
+
+          <button id="btn-create-concept-3d" class="btn-dock" style="background: linear-gradient(135deg, #0284c7, #8b5cf6); color: #ffffff; border-color: #38bdf8; font-weight: 700; padding: 8px 12px; font-size: .75rem; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 0 12px rgba(139, 92, 246, 0.35);" title="Tổng hợp prompt và thuộc tính gửi cho AGY tạo ảnh concept trước, sau đó đưa sang Blender làm 3D">
+            <span id="icon-create-concept">🎨</span>
+            <span id="text-create-concept">Vẽ Ảnh Concept (AGY) & Dựng 3D (Blender)</span>
+          </button>
+          <div id="status-create-concept" style="font-size: .65rem; color: #38bdf8; text-align: center; min-height: 14px; font-style: italic;"></div>
+
+          <div style="font-size: .68rem; color: #94a3b8; line-height: 1.4; border-top: 1px solid #1e293b; padding-top: 8px;">
+            🔒 <b>Chế độ góc nhìn riêng:</b> Sau khi khởi sinh, bạn sẽ được tự động đưa vào <b>Góc nhìn thứ 3</b> bám sát sinh vật này với <b>Fog of War</b> riêng biệt. Bạn sẽ chỉ nhìn thấy thế giới xung quanh vị trí của mình!
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Inferred Laws & Knowledge -->
+    <div id="tab-content-laws" style="display: none; flex: 1; overflow-y: auto; background: #080d1a; padding: 22px; flex-direction: column; gap: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span style="font-size: .85rem; font-weight: 700; color: #f59e0b; text-transform: uppercase;">Các Quy Luật Thế Giới Mô Hình Đã Suy Luận Thu Thập Được</span>
+          <div style="font-size: .72rem; color: #94a3b8; margin-top: 2px;">Các định luật tự nhiên được quy nạp tự động qua trải nghiệm sinh tồn thực tế trong thế giới Genesis Zero.</div>
+        </div>
+        <span id="tab-laws-count" style="font-size: .72rem; color: #94a3b8;">4 quy luật</span>
+      </div>
+
+      <div id="tab-laws-list" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Inferred laws cards rendered here -->
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding: 14px 22px; background: rgba(15, 23, 42, 0.95); border-top: 1px solid #1e293b; display: flex; align-items: center; justify-content: space-between;">
+      <div style="font-size: .72rem; color: #64748b;">
+        Mỗi người chỉ có góc nhìn của sinh vật mình tạo ra · Fog of War kích hoạt mặc định
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button id="btn-setup-spawn" class="btn-dock" style="background: #0284c7; color: #ffffff; border-color: #38bdf8; font-weight: 800; padding: 9px 24px; font-size: .84rem; box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);">🚀 Khởi Sinh & Vào Thế Giới (Góc nhìn riêng)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reveal Phase Grand Ceremony Modal -->
+<div id="reveal-modal">
+  <div class="reveal-content">
+    <div class="reveal-title">🏆 ĐẠI KHAI HOÀN — ĐỊNH LUẬT VŨ TRỤ</div>
+    <div class="reveal-subtitle">Ván đấu kết thúc. Các chân lý vật lý ẩn giấu đã được vén màn toàn diện!</div>
+    
+    <div class="podiums-container">
+      <div class="podium-card gold">
+        <div class="podium-rank">🥇</div>
+        <div class="podium-title">🏆 Nhà khoa học</div>
+        <div class="podium-winner" id="vic-scientist">—</div>
+        <div class="podium-detail" id="vic-scientist-detail">Điểm khám phá cao nhất</div>
+      </div>
+      <div class="podium-card silver">
+        <div class="podium-rank">🥈</div>
+        <div class="podium-title">🛡️ Kẻ sống sót</div>
+        <div class="podium-winner" id="vic-survivor">—</div>
+        <div class="podium-detail" id="vic-survivor-detail">Tỉ lệ sinh tồn bền bỉ nhất</div>
+      </div>
+      <div class="podium-card bronze">
+        <div class="podium-rank">🥉</div>
+        <div class="podium-title">⚡ Người đầu tiên</div>
+        <div class="podium-winner" id="vic-pioneer">—</div>
+        <div class="podium-detail" id="vic-pioneer-detail">Phát hiện chân lý sớm nhất</div>
+      </div>
+    </div>
+
+    <div class="laws-section">
+      <h3>📜 CHÂN LÝ VẬT LÝ TOÀN CẢNH (REVEALED LAWS):</h3>
+      <div id="reveal-laws-list" style="display: flex; flex-direction: column; gap: 6px;">
+        <div class="law-card">Đang tổng hợp các định luật vật lý...</div>
+      </div>
+    </div>
+
+    <div>
+      <button id="btn-close-reveal" class="btn-tool" style="padding: 8px 24px; font-size: .85rem; background: #f59e0b; color: #020617; font-weight: 800; border: none;">Tiếp tục chiêm ngưỡng cảnh 3D</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timeline Replay Dock -->
+<div id="timeline-dock">
+  <div class="dock-group">
+    <button id="btn-playback-toggle" class="btn-dock" title="Phát / Tạm dừng (Phím Cách)">⏸ Tạm dừng</button>
+    <button id="btn-rewind-10" class="btn-dock" title="Lùi 10 lượt">⏪ -10</button>
+    <button id="btn-forward-10" class="btn-dock" title="Tới 10 lượt">+10 ⏩</button>
+  </div>
+
+  <div class="dock-divider"></div>
+
+  <div class="dock-group">
+    <button id="btn-speed-1x" class="btn-dock active" title="Tốc độ 1x">1x</button>
+    <button id="btn-speed-2x" class="btn-dock" title="Tốc độ 2x">2x</button>
+    <button id="btn-speed-5x" class="btn-dock" title="Tốc độ 5x">5x</button>
+  </div>
+
+  <div class="dock-divider"></div>
+
+  <div class="dock-group">
+    <input type="range" id="timeline-slider" class="slider-control" min="0" max="0" value="0" title="Tua dòng thời gian">
+    <span id="timeline-tick-display" title="Lượt hiện tại / Lượt mới nhất">Lượt 0 / 0</span>
+    <button id="btn-live-sync" class="btn-dock live active" title="Đồng bộ trực tiếp với server">🔴 LIVE</button>
+  </div>
+
+  <div class="dock-divider"></div>
+
+  <div class="dock-group">
+    <button id="btn-audio-toggle" class="btn-dock" title="Bật/Tắt Âm thanh">🔊</button>
+    <input type="range" id="audio-volume-slider" class="slider-control" min="0" max="1" step="0.05" value="0.7" title="Âm lượng tổng">
+  </div>
+</div>
+
+<!-- Hint / Controls Bar -->
+<div id="hint">
+  <div>
+    Chuột trái: <b>Xoay</b> &nbsp;·&nbsp; Chuột phải / Cuộn: <b>Thu phóng</b> &nbsp;·&nbsp; Click sinh vật: <b>Soi chi tiết</b> &nbsp;·&nbsp; Phím <b>1/2/3</b>: Đổi góc cam &nbsp;·&nbsp; Phím <b>F</b>: Theo dõi
+  </div>
+  <div>
+    Tia sáng luật: <b>Không kèm chữ trước REVEAL</b> (quan sát gián tiếp).
+  </div>
+</div>
+
 <script src="vendor/three.min.js"></script>
 <script src="vendor/GLTFLoader.js"></script>
 <script src="watch3d.js"></script>

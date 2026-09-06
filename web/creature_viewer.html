@@ -1,0 +1,2025 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genesis Zero · Trình Xem Sinh Vật 3D (3D Creature Studio)</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐺</text></svg>">
+  <style>
+    :root {
+      --bg-space: #050811;
+      --bg-card: rgba(13, 19, 33, 0.88);
+      --bg-card-hover: rgba(26, 36, 61, 0.92);
+      --bg-panel: rgba(15, 23, 42, 0.85);
+      --border-hud: rgba(56, 189, 248, 0.22);
+      --border-active: #38bdf8;
+      --border-amber: rgba(245, 158, 11, 0.4);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent-cyan: #38bdf8;
+      --accent-cyan-glow: rgba(56, 189, 248, 0.35);
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-violet: #a855f7;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      user-select: none;
+    }
+
+    /* 3D Viewport */
+    #viewport-container {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      cursor: grab;
+    }
+    #viewport-container:active {
+      cursor: grabbing;
+    }
+    #viewport-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Loading Overlay */
+    #loading-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 50;
+      background: rgba(13, 19, 33, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-hud);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 25px var(--accent-cyan-glow);
+      border-radius: 16px;
+      padding: 20px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    #loading-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: var(--accent-cyan);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      letter-spacing: 0.5px;
+    }
+
+    /* Top HUD Header */
+    header.hud-header {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+    }
+    .brand-cluster {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-hud);
+      border-radius: 14px;
+      padding: 10px 20px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(56, 189, 248, 0.08);
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-cluster h1 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-cluster h1 .sep {
+      color: var(--text-dim);
+      font-weight: 300;
+      margin: 0 2px;
+    }
+    .brand-cluster .version-badge {
+      font-size: 0.72rem;
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .header-quick-actions {
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+    .header-btn {
+      background: var(--bg-card);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-hud);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      text-decoration: none;
+    }
+    .header-btn:hover {
+      background: rgba(30, 41, 59, 0.95);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      transform: translateY(-1px);
+    }
+
+    /* Left Sidebar: Creature Catalog */
+    aside.sidebar {
+      position: absolute;
+      top: 80px;
+      bottom: 24px;
+      left: 16px;
+      width: 360px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-hud);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    aside.sidebar.collapsed {
+      transform: translateX(-380px);
+    }
+    .sidebar-header {
+      padding: 14px 16px 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(13, 19, 33, 0.7);
+    }
+    .sidebar-header .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .sidebar-header h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .search-box {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-box:focus {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+    .search-box::placeholder {
+      color: var(--text-dim);
+    }
+
+    /* Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      padding: 10px 14px;
+      gap: 6px;
+      overflow-x: auto;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      scrollbar-width: none;
+    }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab-btn:hover {
+      background: rgba(30, 41, 59, 0.8);
+      color: var(--text-main);
+    }
+    .tab-btn.active {
+      background: rgba(56, 189, 248, 0.18);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* Creature List Cards */
+    .creature-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(56, 189, 248, 0.3) transparent;
+    }
+    .creature-card {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .creature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(56, 189, 248, 0.4);
+      transform: translateY(-1px);
+    }
+    .creature-card.active {
+      background: rgba(56, 189, 248, 0.12);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+    }
+    .creature-card-icon {
+      font-size: 1.8rem;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2, 6, 23, 0.6);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      flex-shrink: 0;
+    }
+    .creature-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .creature-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
+    .creature-card-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .creature-code-pill {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.16);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .creature-card-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .creature-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .domain-tag {
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .domain-tag.CAN { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+    .domain-tag.NUOC { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .domain-tag.TROI { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .domain-tag.EVO { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    /* Right Inspector Panel: Biological Traits HUD */
+    aside.inspector-panel {
+      position: absolute;
+      top: 80px;
+      bottom: 24px;
+      right: 16px;
+      width: 360px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-hud);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+      overflow-y: auto;
+      padding: 16px;
+      gap: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(56, 189, 248, 0.3) transparent;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    aside.inspector-panel.collapsed {
+      transform: translateX(380px);
+    }
+
+    .creature-header-box {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+    }
+    .panel-section-title {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .creature-header-box h2 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .latin-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .creature-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    /* 6 Founder Traits HUD */
+    .traits-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .trait-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .trait-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .trait-name {
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .trait-value {
+      font-family: var(--font-mono);
+      color: var(--text-main);
+    }
+    .trait-meter {
+      width: 100%;
+      height: 6px;
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .trait-meter-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .trait-meter-fill.brain { background: linear-gradient(90deg, #38bdf8, #0284c7); }
+    .trait-meter-fill.attack { background: linear-gradient(90deg, #f43f5e, #e11d48); }
+    .trait-meter-fill.armor { background: linear-gradient(90deg, #f59e0b, #d97706); }
+    .trait-meter-fill.speed { background: linear-gradient(90deg, #10b981, #059669); }
+    .trait-meter-fill.sense { background: linear-gradient(90deg, #a855f7, #9333ea); }
+    .trait-meter-fill.stomach { background: linear-gradient(90deg, #06b6d4, #0891b2); }
+
+    /* Biological Features Cluster */
+    .tags-cluster {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .feature-tag {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    /* 3D Mesh & Technical Metrics Grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .metric-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .metric-label {
+      font-size: 0.66rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+    }
+    .metric-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      margin-top: 2px;
+    }
+
+    /* Action Buttons in Inspector */
+    .action-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-action {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    .btn-action.primary {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+    .btn-action.primary:hover {
+      background: var(--accent-cyan);
+      color: #020617;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+    }
+    .btn-action.secondary-violet {
+      background: rgba(168, 85, 247, 0.16);
+      border-color: var(--accent-violet);
+      color: #c084fc;
+    }
+    .btn-action.secondary-violet:hover {
+      background: var(--accent-violet);
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(168, 85, 247, 0.4);
+    }
+    .btn-action.secondary {
+      background: rgba(30, 41, 59, 0.7);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+    }
+    .btn-action.secondary:hover {
+      background: rgba(51, 65, 85, 0.9);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Floating Bottom Animation & Playback Toolbar */
+    .playback-toolbar {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-hud);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(56, 189, 248, 0.1);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      max-width: calc(100vw - 32px);
+      overflow-x: auto;
+    }
+    .anim-clip-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .clip-btn {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .clip-btn:hover {
+      background: rgba(30, 41, 59, 0.9);
+      border-color: rgba(56, 189, 248, 0.3);
+      color: var(--text-main);
+    }
+    .clip-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+    }
+    .toolbar-divider {
+      width: 1px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+    .speed-control-group, .overlay-control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .speed-btn, .tool-btn {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .speed-btn:hover, .tool-btn:hover {
+      background: rgba(30, 41, 59, 0.9);
+      color: var(--text-main);
+    }
+    .speed-btn.active, .tool-btn.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    /* Turnaround 4-View Modal Dialog */
+    dialog#turnaround-modal {
+      position: fixed;
+      inset: 0;
+      margin: auto;
+      width: 90vw;
+      max-width: 1100px;
+      max-height: 88vh;
+      background: rgba(10, 15, 29, 0.96);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-hud);
+      border-radius: 20px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(56, 189, 248, 0.2);
+      padding: 0;
+      color: var(--text-main);
+      z-index: 100;
+      outline: none;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    dialog#turnaround-modal:not([open]) {
+      display: none;
+    }
+    dialog#turnaround-modal::backdrop {
+      background: rgba(2, 6, 23, 0.85);
+      backdrop-filter: blur(8px);
+    }
+    .modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .modal-header h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-close-btn {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+    }
+    .modal-close-btn:hover {
+      background: rgba(244, 63, 94, 0.2);
+      border-color: var(--accent-rose);
+      color: var(--accent-rose);
+    }
+    .modal-body {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .modal-body img {
+      max-width: 100%;
+      max-height: 62vh;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      object-fit: contain;
+    }
+    .modal-caption {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.5;
+      max-width: 800px;
+    }
+    .turnaround-grid-labels {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 960px;
+      margin-top: 4px;
+    }
+    .angle-label-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+    }
+    .angle-label-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+    .angle-label-desc {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* Fallback Diagram when JPEG not found */
+    .turnaround-fallback-diagram {
+      width: 100%;
+      max-width: 960px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px dashed rgba(56, 189, 248, 0.35);
+      border-radius: 12px;
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* FPS & Camera Stats HUD */
+    .hud-stats {
+      position: absolute;
+      bottom: 24px;
+      left: 390px;
+      z-index: 20;
+      display: flex;
+      gap: 12px;
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      background: rgba(13, 19, 33, 0.7);
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      pointer-events: none;
+    }
+    .hud-stats span b {
+      color: var(--accent-cyan);
+    }
+  </style>
+
+  <!-- Local Standalone Vendor Three.js & GLTFLoader (Zero External CDN) -->
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+  <!-- Embedded Offline Base64 Payload -->
+  <script src="creature_models_data.js"></script>
+</head>
+<body>
+
+  <!-- Loading State Indicator -->
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-message">Đang nạp mô hình 3D sinh vật...</div>
+  </div>
+
+  <!-- 3D Canvas Viewport -->
+  <div id="viewport-container"></div>
+
+  <!-- Top HUD Header -->
+  <header class="hud-header">
+    <div class="brand-cluster">
+      <h1>🐺 Genesis Zero <span class="sep">|</span> Trình Xem Sinh Vật 3D</h1>
+      <span class="version-badge">Blender 5.2.1 LTS · 8-Action Rigged</span>
+    </div>
+    <div class="header-quick-actions">
+      <a href="watch3d.html" class="header-btn">🌐 3D Spectator</a>
+      <a href="flora_viewer.html" class="header-btn">🌿 Thư Viện Thực Vật</a>
+      <label class="header-btn">
+        📁 Mở GLB Cục Bộ
+        <input type="file" id="local-file-input" accept=".glb,.gltf" style="display:none;" onchange="handleLocalFile(event)">
+      </label>
+    </div>
+  </header>
+
+  <!-- Left Sidebar: 10 Species Catalog -->
+  <aside class="sidebar" id="creature-sidebar">
+    <div class="sidebar-header">
+      <div class="title-row">
+        <h2>🐾 Danh Mục Sinh Vật (<span id="creature-count">10</span>)</h2>
+      </div>
+      <input type="text" id="search-input" class="search-box" placeholder="Tìm theo tên loài, mã L1..L5, W1, A1..." oninput="onSearchChange(event)">
+    </div>
+    <div class="filter-tabs" id="domain-tabs">
+      <button class="tab-btn active" data-domain="all" onclick="filterDomain('all')">Tất cả (10)</button>
+      <button class="tab-btn" data-domain="CAN" onclick="filterDomain('CAN')">🏔️ Cạn (5)</button>
+      <button class="tab-btn" data-domain="NUOC" onclick="filterDomain('NUOC')">🌊 Nước (1)</button>
+      <button class="tab-btn" data-domain="TROI" onclick="filterDomain('TROI')">🦅 Trời (1)</button>
+      <button class="tab-btn" data-domain="EVO" onclick="filterDomain('EVO')">✨ Đặc Thù (3)</button>
+    </div>
+    <div class="creature-list" id="creature-list">
+      <!-- Species cards generated by JS -->
+    </div>
+  </aside>
+
+  <!-- Floating Bottom 8-Animation Control Bar -->
+  <div class="playback-toolbar" id="playback-toolbar">
+    <!-- 8 Canonical Action Buttons -->
+    <div class="anim-clip-group" id="anim-clip-group">
+      <button class="clip-btn active" data-anim="Idle_Normal" onclick="switchAnimation('Idle_Normal')">🟢 Idle Normal</button>
+      <button class="clip-btn" data-anim="Idle_Alert" onclick="switchAnimation('Idle_Alert')">🟡 Idle Alert</button>
+      <button class="clip-btn" data-anim="Walk" onclick="switchAnimation('Walk')">🚶 Walk</button>
+      <button class="clip-btn" data-anim="Run" onclick="switchAnimation('Run')">⚡ Run</button>
+      <button class="clip-btn" data-anim="Attack" onclick="switchAnimation('Attack')">⚔️ Attack</button>
+      <button class="clip-btn" data-anim="Hurt_Defend" onclick="switchAnimation('Hurt_Defend')">🛡️ Hurt / Defend</button>
+      <button class="clip-btn" data-anim="Eat" onclick="switchAnimation('Eat')">🍖 Eat</button>
+      <button class="clip-btn" data-anim="Death" onclick="switchAnimation('Death')">💀 Death</button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Play/Pause & Speed Buttons -->
+    <div class="speed-control-group">
+      <button class="tool-btn" id="btn-toggle-play" onclick="togglePlay()">⏸ Tạm Dừng</button>
+      <button class="speed-btn" data-speed="0.25" onclick="setPlaybackSpeed(0.25)">0.25x</button>
+      <button class="speed-btn" data-speed="0.5" onclick="setPlaybackSpeed(0.5)">0.5x</button>
+      <button class="speed-btn active" data-speed="1.0" onclick="setPlaybackSpeed(1.0)">1.0x</button>
+      <button class="speed-btn" data-speed="2.0" onclick="setPlaybackSpeed(2.0)">2.0x</button>
+    </div>
+
+    <div class="toolbar-divider"></div>
+
+    <!-- Overlay & Inspection Tools -->
+    <div class="overlay-control-group">
+      <button class="tool-btn" id="btn-toggle-skeleton" onclick="toggleSkeleton()">🦴 Bộ Xương</button>
+      <button class="tool-btn" id="btn-toggle-wireframe" onclick="toggleWireframe()">🕸 Lưới Dây</button>
+      <button class="tool-btn" id="btn-toggle-turntable" onclick="toggleTurntable()">🔄 Tự Xoay</button>
+      <button class="tool-btn" onclick="resetCamera()">🎯 Căn Giữa</button>
+    </div>
+  </div>
+
+  <!-- Right Inspector Panel: Biological Traits HUD -->
+  <aside class="inspector-panel" id="inspector-panel">
+    <div class="creature-header-box">
+      <div class="panel-section-title">
+        <span>Hồ Sơ Sinh Học</span>
+        <span id="insp-domain-badge" class="domain-tag CAN">Tầng Cạn · CAN</span>
+      </div>
+      <h2 id="insp-name-vn">Thằn Lằn Cát Apex</h2>
+      <div id="insp-id-subtitle" class="latin-subtitle">Mã: L1 · sand_skink · Founder Tier 1</div>
+      <p id="insp-desc" class="creature-desc">Đầu óc 4, tay 3, đứng vững trên bốn chi với sọ lớn mang vân chạy dọc, bộ móng cong uy lực cùng khả năng thích nghi cao.</p>
+    </div>
+
+    <!-- 6 Vector Traits HUD (Brain, Attack, Armor, Speed, Sense, Stomach) -->
+    <div class="panel-section">
+      <div class="panel-section-title">
+        <span>Chỉ Số Sinh Học (6 Founder Traits)</span>
+        <span id="insp-trait-sum" style="color: var(--accent-cyan); font-family: var(--font-mono);">Tổng: 12</span>
+      </div>
+      <div class="traits-bars" id="traits-bars">
+        <div class="trait-row">
+          <div class="trait-header"><span class="trait-name">🧠 Não Bộ (Brain)</span><span class="trait-value" id="val-brain">4 / 5</span></div>
+          <div class="trait-meter"><div class="trait-meter-fill brain" id="bar-brain" style="width: 80%;"></div></div>
+        </div>
+        <div class="trait-row">
+          <div class="trait-header"><span class="trait-name">⚔️ Tấn Công (Attack)</span><span class="trait-value" id="val-attack">3 / 5</span></div>
+          <div class="trait-meter"><div class="trait-meter-fill attack" id="bar-attack" style="width: 60%;"></div></div>
+        </div>
+        <div class="trait-row">
+          <div class="trait-header"><span class="trait-name">🛡️ Giáp Thủ (Armor)</span><span class="trait-value" id="val-armor">1 / 5</span></div>
+          <div class="trait-meter"><div class="trait-meter-fill armor" id="bar-armor" style="width: 20%;"></div></div>
+        </div>
+        <div class="trait-row">
+          <div class="trait-header"><span class="trait-name">⚡ Tốc Độ (Speed)</span><span class="trait-value" id="val-speed">2 / 5</span></div>
+          <div class="trait-meter"><div class="trait-meter-fill speed" id="bar-speed" style="width: 40%;"></div></div>
+        </div>
+        <div class="trait-row">
+          <div class="trait-header"><span class="trait-name">👁️ Giác Quan (Sense)</span><span class="trait-value" id="val-sense">1 / 5</span></div>
+          <div class="trait-meter"><div class="trait-meter-fill sense" id="bar-sense" style="width: 20%;"></div></div>
+        </div>
+        <div class="trait-row">
+          <div class="trait-header"><span class="trait-name">🍖 Dạ Dày (Stomach)</span><span class="trait-value" id="val-stomach">1 / 5</span></div>
+          <div class="trait-meter"><div class="trait-meter-fill stomach" id="bar-stomach" style="width: 20%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Biological Features & Adaptations -->
+    <div class="panel-section">
+      <div class="panel-section-title">Đặc Điểm Tiến Hóa (Biological Features)</div>
+      <div class="tags-cluster" id="insp-features">
+        <span class="feature-tag">Lông Dài</span>
+        <span class="feature-tag">Lưỡng Cư</span>
+        <span class="feature-tag">Trèo Giỏi</span>
+      </div>
+    </div>
+
+    <!-- 3D Mesh & Rig Technical Metrics -->
+    <div class="panel-section">
+      <div class="panel-section-title">Thông Số Kỹ Thuật 3D & Khung Xương</div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="metric-label">Số Đỉnh (Verts)</div><div class="metric-value" id="mesh-verts">—</div></div>
+        <div class="metric-card"><div class="metric-label">Số Mặt (Faces)</div><div class="metric-value" id="mesh-faces">—</div></div>
+        <div class="metric-card"><div class="metric-label">Số Khớp (Bones)</div><div class="metric-value" id="rig-bones">—</div></div>
+        <div class="metric-card"><div class="metric-label">Animation Tracks</div><div class="metric-value" id="clip-count">8 Actions</div></div>
+      </div>
+    </div>
+
+    <!-- Action Links -->
+    <div class="action-group">
+      <button class="btn-action secondary-violet" id="btn-open-turnaround" onclick="openTurnaroundModal()">
+        📷 Bản Vẽ Thiết Kế 4 Góc (Turnaround)
+      </button>
+      <a href="#" target="_blank" class="btn-action primary" id="btn-download-blend" download>📥 Tải File Gốc Blender (.BLEND)</a>
+      <a href="#" target="_blank" class="btn-action secondary" id="btn-download-glb" download>🌐 Tải File Game-Ready (.GLB)</a>
+    </div>
+  </aside>
+
+  <!-- Turnaround 4-View Modal Dialog -->
+  <dialog id="turnaround-modal">
+    <div class="modal-header">
+      <h3 id="modal-title">📷 Bản Vẽ Thiết Kế 4 Mặt Chuẩn Scan (Turnaround Sheet)</h3>
+      <button class="modal-close-btn" onclick="closeTurnaroundModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-img-container" style="width: 100%; display: flex; justify-content: center;">
+        <img id="modal-img" src="" alt="Turnaround Sheet" onerror="handleTurnaroundImgError(this)">
+      </div>
+      <div class="turnaround-grid-labels">
+        <div class="angle-label-card">
+          <div class="angle-label-title">1. Phối Cảnh 3/4 (Hero)</div>
+          <div class="angle-label-desc">Góc nhìn 3D bao quát toàn diện tỷ lệ cơ thể và thần thái</div>
+        </div>
+        <div class="angle-label-card">
+          <div class="angle-label-title">2. Chính Diện (Front Ortho)</div>
+          <div class="angle-label-desc">Hình chiếu trực giao chính diện kiểm tra sọ, mắt và hàm</div>
+        </div>
+        <div class="angle-label-card">
+          <div class="angle-label-title">3. Mặt Bên (Side Ortho)</div>
+          <div class="angle-label-desc">Hình chiếu cạnh kiểm tra đường cong sống lưng và các chi</div>
+        </div>
+        <div class="angle-label-card">
+          <div class="angle-label-title">4. Đỉnh Đầu (Top-Down Ortho)</div>
+          <div class="angle-label-desc">Hình chiếu từ trên xuống xác định độ cân đối đối xứng</div>
+        </div>
+      </div>
+      <p class="modal-caption" id="modal-caption">
+        Bản vẽ kỹ thuật 4 góc độ chuẩn mực: Phối cảnh 3/4 (3/4 Perspective), Mặt Trước (Front Orthographic), Mặt Bên (Side Orthographic), và Nhìn Từ Trên Xuống (Top-Down Orthographic).
+      </p>
+    </div>
+  </dialog>
+
+  <!-- Viewport HUD Stats -->
+  <div class="hud-stats">
+    <span>FPS: <b id="fps-counter">60</b></span>
+    <span>Hành Động: <b id="hud-active-action">Idle_Normal</b></span>
+    <span>Tốc Độ: <b id="hud-active-speed">1.0x</b></span>
+  </div>
+
+  <!-- Main Web Application Script -->
+  <script>
+    /* =========================================================================
+       1. 10 SPECIES COMPREHENSIVE FAUNA DATABASE
+       Strictly maps canonical species, traits, aliases, and assets
+       ========================================================================= */
+    const CREATURE_DATABASE = [
+      {
+        id: "sand_skink",
+        speciesId: "L1",
+        slug: "sand_skink",
+        code: "L1",
+        seed: 1,
+        nameVN: "Thằn Lằn Cát Apex",
+        nameEN: "Sand Skink",
+        tier: "Founder Tier 1",
+        domain: "CAN",
+        domainVN: "Tầng Cạn",
+        icon: "🦎",
+        role: "Apex Predator (Gemma-2-9B)",
+        traits: { brain: 4, attack: 3, armor: 1, speed: 2, sense: 1, stomach: 1 },
+        traitSum: 12,
+        features: ["Lông Dài", "Lưỡng Cư", "Trèo Giỏi"],
+        desc: "Đầu óc 4, tay 3, đứng vững trên bốn chi với sọ lớn mang vân chạy dọc, bộ móng cong uy lực cùng khả năng thích nghi cao.",
+        glbUrl: "../assets/creatures/creature_L1_s1.glb",
+        blendUrl: "../assets/creatures/creature_L1_s1.blend",
+        turnaroundImg: "creature_images/sand_skink_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_L1_s1_turnaround.jpg",
+        aliases: ["sand_skink", "creature_L1_s1", "L1"]
+      },
+      {
+        id: "snow_ferret",
+        speciesId: "L2",
+        slug: "snow_ferret",
+        code: "L2",
+        seed: 1,
+        nameVN: "Chồn Tuyết Phục Kích",
+        nameEN: "Snow Ferret",
+        tier: "Founder Tier 1",
+        domain: "CAN",
+        domainVN: "Tầng Cạn",
+        icon: "🦡",
+        role: "Ambush Predator (Llama-3.1-8B)",
+        traits: { brain: 3, attack: 4, armor: 2, speed: 1, sense: 2, stomach: 0 },
+        traitSum: 12,
+        features: ["Biết Đào Hang", "Lông Dài", "Mắt Đêm"],
+        desc: "Sọ tròn cao, trán rộng, móng vuốt bè to chuyên bới đất, bộ lông dài rậm rạp cùng đôi mắt đêm to tròn.",
+        glbUrl: "../assets/creatures/creature_L2_s1.glb",
+        blendUrl: "../assets/creatures/creature_L2_s1.blend",
+        turnaroundImg: "creature_images/snow_ferret_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_L2_s1_turnaround.jpg",
+        aliases: ["snow_ferret", "creature_L2_s1", "L2"]
+      },
+      {
+        id: "alpine_ibex",
+        speciesId: "L3",
+        slug: "alpine_ibex",
+        code: "L3",
+        seed: 1,
+        nameVN: "Dê Sừng Núi Thích Nghi",
+        nameEN: "Alpine Ibex",
+        tier: "Founder Tier 1",
+        domain: "CAN",
+        domainVN: "Tầng Cạn",
+        icon: "🐐",
+        role: "Adaptable Herbivore (Mistral-7B)",
+        traits: { brain: 3, attack: 1, armor: 1, speed: 3, sense: 3, stomach: 1 },
+        traitSum: 12,
+        features: ["Lông Dài", "Túi Má", "Vảy Cứng"],
+        desc: "Cổ ngắn mập, má phồng thành túi dự trữ, chân dài gân guốc leo vách đá tuyết, lớp sừng bảo vệ sống lưng.",
+        glbUrl: "../assets/creatures/creature_L3_s1.glb",
+        blendUrl: "../assets/creatures/creature_L3_s1.blend",
+        turnaroundImg: "creature_images/alpine_ibex_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_L3_s1_turnaround.jpg",
+        aliases: ["alpine_ibex", "creature_L3_s1", "L3"]
+      },
+      {
+        id: "meadow_hare",
+        speciesId: "L4",
+        slug: "meadow_hare",
+        code: "L4",
+        seed: 1,
+        nameVN: "Thỏ Đồng Cỏ Bọc Giáp",
+        nameEN: "Meadow Hare",
+        tier: "Founder Tier 1",
+        domain: "CAN",
+        domainVN: "Tầng Cạn",
+        icon: "🐇",
+        role: "Armored Defender (Phi-3.5-mini)",
+        traits: { brain: 1, attack: 1, armor: 5, speed: 1, sense: 2, stomach: 2 },
+        traitSum: 12,
+        features: ["Biết Đào Hang", "Lông Dài", "Lưỡng Cư"],
+        desc: "Tấm mai dày liền khối cứng cáp chịu đòn, chi ngắn chắc bới hang ngầm trốn tránh kẻ săn mồi.",
+        glbUrl: "../assets/creatures/creature_L4_s1.glb",
+        blendUrl: "../assets/creatures/creature_L4_s1.blend",
+        turnaroundImg: "creature_images/meadow_hare_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_L4_s1_turnaround.jpg",
+        aliases: ["meadow_hare", "creature_L4_s1", "L4"]
+      },
+      {
+        id: "marsh_croc",
+        speciesId: "L5",
+        slug: "marsh_croc",
+        code: "L5",
+        seed: 1,
+        nameVN: "Cá Sấu Đầm Lầy",
+        nameEN: "Marsh Croc",
+        tier: "Founder Tier 1",
+        domain: "CAN",
+        domainVN: "Tầng Cạn",
+        icon: "🐊",
+        role: "Speed & Ambush (Qwen2.5-1.5B)",
+        traits: { brain: 0, attack: 2, armor: 0, speed: 5, sense: 3, stomach: 2 },
+        traitSum: 12,
+        features: ["Biết Đào Hang", "Lưỡng Cư", "Trèo Giỏi"],
+        desc: "Thân thon nhẹ đạt tốc độ di chuyển 3 ô/lượt, da trần ẩm bóng, phản xạ chớp nhoáng trèo cây bơi lội.",
+        glbUrl: "../assets/creatures/creature_L5_s1.glb",
+        blendUrl: "../assets/creatures/creature_L5_s1.blend",
+        turnaroundImg: "creature_images/marsh_croc_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_L5_s1_turnaround.jpg",
+        aliases: ["marsh_croc", "creature_L5_s1", "L5"]
+      },
+      {
+        id: "abyssal_hunter",
+        speciesId: "W1",
+        slug: "abyssal_hunter",
+        code: "W1",
+        seed: 1,
+        nameVN: "Cá Săn Mồi Vực Sâu",
+        nameEN: "Abyssal Hunter",
+        tier: "Founder Tier 1",
+        domain: "NUOC",
+        domainVN: "Tầng Nước",
+        icon: "🐟",
+        role: "Aquatic Hunter (Deep Sea)",
+        traits: { brain: 1, attack: 1, armor: 0, speed: 5, sense: 4, stomach: 1 },
+        traitSum: 12,
+        features: ["Bơi Nhanh", "Cảm Biến Thủy Triều", "Vây Lưng"],
+        desc: "Thân thuôn mượt mà lướt dưới tầng nước sâu, tốc độ 5 ô/lượt, giác quan 4 cảm nhận sóng âm từ xa.",
+        glbUrl: "../assets/creatures/creature_W1_s1.glb",
+        blendUrl: "../assets/creatures/creature_W1_s1.blend",
+        turnaroundImg: "creature_images/abyssal_hunter_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_W1_s1_turnaround.jpg",
+        aliases: ["abyssal_hunter", "creature_W1_s1", "W1"]
+      },
+      {
+        id: "storm_eagle",
+        speciesId: "A1",
+        slug: "storm_eagle",
+        code: "A1",
+        seed: 1,
+        nameVN: "Đại Bàng Săn Mồi Bầu Trời",
+        nameEN: "Storm Eagle",
+        tier: "Founder Tier 1",
+        domain: "TROI",
+        domainVN: "Tầng Trời",
+        icon: "🦅",
+        role: "Sky Scout & Raptor",
+        traits: { brain: 2, attack: 2, armor: 0, speed: 4, sense: 4, stomach: 0 },
+        traitSum: 12,
+        features: ["Sải Cánh Rộng", "Mắt Đại Bàng", "Móng Vuốt Vồ"],
+        desc: "Tầm nhìn xa nhất bản đồ, chao lượn trên tầng trời quan sát toàn cảnh và lao xuống tấn công chớp nhoáng.",
+        glbUrl: "../assets/creatures/creature_A1_s1.glb",
+        blendUrl: "../assets/creatures/creature_A1_s1.blend",
+        turnaroundImg: "creature_images/storm_eagle_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_A1_s1_turnaround.jpg",
+        aliases: ["storm_eagle", "creature_A1_s1", "A1"]
+      },
+      {
+        id: "carnivore_apex",
+        speciesId: "L1_Evo",
+        slug: "carnivore_apex",
+        code: "L1_Evo",
+        seed: 1,
+        nameVN: "Quái Thú Apex Tiến Hóa",
+        nameEN: "Carnivore Apex",
+        tier: "Super Apex Tier 3",
+        domain: "EVO",
+        domainVN: "Tiến Hóa Cấp Cao",
+        icon: "🦖",
+        role: "Tier 3 Super Apex",
+        traits: { brain: 5, attack: 6, armor: 3, speed: 4, sense: 3, stomach: 2 },
+        traitSum: 23,
+        features: ["Răng Nanh Sắc", "Cơ Bắp Cường Hóa", "Gầm Thét", "Giáp Sừng"],
+        desc: "Sinh vật tiến hóa vượt bậc với tổng điểm 23, tích hợp trọn vẹn 8 animation tracks mượt mà.",
+        glbUrl: "../assets/creatures/creature_L1_Evo_s1.glb",
+        blendUrl: "../assets/creatures/creature_L1_Evo_s1.blend",
+        turnaroundImg: "creature_images/carnivore_apex_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_L1_Evo_s1_turnaround.jpg",
+        aliases: ["carnivore_apex", "creature_L1_Evo_s1", "L1_Evo"]
+      },
+      {
+        id: "giant_tarantula",
+        speciesId: "Tarantula",
+        slug: "giant_tarantula",
+        code: "Tarantula",
+        seed: 1,
+        nameVN: "Nhện Khổng Lồ Độc",
+        nameEN: "Giant Tarantula",
+        tier: "Specialist Tier 2",
+        domain: "EVO",
+        domainVN: "Đặc Thù",
+        icon: "🕷️",
+        role: "Bio-Construct Lurker",
+        traits: { brain: 2, attack: 4, armor: 2, speed: 3, sense: 4, stomach: 1 },
+        traitSum: 16,
+        features: ["Tám Chân", "Tuyến Độc", "Mắt Kép", "Tơ Nhện"],
+        desc: "Nhện khổng lồ với 34 xương phân cấp, cấu trúc chuyển động chân độc lập sắc nét.",
+        glbUrl: "../assets/creatures/creature_giant_tarantula.glb",
+        blendUrl: "../assets/creatures/creature_giant_tarantula.blend",
+        turnaroundImg: "creature_images/giant_tarantula_turnaround.jpg",
+        turnaroundFallback: "creature_images/creature_giant_tarantula_turnaround.jpg",
+        aliases: ["giant_tarantula", "creature_giant_tarantula", "Tarantula"]
+      },
+      {
+        id: "armored_sentinel",
+        speciesId: "Sentinel",
+        slug: "armored_sentinel",
+        code: "Sentinel",
+        seed: 1,
+        nameVN: "Sentinel Cơ Khí Sinh Học",
+        nameEN: "Armored Sentinel",
+        tier: "Specialist Tier 2",
+        domain: "EVO",
+        domainVN: "Cơ Khí Sinh Học",
+        icon: "🤖",
+        role: "Ecosystem Guardian",
+        traits: { brain: 3, attack: 3, armor: 6, speed: 1, sense: 3, stomach: 0 },
+        traitSum: 16,
+        features: ["Giáp Hợp Kim", "Lõi Năng Lượng Emissive", "Phòng Vệ Độc Lập"],
+        desc: "Hộ vệ máy sinh học bọc giáp với đèn phát quang emissive và khung xương chiến đấu.",
+        glbUrl: "genesis_sentinel.glb",
+        blendUrl: "../assets/genesis_sentinel.blend",
+        turnaroundImg: "creature_images/armored_sentinel_turnaround.jpg",
+        turnaroundFallback: "creature_images/genesis_sentinel_turnaround.jpg",
+        aliases: ["armored_sentinel", "genesis_sentinel", "creature_armored_sentinel", "Sentinel"]
+      }
+    ];
+
+    /* Canonical Action Names */
+    const CANONICAL_ANIMATIONS = [
+      "Idle_Normal",
+      "Idle_Alert",
+      "Walk",
+      "Run",
+      "Attack",
+      "Hurt_Defend",
+      "Eat",
+      "Death"
+    ];
+
+    /* =========================================================================
+       2. THREE.JS 3D VIEWPORT & RENDERING ENGINE
+       ========================================================================= */
+    let scene, camera, renderer, clock, mixer;
+    let currentModel = null;
+    let skeletonHelper = null;
+    let groundGrid, groundShadowPlane;
+
+    let actions = {};
+    let activeAction = null;
+    let currentClipKey = "Idle_Normal";
+    let playbackSpeed = 1.0;
+    let isPlaying = true;
+    let isWireframe = false;
+    let showSkeleton = false;
+    let isTurntable = false;
+
+    // Spherical Orbit Coordinates
+    let isDragging = false;
+    let isPanning = false;
+    let prevMousePos = { x: 0, y: 0 };
+    let spherical = { radius: 3.8, theta: Math.PI / 4, phi: Math.PI / 3 };
+    let targetLookAt = new THREE.Vector3(0, 0.5, 0);
+
+    // Performance Profiling
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
+
+    // Active Selection State
+    let activeCreature = CREATURE_DATABASE[0];
+    let gltfLoader = null;
+
+    /* Initialize Application on DOM Ready */
+    window.addEventListener('DOMContentLoaded', () => {
+      initThreeScene();
+      renderSpeciesList(CREATURE_DATABASE);
+      selectCreature(CREATURE_DATABASE[0]);
+    });
+
+    function initThreeScene() {
+      const container = document.getElementById('viewport-container');
+
+      // 1. Scene & Atmospheric Fog
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050811);
+      scene.fog = new THREE.FogExp2(0x050811, 0.04);
+
+      // 2. Camera Setup
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.05, 100);
+      updateCameraPosition();
+
+      // 3. WebGL Renderer with High Precision Shadow Mapping
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      container.appendChild(renderer.domElement);
+
+      clock = new THREE.Clock();
+      gltfLoader = new THREE.GLTFLoader();
+
+      // 4. Studio Lighting Rig
+      // Ambient / Hemisphere Skylight
+      const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.85);
+      scene.add(hemiLight);
+
+      // Main Directional Sunlight with Shadows
+      const dirLight = new THREE.DirectionalLight(0xfff7ed, 1.4);
+      dirLight.position.set(6, 10, 6);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.camera.near = 0.5;
+      dirLight.shadow.camera.far = 30;
+      const d = 4.5;
+      dirLight.shadow.camera.left = -d;
+      dirLight.shadow.camera.right = d;
+      dirLight.shadow.camera.top = d;
+      dirLight.shadow.camera.bottom = -d;
+      dirLight.shadow.bias = -0.0005;
+      scene.add(dirLight);
+
+      // Cyberpunk Cyan Key/Rim Light
+      const cyanRim = new THREE.PointLight(0x00f0ff, 2.2, 16);
+      cyanRim.position.set(-5, 4, -4);
+      scene.add(cyanRim);
+
+      // Amber Warm Counter-Rim Light
+      const amberRim = new THREE.PointLight(0xff7700, 1.8, 14);
+      amberRim.position.set(5, 3, -5);
+      scene.add(amberRim);
+
+      // Soft Front Fill
+      const frontFill = new THREE.DirectionalLight(0x93c5fd, 0.5);
+      frontFill.position.set(0, 2, 8);
+      scene.add(frontFill);
+
+      // 5. Ground Shadow Plane & Cyberpunk Grid
+      const shadowGeo = new THREE.PlaneGeometry(24, 24);
+      const shadowMat = new THREE.ShadowMaterial({ opacity: 0.45 });
+      groundShadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
+      groundShadowPlane.rotation.x = -Math.PI / 2;
+      groundShadowPlane.position.y = 0;
+      groundShadowPlane.receiveShadow = true;
+      scene.add(groundShadowPlane);
+
+      groundGrid = new THREE.GridHelper(16, 32, 0x0284c7, 0x1e293b);
+      groundGrid.position.y = 0.005;
+      scene.add(groundGrid);
+
+      // 6. User Interaction Event Listeners
+      window.addEventListener('resize', onWindowResize);
+      setupOrbitMouseControls(container);
+
+      // 7. Start Render Loop
+      animate();
+    }
+
+    function updateCameraPosition() {
+      camera.position.x = targetLookAt.x + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+      camera.position.y = targetLookAt.y + spherical.radius * Math.cos(spherical.phi);
+      camera.position.z = targetLookAt.z + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+      camera.lookAt(targetLookAt);
+    }
+
+    function setupOrbitMouseControls(domElement) {
+      domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+
+      domElement.addEventListener('mousedown', (e) => {
+        if (e.button === 0) isDragging = true;
+        else if (e.button === 2) isPanning = true;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging && !isPanning) return;
+        const dx = e.clientX - prevMousePos.x;
+        const dy = e.clientY - prevMousePos.y;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+
+        if (isDragging) {
+          spherical.theta -= dx * 0.007;
+          spherical.phi = Math.max(0.08, Math.min(Math.PI / 2 - 0.02, spherical.phi - dy * 0.007));
+          updateCameraPosition();
+        } else if (isPanning) {
+          const panSpeed = 0.0025 * spherical.radius;
+          const right = new THREE.Vector3();
+          camera.getWorldDirection(right);
+          right.cross(camera.up).normalize();
+          targetLookAt.addScaledVector(right, -dx * panSpeed);
+          targetLookAt.y += dy * panSpeed;
+          updateCameraPosition();
+        }
+      });
+
+      window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
+
+      domElement.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        spherical.radius = Math.max(1.0, Math.min(16.0, spherical.radius + e.deltaY * 0.0035));
+        updateCameraPosition();
+      }, { passive: false });
+
+      // Touch screen support
+      let touchStartDist = 0;
+      domElement.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          touchStartDist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches.length === 1) {
+          const dx = e.touches[0].clientX - prevMousePos.x;
+          const dy = e.touches[0].clientY - prevMousePos.y;
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+          spherical.theta -= dx * 0.008;
+          spherical.phi = Math.max(0.08, Math.min(Math.PI / 2 - 0.02, spherical.phi - dy * 0.008));
+          updateCameraPosition();
+        } else if (e.touches.length === 2) {
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          const factor = touchStartDist / dist;
+          spherical.radius = Math.max(1.0, Math.min(16.0, spherical.radius * factor));
+          touchStartDist = dist;
+          updateCameraPosition();
+        }
+      }, { passive: false });
+
+      window.addEventListener('touchend', () => { isDragging = false; });
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+
+      // Update Animation Mixer
+      if (mixer && isPlaying) {
+        mixer.update(delta);
+      }
+
+      // Auto-turntable slow spin
+      if (isTurntable && currentModel) {
+        currentModel.rotation.y += delta * 0.5;
+      }
+
+      // FPS Profiler
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsUpdate >= 1000) {
+        const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+        document.getElementById('fps-counter').textContent = fps;
+        frameCount = 0;
+        lastFpsUpdate = now;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    /* =========================================================================
+       3. ZERO-CORS MODEL INGESTION & 8-ANIMATION CROSSFADER
+       ========================================================================= */
+
+    function base64ToArrayBuffer(base64) {
+      const binary_string = window.atob(base64);
+      const len = binary_string.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    function loadCreatureModel(creature) {
+      showLoading(true, `Đang nạp 3D ${creature.nameVN}...`);
+
+      // 1. Check for Embedded Base64 Data in creature_models_data.js
+      let b64Data = null;
+      if (typeof window !== "undefined" && window.CREATURE_MODELS_BASE64) {
+        // Try candidate keys: id, slug, code, aliases
+        const candidates = [creature.id, creature.slug, creature.code, ...(creature.aliases || [])];
+        for (const k of candidates) {
+          if (window.CREATURE_MODELS_BASE64[k]) {
+            b64Data = window.CREATURE_MODELS_BASE64[k];
+            break;
+          }
+        }
+      }
+
+      if (b64Data) {
+        try {
+          const buffer = base64ToArrayBuffer(b64Data);
+          gltfLoader.parse(buffer, '', (gltf) => {
+            onModelLoaded(gltf, creature);
+          }, (err) => {
+            console.error("Base64 parse error:", err);
+            fallbackLoadViaUrl(creature);
+          });
+          return;
+        } catch (e) {
+          console.warn("Base64 decode failed, trying URL fallback:", e);
+        }
+      }
+
+      // 2. Fallback to Direct URL Load (HTTP/HTTPS)
+      fallbackLoadViaUrl(creature);
+    }
+
+    function fallbackLoadViaUrl(creature) {
+      gltfLoader.load(
+        creature.glbUrl,
+        (gltf) => onModelLoaded(gltf, creature),
+        undefined,
+        (err) => {
+          console.error(`Không thể nạp file ${creature.glbUrl}:`, err);
+          showLoading(false);
+          updateTechnicalMetrics(0, 0, 0, 0);
+        }
+      );
+    }
+
+    function onModelLoaded(gltf, creature) {
+      // 1. Remove previous model & skeleton
+      if (currentModel) {
+        scene.remove(currentModel);
+        currentModel.traverse((child) => {
+          if (child.isMesh) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+            else if (child.material) child.material.dispose();
+          }
+        });
+      }
+      if (skeletonHelper) {
+        scene.remove(skeletonHelper);
+        skeletonHelper = null;
+      }
+      if (mixer) {
+        mixer.stopAllAction();
+        mixer = null;
+      }
+
+      currentModel = gltf.scene;
+      let totalVerts = 0;
+      let totalFaces = 0;
+      let totalBones = 0;
+
+      // 2. Traversal: Shadows, Materials, Wireframe & Metrics
+      currentModel.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.geometry) {
+            totalVerts += child.geometry.attributes.position ? child.geometry.attributes.position.count : 0;
+            totalFaces += child.geometry.index ? child.geometry.index.count / 3 : (child.geometry.attributes.position.count / 3);
+          }
+          if (child.material) {
+            child.material.wireframe = isWireframe;
+            // Enhanced emissive glow for Sentinels
+            if (child.material.emissive && child.material.emissive.getHex() > 0) {
+              child.material.emissiveIntensity = 1.4;
+            }
+          }
+        }
+        if (child.isBone) {
+          totalBones++;
+        }
+      });
+
+      // 3. Compute Bounding Box & Center Model
+      const bbox = new THREE.Box3().setFromObject(currentModel);
+      const center = bbox.getCenter(new THREE.Vector3());
+      const size = bbox.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z) || 1.0;
+
+      // Normalize scale so models have comfortable size
+      const targetScale = 2.0 / maxDim;
+      currentModel.scale.setScalar(targetScale);
+
+      // Re-center on ground plane
+      const scaledBbox = new THREE.Box3().setFromObject(currentModel);
+      currentModel.position.x = -center.x * targetScale;
+      currentModel.position.y = -scaledBbox.min.y;
+      currentModel.position.z = -center.z * targetScale;
+
+      scene.add(currentModel);
+
+      // 4. Setup Armature SkeletonHelper
+      skeletonHelper = new THREE.SkeletonHelper(currentModel);
+      skeletonHelper.visible = showSkeleton;
+      skeletonHelper.material.linewidth = 2;
+      scene.add(skeletonHelper);
+
+      // 5. Setup 8 Canonical Animations
+      setupAnimations(gltf);
+
+      // 6. Update Inspector Metrics
+      updateTechnicalMetrics(Math.round(totalVerts), Math.round(totalFaces), totalBones, (gltf.animations || []).length);
+
+      showLoading(false);
+    }
+
+    function setupAnimations(gltf) {
+      actions = {};
+      const clipCount = gltf.animations ? gltf.animations.length : 0;
+
+      if (clipCount === 0) {
+        activeAction = null;
+        document.getElementById('hud-active-action').textContent = "Không có clip";
+        return;
+      }
+
+      mixer = new THREE.AnimationMixer(currentModel);
+
+      gltf.animations.forEach((clip) => {
+        const lower = clip.name.toLowerCase();
+        let matchedKey = null;
+
+        // Canonical action mapping
+        if (lower.includes('alert')) matchedKey = 'Idle_Alert';
+        else if (lower.includes('idle')) matchedKey = 'Idle_Normal';
+        else if (lower.includes('walk')) matchedKey = 'Walk';
+        else if (lower.includes('run')) matchedKey = 'Run';
+        else if (lower.includes('attack') || lower.includes('atk')) matchedKey = 'Attack';
+        else if (lower.includes('hurt') || lower.includes('hit') || lower.includes('defend')) matchedKey = 'Hurt_Defend';
+        else if (lower.includes('eat')) matchedKey = 'Eat';
+        else if (lower.includes('death') || lower.includes('die')) matchedKey = 'Death';
+        else matchedKey = clip.name;
+
+        const action = mixer.clipAction(clip);
+        actions[matchedKey] = action;
+        actions[clip.name] = action;
+      });
+
+      // Default to Idle_Normal or first clip available
+      const defaultClipKey = actions['Idle_Normal'] ? 'Idle_Normal' : (actions['Idle_Alert'] ? 'Idle_Alert' : Object.keys(actions)[0]);
+      if (defaultClipKey && actions[defaultClipKey]) {
+        activeAction = actions[defaultClipKey];
+        currentClipKey = defaultClipKey;
+        activeAction.reset().setEffectiveTimeScale(playbackSpeed).setEffectiveWeight(1).play();
+        updateClipButtonsUI(defaultClipKey);
+        document.getElementById('hud-active-action').textContent = defaultClipKey;
+      }
+    }
+
+    /* 8-Action Smooth 0.2s Cross-Fade Switcher */
+    function switchAnimation(clipKey) {
+      if (!mixer) return;
+
+      // Find action matching key or smart fallback
+      let targetAction = actions[clipKey];
+      if (!targetAction) {
+        // Fallback: search if any action contains clipKey substring
+        const foundKey = Object.keys(actions).find(k => k.toLowerCase().includes(clipKey.toLowerCase()));
+        if (foundKey) targetAction = actions[foundKey];
+      }
+
+      if (!targetAction || targetAction === activeAction) return;
+
+      const prevAction = activeAction;
+      activeAction = targetAction;
+      currentClipKey = clipKey;
+
+      if (prevAction) {
+        prevAction.fadeOut(0.2);
+      }
+
+      activeAction.reset()
+        .setEffectiveTimeScale(playbackSpeed)
+        .setEffectiveWeight(1)
+        .fadeIn(0.2)
+        .play();
+
+      updateClipButtonsUI(clipKey);
+      document.getElementById('hud-active-action').textContent = clipKey;
+    }
+
+    function updateClipButtonsUI(activeKey) {
+      document.querySelectorAll('#anim-clip-group .clip-btn').forEach((btn) => {
+        const key = btn.dataset.anim;
+        btn.classList.toggle('active', key === activeKey);
+      });
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const btn = document.getElementById('btn-toggle-play');
+      btn.textContent = isPlaying ? '⏸ Tạm Dừng' : '▶ Tiếp Tục';
+      btn.classList.toggle('active', !isPlaying);
+    }
+
+    function setPlaybackSpeed(spd) {
+      playbackSpeed = spd;
+      if (activeAction) {
+        activeAction.setEffectiveTimeScale(spd);
+      }
+      document.querySelectorAll('.speed-btn').forEach((btn) => {
+        btn.classList.toggle('active', parseFloat(btn.dataset.speed) === spd);
+      });
+      document.getElementById('hud-active-speed').textContent = `${spd}x`;
+    }
+
+    /* Armature SkeletonHelper Toggle */
+    function toggleSkeleton() {
+      showSkeleton = !showSkeleton;
+      if (skeletonHelper) {
+        skeletonHelper.visible = showSkeleton;
+      }
+      document.getElementById('btn-toggle-skeleton').classList.toggle('active', showSkeleton);
+    }
+
+    /* Wireframe Overlay Toggle */
+    function toggleWireframe() {
+      isWireframe = !isWireframe;
+      if (currentModel) {
+        currentModel.traverse((child) => {
+          if (child.isMesh && child.material) {
+            if (Array.isArray(child.material)) child.material.forEach(m => m.wireframe = isWireframe);
+            else child.material.wireframe = isWireframe;
+          }
+        });
+      }
+      document.getElementById('btn-toggle-wireframe').classList.toggle('active', isWireframe);
+    }
+
+    /* Turntable Auto Spin */
+    function toggleTurntable() {
+      isTurntable = !isTurntable;
+      document.getElementById('btn-toggle-turntable').classList.toggle('active', isTurntable);
+    }
+
+    /* Reset Camera View */
+    function resetCamera() {
+      spherical = { radius: 3.8, theta: Math.PI / 4, phi: Math.PI / 3 };
+      targetLookAt = new THREE.Vector3(0, 0.5, 0);
+      if (currentModel) {
+        currentModel.rotation.set(0, 0, 0);
+      }
+      updateCameraPosition();
+    }
+
+    /* Load user GLB from disk via file picker */
+    function handleLocalFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      showLoading(true, `Đang nạp file cục bộ: ${file.name}...`);
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const buffer = e.target.result;
+        gltfLoader.parse(buffer, '', (gltf) => {
+          const customCreature = {
+            nameVN: file.name.replace(/\.[^/.]+$/, ""),
+            nameEN: "Local File Asset",
+            code: "CUSTOM",
+            domain: "CAN",
+            domainVN: "Tùy Chỉnh",
+            traits: { brain: 3, attack: 3, armor: 3, speed: 3, sense: 3, stomach: 3 },
+            features: ["Custom Upload", "glTF 2.0 Binary"],
+            desc: `Mô hình 3D được tải trực tiếp từ máy cục bộ (${(file.size / 1024).toFixed(1)} KB).`,
+            glbUrl: "#",
+            blendUrl: "#",
+            turnaroundImg: ""
+          };
+          onModelLoaded(gltf, customCreature);
+          updateInspectorHUD(customCreature);
+        }, (err) => {
+          console.error("Local GLB parse failed:", err);
+          showLoading(false);
+          alert("Lỗi khi đọc file GLB cục bộ: " + err.message);
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    /* =========================================================================
+       4. SPECIES CATALOG UI & INSPECTOR HUD
+       ========================================================================= */
+
+    function renderSpeciesList(creatures) {
+      const listContainer = document.getElementById('creature-list');
+      listContainer.innerHTML = '';
+      document.getElementById('creature-count').textContent = creatures.length;
+
+      creatures.forEach((creature) => {
+        const card = document.createElement('div');
+        card.className = `creature-card ${activeCreature && activeCreature.id === creature.id ? 'active' : ''}`;
+        card.id = `card-${creature.id}`;
+        card.onclick = () => selectCreature(creature);
+
+        card.innerHTML = `
+          <div class="creature-card-icon">${creature.icon}</div>
+          <div class="creature-card-info">
+            <div class="creature-card-header">
+              <span class="creature-card-title">${creature.nameVN}</span>
+              <span class="creature-code-pill">${creature.code}</span>
+            </div>
+            <div class="creature-card-sub">${creature.nameEN} · ${creature.tier}</div>
+            <div class="creature-card-meta">
+              <span class="domain-tag ${creature.domain}">${creature.domainVN}</span>
+              <span style="font-size: 0.68rem; color: var(--text-dim); font-family: var(--font-mono);">⚡ ${creature.traits.speed} | ⚔️ ${creature.traits.attack}</span>
+            </div>
+          </div>
+        `;
+        listContainer.appendChild(card);
+      });
+    }
+
+    function selectCreature(creature) {
+      activeCreature = creature;
+
+      // Highlight card in list
+      document.querySelectorAll('.creature-card').forEach(card => card.classList.remove('active'));
+      const activeCard = document.getElementById(`card-${creature.id}`);
+      if (activeCard) activeCard.classList.add('active');
+
+      // Update Inspector Panel HUD
+      updateInspectorHUD(creature);
+
+      // Load 3D Model
+      loadCreatureModel(creature);
+    }
+
+    function updateInspectorHUD(creature) {
+      document.getElementById('insp-name-vn').innerHTML = `${creature.icon} ${creature.nameVN}`;
+      document.getElementById('insp-id-subtitle').textContent = `Mã: ${creature.code} · ${creature.slug || creature.id} · ${creature.tier || 'Founder'}`;
+      document.getElementById('insp-desc').textContent = creature.desc;
+
+      // Domain Badge
+      const domainBadge = document.getElementById('insp-domain-badge');
+      domainBadge.className = `domain-tag ${creature.domain}`;
+      domainBadge.textContent = `${creature.domainVN} · ${creature.domain}`;
+
+      // 6 Founder Traits HUD Bars
+      const traits = creature.traits;
+      const maxTrait = (creature.domain === 'EVO' || creature.traitSum > 12) ? 6 : 5;
+      const traitKeys = ['brain', 'attack', 'armor', 'speed', 'sense', 'stomach'];
+
+      let sum = 0;
+      traitKeys.forEach((key) => {
+        const val = traits[key] !== undefined ? traits[key] : 0;
+        sum += val;
+        const valElem = document.getElementById(`val-${key}`);
+        const barElem = document.getElementById(`bar-${key}`);
+        if (valElem) valElem.textContent = `${val} / ${maxTrait}`;
+        if (barElem) barElem.style.width = `${Math.min(100, Math.round((val / maxTrait) * 100))}%`;
+      });
+      document.getElementById('insp-trait-sum').textContent = `Tổng: ${creature.traitSum || sum}`;
+
+      // Biological Features Tags
+      const featContainer = document.getElementById('insp-features');
+      featContainer.innerHTML = '';
+      (creature.features || []).forEach((feat) => {
+        const tag = document.createElement('span');
+        tag.className = 'feature-tag';
+        tag.textContent = feat;
+        featContainer.appendChild(tag);
+      });
+
+      // Action Download Links
+      const btnBlend = document.getElementById('btn-download-blend');
+      const btnGlb = document.getElementById('btn-download-glb');
+      if (btnBlend) btnBlend.href = creature.blendUrl || "#";
+      if (btnGlb) btnGlb.href = creature.glbUrl || "#";
+    }
+
+    function updateTechnicalMetrics(verts, faces, bones, clips) {
+      document.getElementById('mesh-verts').textContent = verts ? verts.toLocaleString() : '—';
+      document.getElementById('mesh-faces').textContent = faces ? faces.toLocaleString() : '—';
+      document.getElementById('rig-bones').textContent = bones ? `${bones} Bones` : '—';
+      document.getElementById('clip-count').textContent = `${clips} Actions`;
+    }
+
+    function filterDomain(domain) {
+      document.querySelectorAll('#domain-tabs .tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.domain === domain);
+      });
+
+      const filtered = domain === 'all'
+        ? CREATURE_DATABASE
+        : CREATURE_DATABASE.filter(c => c.domain === domain);
+
+      renderSpeciesList(filtered);
+    }
+
+    function onSearchChange(event) {
+      const q = event.target.value.toLowerCase().trim();
+      const filtered = CREATURE_DATABASE.filter(c =>
+        c.nameVN.toLowerCase().includes(q) ||
+        c.nameEN.toLowerCase().includes(q) ||
+        c.code.toLowerCase().includes(q) ||
+        c.slug.toLowerCase().includes(q) ||
+        (c.features && c.features.some(f => f.toLowerCase().includes(q)))
+      );
+      renderSpeciesList(filtered);
+    }
+
+    function showLoading(show, message = "") {
+      const overlay = document.getElementById('loading-overlay');
+      if (show) {
+        overlay.classList.remove('hidden');
+        if (message) document.getElementById('loading-message').textContent = message;
+      } else {
+        overlay.classList.add('hidden');
+      }
+    }
+
+    /* =========================================================================
+       5. 4-ANGLE TURNAROUND SHEET MODAL VIEWER
+       ========================================================================= */
+
+    function openTurnaroundModal() {
+      if (!activeCreature) return;
+      const modal = document.getElementById('turnaround-modal');
+      const img = document.getElementById('modal-img');
+      const title = document.getElementById('modal-title');
+      const container = document.getElementById('modal-img-container');
+
+      title.innerHTML = `📷 Bản Vẽ Thiết Kế 4 Góc: ${activeCreature.nameVN} (${activeCreature.nameEN})`;
+
+      // Clean existing fallback if any
+      const existingFallback = document.getElementById('turnaround-fallback-box');
+      if (existingFallback) existingFallback.remove();
+      img.style.display = 'block';
+
+      // Set image source: check web-optimized path first
+      img.src = activeCreature.turnaroundImg;
+      modal.showModal();
+    }
+
+    function closeTurnaroundModal() {
+      const modal = document.getElementById('turnaround-modal');
+      modal.close();
+    }
+
+    // Close on click outside backdrop
+    document.getElementById('turnaround-modal').addEventListener('click', (e) => {
+      const modal = document.getElementById('turnaround-modal');
+      const rect = modal.getBoundingClientRect();
+      const isInDialog = (rect.top <= e.clientY && e.clientY <= rect.top + rect.height
+        && rect.left <= e.clientX && e.clientX <= rect.left + rect.width);
+      if (!isInDialog) {
+        modal.close();
+      }
+    });
+
+    function handleTurnaroundImgError(imgElement) {
+      // Try fallback URL if available
+      if (activeCreature && activeCreature.turnaroundFallback && imgElement.src.indexOf(activeCreature.turnaroundFallback) === -1) {
+        imgElement.src = activeCreature.turnaroundFallback;
+        return;
+      }
+
+      // If JPEG sheet is not rendered yet, render technical blueprint SVG fallback
+      imgElement.style.display = 'none';
+      const container = document.getElementById('modal-img-container');
+
+      const fallbackBox = document.createElement('div');
+      fallbackBox.id = 'turnaround-fallback-box';
+      fallbackBox.className = 'turnaround-fallback-diagram';
+      fallbackBox.innerHTML = `
+        <div style="font-size: 2.2rem;">${activeCreature.icon}</div>
+        <h4 style="color: var(--accent-cyan); font-size: 1.1rem;">Bản Vẽ Thiết Kế 4 Góc Độ: ${activeCreature.nameVN}</h4>
+        <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; max-width: 650px;">
+          Bản vẽ Turnaround Sheet độ phân giải cao bao gồm 4 góc quan sát trực giao chuẩn Game Engine:<br>
+          <b>Phối Cảnh 3/4</b> (Hero View) · <b>Mặt Trước</b> (Front Ortho) · <b>Mặt Bên</b> (Side Ortho) · <b>Đỉnh Đầu</b> (Top-Down Ortho).
+        </p>
+        <div style="display: flex; gap: 12px; font-family: var(--font-mono); font-size: 0.78rem; color: #38bdf8;">
+          <span>Mã: ${activeCreature.code}</span> |
+          <span>Tầng: ${activeCreature.domainVN}</span> |
+          <span>Traits: [B:${activeCreature.traits.brain}, A:${activeCreature.traits.attack}, D:${activeCreature.traits.armor}, S:${activeCreature.traits.speed}]</span>
+        </div>
+      `;
+      container.appendChild(fallbackBox);
+    }
+  </script>
+</body>
+</html>

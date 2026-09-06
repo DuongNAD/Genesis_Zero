@@ -139,10 +139,12 @@ def samples_from(
     rep = ReplayStrategist(log_p, mind=mind)
     out: list[Sample] = []
     mismatched = 0
+    from genesis.weather import weather_at
+    from genesis.world import phase_at
+
     for t in range(ticks):
-        # `build_prompt` tự đặt `world.phase = phase_at(t)` từ khi bẫy này bị
-        # bịt ở gốc, nên ở đây không cần gán nữa. Giữ lại lời kể vì nó là một
-        # bài học đắt: vá ở CHỖ GỌI thì bẫy còn nguyên cho mọi chỗ gọi sau.
+        world.phase = phase_at(t)
+        world.weather = weather_at(seed, t)
         for rec in by_tick.get(t, ()):
             c = next((x for x in creatures if x.id == rec["creature_id"]), None)
             if c is None:

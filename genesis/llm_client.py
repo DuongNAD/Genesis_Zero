@@ -77,77 +77,165 @@ class CircuitBreaker:
         return self._open_until is not None
 
 
+def detect_backend(base_url: str = "http://127.0.0.1:8080") -> str:
+    """Xác định backend LLM dựa trên URL hoặc cổng kết nối."""
+    raw = base_url.lower()
+    if ":11434" in raw or "/api/chat" in raw or "/api/" in raw:
+        return "ollama"
+    if ":8000" in raw or ":8001" in raw or "/v1" in raw or "/chat/completions" in raw:
+        return "vllm"
+    if ":8099" in raw:
+        return "mock"
+    return "llama.cpp"
+
+
 async def ask(
-    base_url: str,
-    slot_id: int,
-    system: str,
-    user: str,
-    max_tokens: int,
-    schema: dict[str, Any],
+    base_url: str = "http://127.0.0.1:8080",
+    slot_id: int = 0,
+    system: str = "",
+    user: str = "",
+    max_tokens: int = 64,
+    schema: dict[str, Any] | None = None,
     timeout: float = law_config.LLM_TIMEOUT_S,
     temperature: float = 0.7,
     transport: httpx.AsyncBaseTransport | None = None,
     client: httpx.AsyncClient | None = None,
+    backend: str = "auto",
+    model: str = "default",
+    **kwargs: Any,
 ) -> dict[str, Any] | None:
-    """Gọi POST {base_url}/completion, trả `{"json": ..., "n": ...}` hoặc None.
+    """Gọi LLM backend (llama.cpp, Ollama, vLLM, Mock, hoặc fallback Reflex).
 
     `client` cho phép dùng lại một pool kết nối qua nhiều lời gọi — người gọi
     nào bắn cả đàn bằng `asyncio.gather` thì nên truyền vào.
     """
-    root = base_url.rstrip("/")
-    url = root if root.endswith("/completion") else f"{root}/completion"
+    if backend == "reflex":
+        return None
 
-    payload: dict[str, Any] = {
-        "prompt": system + user,
-        "id_slot": slot_id,
-        "cache_prompt": True,
-        "json_schema": schema,
-        "n_predict": max_tokens,
-        "temperature": temperature,
-    }
+    resolved_backend = detect_backend(base_url) if backend == "auto" else backend.lower()
+    root = base_url.rstrip("/")
 
     owns_client = client is None
     if owns_client:
         client = httpx.AsyncClient(timeout=timeout, transport=transport)
     try:
-        resp = await client.post(url, json=payload)
-        if resp.status_code != 200:
-            logger.warning(
-                "gọi model hỏng %s (slot %d): HTTP %d %s",
-                url, slot_id, resp.status_code, resp.text[:200],
-            )
-            return None
-        data = resp.json()
-        content = data.get("content")
-        if not isinstance(content, str):
-            logger.warning(
-                "phản hồi model không có trường 'content' dạng chuỗi (slot %d): %r",
-                slot_id, str(data)[:200],
-            )
-            return None
-        return {
-            "json": json.loads(content),
-            "n": int(data.get("tokens_predicted", 0)),
-            "raw": content,
-            # `timings` là cách DUY NHẤT đo được prefill tách khỏi decode. Đo
-            # bằng đồng hồ ngoài thì với model nhỏ, decode át hết prefill và
-            # tỉ lệ "lần 2 / lần 1" nói về tốc độ sinh chứ không nói về cache.
-            "timings": data.get("timings") or {},
-        }
+        if resolved_backend == "ollama":
+            url = root if root.endswith("/api/chat") else f"{root}/api/chat"
+            messages = []
+            if system:
+                messages.append({"role": "system", "content": system})
+            if user:
+                messages.append({"role": "user", "content": user})
+            payload: dict[str, Any] = {
+                "model": model if model and model != "default" else "llama3",
+                "messages": messages,
+                "stream": False,
+                "options": {
+                    "temperature": temperature,
+                    "num_predict": max_tokens,
+                },
+            }
+            if schema is not None:
+                payload["format"] = schema
+
+            resp = await client.post(url, json=payload)
+            if resp.status_code != 200:
+                logger.warning(
+                    "Ollama gọi hỏng %s: HTTP %d %s",
+                    url, resp.status_code, resp.text[:200],
+                )
+                return None
+            data = resp.json()
+            content = data.get("message", {}).get("content", "")
+            if not isinstance(content, str):
+                logger.warning("Ollama phản hồi không hợp lệ: %r", str(data)[:200])
+                return None
+            return {
+                "json": json.loads(content),
+                "n": int(data.get("eval_count", 0)),
+                "raw": content,
+                "timings": {"eval_duration": data.get("eval_duration")},
+            }
+
+        elif resolved_backend in ("vllm", "openai"):
+            url = root if root.endswith("/v1/chat/completions") else f"{root}/v1/chat/completions"
+            messages = []
+            if system:
+                messages.append({"role": "system", "content": system})
+            if user:
+                messages.append({"role": "user", "content": user})
+            payload = {
+                "model": model if model and model != "default" else "default",
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "response_format": {"type": "json_object"},
+            }
+            resp = await client.post(url, json=payload)
+            if resp.status_code != 200:
+                logger.warning(
+                    "vLLM gọi hỏng %s: HTTP %d %s",
+                    url, resp.status_code, resp.text[:200],
+                )
+                return None
+            data = resp.json()
+            choices = data.get("choices", [])
+            content = choices[0].get("message", {}).get("content", "") if choices else ""
+            if not isinstance(content, str):
+                logger.warning("vLLM phản hồi không hợp lệ: %r", str(data)[:200])
+                return None
+            return {
+                "json": json.loads(content),
+                "n": int(data.get("usage", {}).get("completion_tokens", 0)),
+                "raw": content,
+                "timings": data.get("usage", {}),
+            }
+
+        else:
+            # llama.cpp / mock / default
+            url = root if root.endswith("/completion") else f"{root}/completion"
+            payload = {
+                "prompt": system + user,
+                "id_slot": slot_id,
+                "cache_prompt": True,
+                "json_schema": schema,
+                "n_predict": max_tokens,
+                "temperature": temperature,
+            }
+            resp = await client.post(url, json=payload)
+            if resp.status_code != 200:
+                logger.warning(
+                    "gọi model hỏng %s (slot %d): HTTP %d %s",
+                    url, slot_id, resp.status_code, resp.text[:200],
+                )
+                return None
+            data = resp.json()
+            content = data.get("content")
+            if not isinstance(content, str):
+                logger.warning(
+                    "phản hồi model không có trường 'content' dạng chuỗi (slot %d): %r",
+                    slot_id, str(data)[:200],
+                )
+                return None
+            return {
+                "json": json.loads(content),
+                "n": int(data.get("tokens_predicted", 0)),
+                "raw": content,
+                # `timings` là cách DUY NHẤT đo được prefill tách khỏi decode. Đo
+                # bằng đồng hồ ngoài thì với model nhỏ, decode át hết prefill và
+                # tỉ lệ "lần 2 / lần 1" nói về tốc độ sinh chứ không nói về cache.
+                "timings": data.get("timings") or {},
+            }
     except json.JSONDecodeError as exc:
         # Grammar của llama-server lẽ ra chặn được, nhưng cắt vì `n_predict` thì
         # vẫn ra JSON cụt. Người gọi ghi LLM_MISS.
-        #
-        # In cả phần đuôi của chuỗi: gần như mọi ca ở đây là **bị cắt**, và nhìn
-        # chỗ nó đứt là biết ngay trường nào đang ăn hết ngân sách. Không in thì
-        # ta chỉ có một con số tỉ lệ và phải đoán.
         tail = (content or "")[-60:] if isinstance(locals().get("content"), str) else ""
         logger.warning("model trả JSON hỏng (slot %d, %d token): %s | ...%s",
                        slot_id, int((data or {}).get("tokens_predicted", -1))
                        if isinstance(locals().get("data"), dict) else -1, exc, tail)
         return None
     except httpx.HTTPError as exc:
-        logger.warning("lỗi mạng khi gọi %s (slot %d): %s", url, slot_id, exc)
+        logger.warning("lỗi mạng khi gọi %s (slot %d): %s", base_url, slot_id, exc)
         return None
     finally:
         if owns_client:

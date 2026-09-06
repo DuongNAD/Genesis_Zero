@@ -4,13 +4,23 @@
 > người khác nhau, và **vật lý của thế giới được bốc thăm mỗi ván**.
 > Không ai biết luật. **Ai tìm ra luật trước thì thắng.**
 
+### ⚡ Khởi chạy 1-Chạm (< 60 giây)
+
+**macOS / Linux:**
 ```bash
 git clone https://github.com/DuongNAD/Genesis_Zero.git && cd Genesis_Zero
-pip install -r requirements.txt
-python -m genesis.run --seed 1 --ticks 200 --controller reflex
+./run.sh
 ```
 
-Một ván chạy được ngay: không model, không mạng, không cấu hình.
+**Windows (PowerShell):**
+```powershell
+git clone https://github.com/DuongNAD/Genesis_Zero.git && cd Genesis_Zero
+.\run.ps1
+```
+
+*(Hoặc cài đặt thủ công: `pip install -r requirements.txt` rồi chạy `python -m genesis.run --seed 1 --ticks 200 --controller reflex`)*
+
+Một ván chạy được ngay: tự động thiết lập `.venv`, quét đa backend LLM (Ollama, llama.cpp, vLLM, Mock), tự động fallback về Offline Reflex nếu không có GPU/LLM cục bộ.
 → **[Hướng dẫn đầy đủ](docs/HUONG-DAN.md)**
 
 ---
@@ -118,7 +128,7 @@ kiểm điều đó từ ngoài.
 
 | | |
 |---|---|
-| Test | **640 mục, xanh** |
+| Test | **1066 mục, xanh** |
 | Phiếu việc | 65, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
@@ -172,7 +182,7 @@ bất biến, cách nghiệm thu, và — quan trọng nhất — **những lỗ
 
 ```bash
 make preflight    # máy này chạy được một ván thật chưa?
-make test         # 640 test
+make test         # 1066 test
 make serve        # server ván, cổng 8000
 make hostile      # kiểm cửa chống lạm dụng — chạy TRƯỚC khi phơi ra internet
 make expose       # mở tunnel ngrok

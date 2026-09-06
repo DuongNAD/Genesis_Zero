@@ -296,3 +296,18 @@ CODEX_CONF_DECAY_PER_GEN = 1
 # lời, còn một trần rộng chỉ tốn phần token thật sự sinh ra — `cost_think` tính
 # theo token THỰC SINH chứ không theo trần (B-05 bất biến 3).
 TOKEN_PER_ORACLE_ANSWER = 56
+
+# ─── Tiến hoá & Sinh sản (M1_EVO) ────────────────────────────
+REPRODUCTION_ENABLED = True     # Bật/tắt cơ chế sinh sản và đột biến gen
+POPULATION_GLOBAL_MAX = 35      # Trần cá thể sống trên toàn bản đồ
+POPULATION_SPECIES_MAX = 7      # Trần cá thể sống cho mỗi loài
+REPRODUCE_ENERGY_RATIO = 0.80   # Ngưỡng năng lượng sinh sản (80% energy_max)
+REPRODUCE_MIN_AGE = 30          # Tuổi trưởng thành tối thiểu (30 tick)
+REPRODUCE_MIN_STREAK = 20       # Chuỗi sống sót tối thiểu (20 tick)
+REPRODUCE_COOLDOWN = 25         # Thời gian hồi sau khi sinh (25 tick)
+REPRODUCE_COST = 35.0           # Năng lượng trừ vào bố mẹ khi sinh con
+CHILD_START_ENERGY = 30.0       # Năng lượng khởi đầu của con non
+CROWDING_RADIUS = 2             # Bán kính Chebyshev kiểm tra mật độ địa phương
+CROWDING_MAX_NEIGHBORS = 4      # Ngưỡng cá thể lân cận tối đa (>=4 thì dừng sinh)
+MUTATE_TRAIT_PROB = 0.40        # Xác suất đột biến trait (zero-sum shift)
+MUTATE_FEAT_PROB = 0.15         # Xác suất đột biến 1 đặc điểm sinh học

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import asyncio
 import collections
+import contextlib
 import json
 import random
 import time
@@ -46,6 +47,7 @@ from genesis.minds import Minds
 from genesis.strategist import RemoteClientStrategist
 from genesis.tick import build_match
 from genesis.tick import tick as run_tick
+from genesis.weather import weather_at
 
 
 class _FrameCollector:
@@ -99,6 +101,12 @@ def _public_event(ev: dict, reveal: bool, pub: dict[str, str]) -> dict:
         out["cause"] = ev.get("cause", "")
     elif kind == "TRAIT_SHIFT":
         out["frm"], out["to"] = ev.get("frm", ""), ev.get("to", "")
+    elif kind == "REPRODUCE":
+        out["child"] = ev.get("child", "")
+        out["gen"] = ev.get("gen", 0)
+        out["pos"] = ev.get("pos", [])
+    elif kind == "EXTINCTION":
+        out["species"] = ev.get("species", "")
     return out
 
 
@@ -342,7 +350,7 @@ class MatchRunner:
         # không gian luật của một bản đồ hẹp hơn cửa sổ, và một ván trùng đề tệ
         # hơn nhiều so với một ván không bao giờ bắt đầu.
         rerolls: list[int] = []
-        for attempt in range(net_config.LAW_NOVELTY_TRIES):
+        for _attempt in range(net_config.LAW_NOVELTY_TRIES):
             laws = generate_cached(self.seed, arm=f"STANDARD@{self.map_name}")
             sig = self._law_signature(laws)
             if sig not in self._recent_law_sigs:
@@ -441,15 +449,29 @@ class MatchRunner:
         self.strategist.want_shift.clear()
         self.strategist._shift_asked.clear()
 
-        cells = [
-            (x, y)
-            for y in range(self.world.h)
-            for x in range(self.world.w)
-            if self.world.passable((x, y))
-        ]
         for cid in sorted(self.registrations):
             reg = self.registrations[cid]
             if reg.traits is None:
+                continue
+            # Ba đặc điểm cho loài của NGƯỜI LẠ, bằng ĐÚNG luật của bot (W-19).
+            if self.world is not None and reg.species_id not in self.world.kits:
+                self.world.kits[reg.species_id] = kit_of(
+                    roll_for_species(reg.species_id, self.seed))
+            sample = Creature(
+                id=f"{reg.species_id}:0",
+                species=reg.species_id,
+                traits=reg.traits,
+                pos=(0, 0),
+                hp=1.0,
+                energy=1.0,
+            )
+            cells = [
+                (x, y)
+                for y in range(self.world.h)
+                for x in range(self.world.w)
+                if self.world.passable((x, y), sample)
+            ] if self.world is not None else []
+            if not cells:
                 continue
             reg.creature_ids = []
             for i in range(max(1, reg.pop)):
@@ -464,21 +486,6 @@ class MatchRunner:
                 self.creatures.append(c)
                 reg.creature_ids.append(c.id)
                 self.strategist.slots[c.id] = len(self.strategist.slots)
-            # Ba đặc điểm cho loài của NGƯỜI LẠ, bằng ĐÚNG luật của bot (W-19).
-            #
-            # `build_match` gán `world.kits` cho các loài có mặt lúc dựng thế
-            # giới — mà sinh vật của người chơi ra đời SAU đó, ở đây. Thiếu dòng
-            # này thì loài đăng ký qua mạng **không có đặc điểm nào**: không hệ
-            # số hao sức, không gai, không vào được hang, và mô tả 3D của nó
-            # thiếu hẳn một lớp. Bot có, người chơi không — đúng họ lỗi mà
-            # [N-16] tồn tại để dọn, và nó mọc lại ngay khi thêm một khái niệm
-            # mới vào thế giới.
-            #
-            # Tất định theo `(loài, seed)` như mọi chỗ khác, nên hai ván cùng
-            # seed cho cùng một con vật kể cả khi người chơi vào lại.
-            if self.world is not None and reg.species_id not in self.world.kits:
-                self.world.kits[reg.species_id] = kit_of(
-                    roll_for_species(reg.species_id, self.seed))
         self.creatures.sort(key=creature_sort_key)
 
     def step(self) -> None:
@@ -529,10 +536,8 @@ class MatchRunner:
         self.frames.append(frame)
         self._frame_raw.append(events)
         for q in list(self.subscribers):
-            try:
+            with contextlib.suppress(Exception):  # hàng đợi đầy: bỏ khung, đừng làm chậm ván
                 q.put_nowait(frame)
-            except Exception:      # hàng đợi đầy: bỏ khung, đừng làm chậm ván
-                pass
 
     def reveal_frames(self) -> list[dict]:
         """Cùng những khung ấy, `law` điền đầy đủ (bất biến 5).
@@ -575,6 +580,14 @@ class MatchRunner:
                     "e_max": round(c.traits.energy_max, 1),
                     "alive": c.alive, "feral": c.species in feral_species,
                     "tr": list(astuple(c.traits)),
+                    "species": c.species,
+                    "domain": config.SPECIES_DOMAIN.get(c.species, "CAN"),
+                    "features": list(c.features) if getattr(c, "features", ()) else (list(self.world.kits[c.species].keys) if (self.world and hasattr(self.world, "kits") and c.species in self.world.kits) else []),
+                    "gen": getattr(c, "generation", 0),
+                    "parent_id": getattr(c, "parent_id", None),
+                    "lineage": getattr(c, "lineage_id", "") or getattr(c, "id", ""),
+                    "d_tr": [getattr(c.traits, t, 0) - (config.FOUNDERS[c.species][i] if (hasattr(c, "species") and c.species in config.FOUNDERS) else getattr(c.traits, t, 0)) for i, t in enumerate(config.TRAIT_NAMES)],
+                    "age": getattr(c, "age", 0),
                 }
                 for c in sorted(self.creatures, key=creature_sort_key)
             ],
@@ -586,6 +599,11 @@ class MatchRunner:
             # thông của luồng xem. Gửi ở tick 0, và `spectate` nhét thêm vào
             # khung đầu tiên của mỗi người xem mới — trang 3D tự nhớ.
             "terrain": self.terrain_rows() if tick_no == 0 else None,
+            "weather": (
+                self.world.weather.to_dict(diurnal=getattr(self.world, "phase", "DAY"))
+                if (self.world and hasattr(self.world, "weather") and self.world.weather is not None)
+                else weather_at(self.seed, tick_no).to_dict(diurnal="DAY")
+            ),
             "events": [_public_event(e, reveal, pub) for e in events],
         }
 

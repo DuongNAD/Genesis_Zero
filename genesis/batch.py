@@ -32,12 +32,17 @@ def run_one(job: Run) -> list[dict[str, Any]]:
     world, creatures, state, rng = build_match(job.seed, map_name=job.map_name)
     laws = generate_cached(job.seed, arm=job.arm) if job.laws_on else None
 
+    founders = {c.id for c in creatures}
     alive_ticks = {c.id: 0 for c in creatures}
     deaths = {c.id: 0 for c in creatures}
     prev_alive = {c.id: c.alive for c in creatures}
     for t in range(job.ticks):
         tick(world, creatures, t, rng, state, laws=laws)
         for c in creatures:
+            if c.id not in alive_ticks:
+                alive_ticks[c.id] = 0
+                deaths[c.id] = 0
+                prev_alive[c.id] = False
             if c.alive:
                 alive_ticks[c.id] += 1
             elif prev_alive[c.id]:
@@ -62,6 +67,7 @@ def run_one(job: Run) -> list[dict[str, Any]]:
             "shifts_since_death": len(c.shift_log),
         }
         for c in sorted(creatures, key=creature_sort_key)
+        if c.id in founders
     ]
 
 

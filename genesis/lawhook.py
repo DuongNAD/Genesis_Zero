@@ -92,7 +92,7 @@ def apply_creature_effect(c: Creature, e, rng: random.Random, world: World) -> s
         r = e.r or 1
         cand = [p for p in
                 ((c.pos[0] + dx, c.pos[1] + dy) for dx in range(-r, r + 1) for dy in range(-r, r + 1))
-                if world.passable(p)]
+                if world.passable(p, c)]
         if cand:
             c.pos = world.wrap(*rng.choice(sorted(cand)))
     else:

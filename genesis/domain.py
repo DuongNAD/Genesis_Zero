@@ -127,7 +127,7 @@ def can_enter(domain: Domain, terrain: Terrain, traits=None, kit=None) -> bool:
     return getattr(traits, name, 0) >= need
 
 
-def can_touch(domain: Domain, terrain: Terrain, traits=None) -> bool:
+def can_touch(domain: Domain, terrain: Terrain, traits=None, kit=None) -> bool:
     """Có ĂN / UỐNG / ĐÁNH được ở ô này không — khác hẳn `can_enter`.
 
     Bất biến 3 của W-18: **trời phải hạ xuống mới chạm được.** Chim bay qua đá và
@@ -136,7 +136,7 @@ def can_touch(domain: Domain, terrain: Terrain, traits=None) -> bool:
     phải "mạnh hơn ở mọi mặt".
     """
     if domain is not Domain.TROI:
-        return can_enter(domain, terrain, traits)
+        return can_enter(domain, terrain, traits, kit=kit)
     return terrain in _TROI_TOUCH
 
 

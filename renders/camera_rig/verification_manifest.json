@@ -1,0 +1,236 @@
+{
+  "status": "PASS",
+  "scene_metrics": {
+    "collections": {
+      "Terrain": true,
+      "Hydrology": true,
+      "Caves": true,
+      "Biome_Scatter": true,
+      "Fauna": true,
+      "Camera_Rig_24": true,
+      "Lighting": true
+    },
+    "terrain_topology": {
+      "vertex_count": 28930,
+      "edge_count": 58112,
+      "face_count": 29184,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "wire_edges": 0,
+      "min_z": -16.0,
+      "max_z": 35.16,
+      "delta_z": 51.16,
+      "bottom_planar_at_minus_16": true
+    },
+    "cave_clearance": {
+      "min_clearance_m": 12.25,
+      "avg_clearance_m": 17.65,
+      "apex_clearance_m": 16.96
+    },
+    "lake_containment": {
+      "water_z": 4.5,
+      "perimeter_breaches": 0
+    },
+    "cameras": {
+      "count": 24,
+      "names": [
+        "CAM_01_ISO_SE",
+        "CAM_02_ISO_SW",
+        "CAM_03_ISO_NW",
+        "CAM_04_ISO_NE",
+        "CAM_05_TOP_ORTHO",
+        "CAM_06_CARDINAL_NORTH",
+        "CAM_07_CARDINAL_EAST",
+        "CAM_08_CARDINAL_SOUTH",
+        "CAM_09_CARDINAL_WEST",
+        "CAM_10_CUTAWAY_AA",
+        "CAM_11_CUTAWAY_BB",
+        "CAM_12_CLOSEUP_LAKE_BASIN",
+        "CAM_13_CLOSEUP_WATERFALL_GORGE",
+        "CAM_14_CLOSEUP_ALPINE_SUMMIT",
+        "CAM_15_CLOSEUP_LOWLAND_FOREST",
+        "CAM_16_CLOSEUP_SUBTERRANEAN_CAVE",
+        "CAM_17_CLOSEUP_CAVE_ENTRANCE",
+        "CAM_18_CLOSEUP_RIVER_MEANDER",
+        "CAM_19_CLOSEUP_COASTAL_BAY",
+        "CAM_20_SLOPE_ANALYSIS_VIEW",
+        "CAM_21_ELEVATION_HEATMAP_VIEW",
+        "CAM_22_BIOME_TRANSITION_CORRIDOR",
+        "CAM_23_UNDERWATER_SUBMERGED_BED",
+        "CAM_24_NIGHT_BIOLUMINESCENCE"
+      ]
+    }
+  },
+  "vision_metrics": {
+    "frames_rendered": 24,
+    "image_checks": {
+      "all_frames_illuminated": true,
+      "water_depth_gradient": {
+        "blue_ratio": 0.488,
+        "center_luminance": 0.256,
+        "sapphire_dominant": true
+      },
+      "snow_peak_albedo": {
+        "max_luminance": 0.781,
+        "p90_luminance": 0.744,
+        "high_albedo_verified": true
+      },
+      "cave_bioluminescence": {
+        "mean_ambient_lum": 0.114,
+        "max_emissive_lum": 0.911,
+        "contrast_ratio": 8.02,
+        "cyan_emissive_tint": 0.669
+      },
+      "strata_banding": {
+        "vertical_profile_variance": 0.0347,
+        "banding_detected": true
+      }
+    },
+    "photometric_metrics": {
+      "CAM_01_ISO_SE": {
+        "mean_luminance": 0.405,
+        "max_luminance": 0.996,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_02_ISO_SW": {
+        "mean_luminance": 0.444,
+        "max_luminance": 0.835,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_03_ISO_NW": {
+        "mean_luminance": 0.356,
+        "max_luminance": 0.824,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_04_ISO_NE": {
+        "mean_luminance": 0.395,
+        "max_luminance": 1.0,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_05_TOP_ORTHO": {
+        "mean_luminance": 0.433,
+        "max_luminance": 0.908,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_06_CARDINAL_NORTH": {
+        "mean_luminance": 0.235,
+        "max_luminance": 0.849,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_07_CARDINAL_EAST": {
+        "mean_luminance": 0.27,
+        "max_luminance": 0.87,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_08_CARDINAL_SOUTH": {
+        "mean_luminance": 0.34,
+        "max_luminance": 0.824,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_09_CARDINAL_WEST": {
+        "mean_luminance": 0.296,
+        "max_luminance": 0.824,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_10_CUTAWAY_AA": {
+        "mean_luminance": 0.273,
+        "max_luminance": 0.907,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_11_CUTAWAY_BB": {
+        "mean_luminance": 0.209,
+        "max_luminance": 0.907,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_12_CLOSEUP_LAKE_BASIN": {
+        "mean_luminance": 0.325,
+        "max_luminance": 0.776,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_13_CLOSEUP_WATERFALL_GORGE": {
+        "mean_luminance": 0.193,
+        "max_luminance": 0.734,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_14_CLOSEUP_ALPINE_SUMMIT": {
+        "mean_luminance": 0.407,
+        "max_luminance": 0.787,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_15_CLOSEUP_LOWLAND_FOREST": {
+        "mean_luminance": 0.497,
+        "max_luminance": 0.763,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_16_CLOSEUP_SUBTERRANEAN_CAVE": {
+        "mean_luminance": 0.114,
+        "max_luminance": 0.911,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_17_CLOSEUP_CAVE_ENTRANCE": {
+        "mean_luminance": 0.523,
+        "max_luminance": 0.736,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_18_CLOSEUP_RIVER_MEANDER": {
+        "mean_luminance": 0.368,
+        "max_luminance": 0.735,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_19_CLOSEUP_COASTAL_BAY": {
+        "mean_luminance": 0.155,
+        "max_luminance": 0.362,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_20_SLOPE_ANALYSIS_VIEW": {
+        "mean_luminance": 0.619,
+        "max_luminance": 0.824,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_21_ELEVATION_HEATMAP_VIEW": {
+        "mean_luminance": 0.41,
+        "max_luminance": 0.938,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_22_BIOME_TRANSITION_CORRIDOR": {
+        "mean_luminance": 0.386,
+        "max_luminance": 0.819,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_23_UNDERWATER_SUBMERGED_BED": {
+        "mean_luminance": 0.142,
+        "max_luminance": 0.525,
+        "width": 1280,
+        "height": 720
+      },
+      "CAM_24_NIGHT_BIOLUMINESCENCE": {
+        "mean_luminance": 0.122,
+        "max_luminance": 0.164,
+        "width": 1280,
+        "height": 720
+      }
+    }
+  }
+}

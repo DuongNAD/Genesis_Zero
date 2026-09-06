@@ -12,6 +12,7 @@ import json
 import logging
 
 import httpx
+import pytest
 
 from genesis import config
 from genesis.adapt import maybe_shift
@@ -20,6 +21,12 @@ from genesis.tick import build_match, tick
 from genesis.traits import Traits
 
 logging.disable(logging.WARNING)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_trait_shift_cohort(monkeypatch):
+    """B-13 kiểm thử hành vi dịch trait của quần thể model chọn, cách ly với sinh sản."""
+    monkeypatch.setattr(config, "REPRODUCTION_ENABLED", False)
 
 
 def _model(frm: str, to: str, why: str = "cần chạy nhanh hơn"):

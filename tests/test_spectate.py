@@ -271,3 +271,56 @@ def test_13_trang_3D_khong_chep_cung_bang_gi():
     assert "http://" not in html and "https://" not in html
     assert 'src="vendor/three.min.js"' in html, "three.js phải nằm trong repo"
     assert Path("web/vendor/three.min.js").exists()
+
+
+def test_14_spectate_dossier_endpoint(spectate_env):
+    """Verify GET /v1/spectate/dossier returns creature profiles, traits, features, and inferred laws."""
+    c, r = spectate_env
+    while r.phase is not Phase.RUNNING:
+        r.advance_phase()
+    for _ in range(5):
+        r.step()
+
+    res = c.get("/v1/spectate/dossier")
+    assert res.status_code == 200
+    data = res.json()
+    assert "match_id" in data
+    assert "phase" in data
+    assert "species" in data
+    assert "creatures" in data
+
+    if data["creatures"]:
+        first = data["creatures"][0]
+        assert "id" in first
+        assert "species" in first
+        assert "domain" in first
+        assert "traits" in first
+        assert len(first["traits"]) == 6
+        assert "inferred_rules" in first
+        assert isinstance(first["inferred_rules"], list)
+
+
+def test_15_spectate_generate_name_endpoint(spectate_env):
+    """Verify POST /v1/spectate/generate_name returns 27-archetype or Gemini names."""
+    c, _ = spectate_env
+    payload = {
+        "domain": "CAN",
+        "diet": "CARNIVORE",
+        "strategy": "STRAT_SOCIAL",
+        "traits": [2, 3, 1, 3, 2, 1],
+        "features": ["FANGS"],
+    }
+    res = c.post("/v1/spectate/generate_name", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert "name" in data
+    assert "scientific_name" in data
+    assert "niche_summary" in data
+    assert "behavior_lore" in data
+    assert "recommended_traits" in data
+    assert data["domain"] == "CAN"
+    assert data["diet"] == "CARNIVORE"
+    assert data["strategy"] == "STRAT_SOCIAL"
+    assert data["name"] in ("Lang Tộc Đồng Cỏ", data["name"])
+
+

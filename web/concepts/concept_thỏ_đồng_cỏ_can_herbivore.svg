@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090e17"/>
+      <stop offset="100%" stop-color="#141e33"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.8"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="600" height="450" rx="14" fill="url(#bg)" stroke="rgba(56, 189, 248, 0.3)" stroke-width="1.5"/>
+
+  <!-- Top Badge -->
+  <rect x="25" y="22" width="550" height="42" rx="8" fill="rgba(15, 23, 42, 0.9)" stroke="rgba(255,255,255,0.1)"/>
+  <text x="40" y="48" font-family="system-ui, sans-serif" font-size="14" font-weight="bold" fill="#f8fafc">🧬 AGY CONCEPT ART · THỎ ĐỒNG CỎ</text>
+  <text x="560" y="48" font-family="system-ui, sans-serif" font-size="12" fill="#38bdf8" text-anchor="end">🌿 CAN</text>
+
+  <!-- Center Silhouette Creature Box -->
+  <rect x="25" y="76" width="310" height="260" rx="10" fill="rgba(2, 6, 23, 0.6)" stroke="url(#glow)" stroke-width="1.2" filter="url(#shadow)"/>
+  
+  <!-- Biological Creature Stylized Motif -->
+  <g transform="translate(180, 205)">
+    <ellipse cx="0" cy="15" rx="75" ry="38" fill="#38bdf8" opacity="0.35"/>
+    <ellipse cx="0" cy="12" rx="65" ry="30" fill="#38bdf8" opacity="0.8"/>
+    <circle cx="-50" cy="-6" r="28" fill="#38bdf8" opacity="0.9"/>
+    <circle cx="-56" cy="-12" r="6" fill="#facc15"/>
+    <circle cx="-56" cy="-12" r="2.5" fill="#0b1120"/>
+    <path d="M-68,6 C-62,18 -45,18 -38,10" stroke="#0b1120" stroke-width="3" fill="none"/>
+    <!-- Limbs -->
+    <path d="M-30,30 Q-45,60 -60,65" stroke="#38bdf8" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <path d="M25,30 Q35,60 48,65" stroke="#38bdf8" stroke-width="8" stroke-linecap="round" fill="none"/>
+    <!-- Tail -->
+    <path d="M60,10 Q105,-15 115,20" stroke="#38bdf8" stroke-width="12" stroke-linecap="round" fill="none"/>
+    <!-- Spikes / Crest -->
+    <polygon points="-20,-12 -14,-34 -6,-12" fill="#f59e0b"/>
+    <polygon points="5,-14 12,-38 20,-14" fill="#f59e0b"/>
+    <polygon points="30,-12 36,-32 44,-12" fill="#f59e0b"/>
+  </g>
+  <text x="180" y="315" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle" font-style="italic">"Sylvilagus Campestris"</text>
+
+  <!-- Right Attribute Panel -->
+  <rect x="350" y="76" width="225" height="260" rx="10" fill="rgba(15, 23, 42, 0.7)" stroke="rgba(255,255,255,0.08)"/>
+  <text x="365" y="102" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" fill="#38bdf8">THUỘC TÍNH SINH THÁI</text>
+  
+  <text x="365" y="128" font-family="system-ui, sans-serif" font-size="11" fill="#cbd5e1">Chế độ ăn: <tspan fill="#4ade80" font-weight="bold">HERBIVORE</tspan></text>
+  <text x="365" y="150" font-family="system-ui, sans-serif" font-size="11" fill="#cbd5e1">Chiến lược: <tspan fill="#facc15" font-weight="bold">STRAT_R</tspan></text>
+
+  <text x="365" y="180" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" fill="#a78bfa">CHỈ SỐ TRAITS (0..5)</text>
+  <text x="365" y="202" font-family="monospace" font-size="10" fill="#94a3b8">Brain:  1 | Attack: 0</text>
+  <text x="365" y="222" font-family="monospace" font-size="10" fill="#94a3b8">Armor:  1 | Speed:  4</text>
+  <text x="365" y="242" font-family="monospace" font-size="10" fill="#94a3b8">Sense:  3 | Stomach:3</text>
+
+  <rect x="365" y="260" width="195" height="60" rx="6" fill="rgba(0,0,0,0.4)"/>
+  <text x="375" y="278" font-family="system-ui, sans-serif" font-size="9.5" fill="#38bdf8" font-weight="bold">BLENDER 3D PIPELINE:</text>
+  <text x="375" y="295" font-family="system-ui, sans-serif" font-size="9" fill="#4ade80">✓ Smooth Subdivided Mesh</text>
+  <text x="375" y="310" font-family="system-ui, sans-serif" font-size="9" fill="#4ade80">✓ 21-Bone Rig + Idle/Walk Anim</text>
+
+  <!-- Bottom User Prompt Quote -->
+  <rect x="25" y="348" width="550" height="78" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(56, 189, 248, 0.2)"/>
+  <text x="40" y="370" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold" fill="#38bdf8">MÔ TẢ CƠ BẢN CỦA BẠN (PROMPT):</text>
+  <text x="40" y="392" font-family="system-ui, sans-serif" font-size="10" fill="#e2e8f0" font-style="italic">"Thỏ rừng bốn chân nhỏ gọn, lông màu xám tro ngụy trang, tai dài vểnh, mắt to tròn đen láy"</text>
+  <text x="40" y="412" font-family="system-ui, sans-serif" font-size="9" fill="#64748b">Tự động khởi sinh mô hình Blender 3D và chuẩn bị nạp vào thế giới quan sát.</text>
+</svg>

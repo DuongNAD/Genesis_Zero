@@ -182,12 +182,50 @@ def check_tests(full: bool) -> None:
         check("Bộ test", FAIL, f"{n_fail} mục đỏ", "python -m pytest tests/ -x")
 
 
-def main() -> int:
+def auto_fix() -> list[str]:
+    """Tự động khắc phục các lỗi phát hiện được (tạo thư mục, cài dependencies thiếu)."""
+    fixes: list[str] = []
+    # 1. Thư mục runs/
+    runs_dir = ROOT / "runs"
+    if not runs_dir.exists():
+        runs_dir.mkdir(parents=True, exist_ok=True)
+        fixes.append("Đã tạo thư mục runs/")
+
+    # 2. Cài đặt thư viện bắt buộc còn thiếu
+    need = ["httpx", "fastapi", "uvicorn", "numpy", "rich", "pydantic"]
+    missing = [m for m in need if not _has(m)]
+    if missing:
+        try:
+            r = subprocess.run(
+                [sys.executable, "-m", "pip", "install", *missing],
+                capture_output=True,
+                text=True,
+                cwd=ROOT,
+            )
+            if r.returncode == 0:
+                fixes.append(f"Đã cài đặt thành công: {', '.join(missing)}")
+            else:
+                fixes.append(f"Không thể tự cài đặt: {', '.join(missing)} ({r.stderr.strip()[:60]})")
+        except Exception as exc:
+            fixes.append(f"Lỗi khi gọi pip: {exc}")
+
+    return fixes
+
+
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--full", action="store_true", help="chạy cả bộ test")
+    ap.add_argument("--fix", action="store_true", help="tự động khắc phục các lỗi phát hiện được")
     ap.add_argument("--llm-url", default=os.environ.get("GENESIS_LLM_URL",
                                                         "http://127.0.0.1:8080"))
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
+
+    if args.fix:
+        remediations = auto_fix()
+        if remediations:
+            print()
+            for rem in remediations:
+                print(f"  [AUTO-FIX] {rem}")
 
     check_python()
     check_deps()

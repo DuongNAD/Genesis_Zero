@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Genesis Zero · Flora Viewer Redirect</title>
+  <script>
+    // If opened in browser via web server, redirect to /watch/flora_viewer.html
+    // If opened locally via file://, redirect to ../../web/flora_viewer.html
+    if (window.location.protocol === 'file:') {
+      window.location.replace('../../web/flora_viewer.html');
+    } else {
+      window.location.replace('/watch/flora_viewer.html');
+    }
+  </script>
+</head>
+<body style="background:#050811; color:#38bdf8; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh;">
+  <p>Đang chuyển hướng đến Trình Xem Thực Vật 3D (Flora Viewer)...</p>
+</body>
+</html>

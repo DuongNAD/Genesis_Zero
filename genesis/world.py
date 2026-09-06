@@ -161,13 +161,17 @@ class World:
         rng: random.Random,
         surface_map: SurfaceMap | None = None,
         map_name: str | None = None,
+        seed: int = 0,
     ) -> None:
         self.w: int = w
         self.h: int = h
+        self.seed: int = seed
         # `map_name=None` -> đúng bộ sinh cũ, từng byte. Mọi số đo cân bằng của
         # W-12 dựa trên nó, nên bản đồ mới KHÔNG được đổi bản mặc định.
         self.map_name: str = map_name or "DONG_CO"
         self.plant_scale: float = 1.0
+        from genesis.weather import weather_at
+        self.weather = weather_at(self.seed, 0)
         # Đặc điểm sinh học theo LOÀI (W-19). Rỗng = ván trước W-19, chạy y hệt
         # như cũ. `build_match` điền vào; loài lạ đăng ký giữa ván thì `.get`
         # trả `None` và con vật ấy đơn giản là không có đặc điểm nào.
@@ -204,6 +208,10 @@ class World:
     def plants(self, value: dict[tuple[int, int], str]) -> None:
         self.fruits = value
 
+    def visible(self, obs: Creature, creatures: list[Creature] | None = None) -> list[Creature]:
+        """Tiện ích gọi visible(obs, world, creatures)."""
+        return visible(obs, self, creatures if creatures is not None else [])
+
     def _generate_terrain(self, rng: random.Random) -> list[list[Terrain]]:
         # Mặc định toàn bộ bản đồ là PLAIN
         grid: list[list[Terrain]] = [
@@ -216,8 +224,10 @@ class World:
         # xuất hiện khi có luật SPREAD (L-02+). Sinh sẵn ô lửa trơ vừa vô nghĩa vừa
         # ăn mất ô PLAIN, làm lệch cân bằng đã tune ở W-12.
         for terrain in SEEDED_TERRAINS:
-            for _ in range(config.TERRAIN_SEEDS_PER_TYPE):
-                walkers.append((rng.randrange(self.w), rng.randrange(self.h), terrain))
+            walkers.extend(
+                (rng.randrange(self.w), rng.randrange(self.h), terrain)
+                for _ in range(config.TERRAIN_SEEDS_PER_TYPE)
+            )
 
         # Đặt hạt giống lên lưới
         for x, y, terrain in walkers:
@@ -291,15 +301,16 @@ class World:
         terrain = self.grid[y][x]
         if creature is None:
             return can_enter(Domain.CAN, terrain, None)
-        return can_enter(domain_of(creature.species), terrain, creature.traits,
-                         self.kits.get(creature.species))
+        kit = getattr(creature, "kit", None) or self.kits.get(creature.species)
+        return can_enter(domain_of(creature.species), terrain, creature.traits, kit)
 
     def touchable(self, pos: tuple[int, int], creature) -> bool:
         """Con vật này ĂN / UỐNG / ĐÁNH được ở ô này không (W-18 bất biến 3)."""
         from genesis.domain import can_touch, domain_of
 
         x, y = self.wrap(*pos)
-        return can_touch(domain_of(creature.species), self.grid[y][x], creature.traits)
+        kit = getattr(creature, "kit", None) or self.kits.get(creature.species)
+        return can_touch(domain_of(creature.species), self.grid[y][x], creature.traits, kit=kit)
 
     def food_for(self, creature) -> dict[tuple[int, int], str]:
         """Ô thức ăn mà CON NÀY vừa ăn được vừa tới được.
@@ -318,7 +329,7 @@ class World:
         from genesis.domain import Domain, can_enter, domain_of
 
         dom = domain_of(creature.species)
-        kit = self.kits.get(creature.species)
+        kit = getattr(creature, "kit", None) or self.kits.get(creature.species)
         out: dict[tuple[int, int], str] = {}
         # Quả: nằm trên PLAIN. Ai vào được PLAIN thì ăn được.
         if can_enter(dom, Terrain.PLAIN, creature.traits, kit):
@@ -364,7 +375,12 @@ def spawn_algae(world: World, rng: random.Random, tick: int = 0) -> int:
     ]
     if not candidates:
         return 0
-    n = min(config.ALGAE_RESPAWN, room, len(candidates))
+    weather_mod = getattr(getattr(world, "weather", None), "modifiers", None)
+    algae_scale = 1.0
+    if weather_mod is not None:
+        algae_scale = getattr(weather_mod, "algae_mult", getattr(weather_mod, "algae_growth_mult", 1.0))
+    respawn_count = max(1 if algae_scale > 0 else 0, round(config.ALGAE_RESPAWN * algae_scale))
+    n = min(respawn_count, room, len(candidates))
     for pos in rng.sample(candidates, n):
         world.algae[pos] = config.ALGAE_CLASS
     return n
@@ -393,7 +409,10 @@ def spawn_plants(world: World, rng: random.Random, tick: int = 0) -> int:
     # Hệ số thức ăn theo bản đồ (W-15): M1 được tune cho ĐỒNG CỎ, và đổi địa
     # hình là đổi độ khó — sa mạc ít ô đi được thì cùng một lượng quả lại dày hơn.
     scale = getattr(world, "plant_scale", 1.0)
-    n = min(max(1, round(config.PLANT_RESPAWN * scale)), room, len(candidates))
+    weather_mod = getattr(getattr(world, "weather", None), "modifiers", None)
+    if weather_mod is not None:
+        scale *= getattr(weather_mod, "plant_mult", getattr(weather_mod, "plant_growth_mult", 1.0))
+    n = min(max(1 if scale > 0 else 0, round(config.PLANT_RESPAWN * scale)), room, len(candidates))
     for pos in rng.sample(candidates, n):
         world.fruits[pos] = rng.choice(FRUIT_CLASSES)
     return n
@@ -424,9 +443,12 @@ def visible(obs: Creature, world: World, creatures: list[Creature]) -> list[Crea
     # trở nên đáng chọn.
     sight_radius = obs.traits.sight_radius
     if world.phase == "NIGHT":
-        kit = world.kits.get(obs.species)
+        kit = getattr(obs, "kit", None) or world.kits.get(obs.species)
         if not (kit is not None and getattr(kit, "night_sight", False)):
             sight_radius = max(1, sight_radius - config.NIGHT_SIGHT_PENALTY)
+    weather_mod = getattr(getattr(world, "weather", None), "modifiers", None)
+    if weather_mod is not None:
+        sight_radius = max(1, sight_radius - getattr(weather_mod, "sight_penalty", 0))
     seen: list[Creature] = []
     for other in creatures:
         # Bẫy B2: Con chết không xuất hiện; không tự thấy chính mình
@@ -444,7 +466,7 @@ def visible(obs: Creature, world: World, creatures: list[Creature]) -> list[Crea
         # trực tiếp cơ chế che khuất, nên nó là đặc điểm chống phục kích — và nó
         # đắt đúng chỗ: một trong ba ô đặc điểm, đổi lấy việc không có gai,
         # không có vảy, không đào hang.
-        kit = world.kits.get(obs.species)
+        kit = getattr(obs, "kit", None) or world.kits.get(obs.species)
         che = max(1, getattr(kit, "feel_radius", 0) if kit else 1)
         ox, oy = world.wrap(*other.pos)
         if world.grid[oy][ox] in (Terrain.BUSH, Terrain.TREE) and d > che:

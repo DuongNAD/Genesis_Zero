@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giant Spider (Tarantula) - 3D Creature Test Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #07090e;
+      color: #e2e8f0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+    .panel {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.1);
+      z-index: 10;
+    }
+    #info-panel { top: 20px; left: 20px; width: 320px; }
+    #controls-panel {
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      max-width: 90vw;
+      justify-content: center;
+    }
+    h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge {
+      font-size: 0.68rem;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    p.desc { font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.4; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 10px;
+      margin-bottom: 10px;
+    }
+    .stat-item { display: flex; flex-direction: column; }
+    .stat-label { color: #64748b; }
+    .stat-val { color: #f8fafc; font-weight: 600; font-family: monospace; }
+    button {
+      background: rgba(30, 41, 59, 0.8);
+      color: #f1f5f9;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      transform: translateY(-1px);
+    }
+    button.active {
+      background: #0284c7;
+      color: white;
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+    .btn-group { display: flex; gap: 6px; }
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.1rem;
+      color: #38bdf8;
+      background: rgba(15, 23, 42, 0.9);
+      padding: 16px 28px;
+      border-radius: 12px;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 20;
+    }
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>Đang tải Giant Spider (Tarantula) GLB...</span>
+  </div>
+  <div id="canvas-container"></div>
+
+  <div class="panel" id="info-panel">
+    <h1>Giant Spider (Tarantula) <span class="badge">v1.0 GLB</span></h1>
+    <p class="desc">Nhện Khổng Lồ Sinh Học Tự Nhiên (Mexican Redknee Tarantula) cho dự án Genesis Zero. Đã nhúng sẵn 30 xương và 6 Animation clip.</p>
+    <div class="stats-grid">
+      <div class="stat-item"><span class="stat-label">Định dạng</span><span class="stat-val">glTF 2.0 (.GLB)</span></div>
+      <div class="stat-item"><span class="stat-label">Dung lượng</span><span class="stat-val">596 KB</span></div>
+      <div class="stat-item"><span class="stat-label">Khung xương</span><span class="stat-val">34 Bones</span></div>
+      <div class="stat-item"><span class="stat-label">Animations</span><span class="stat-val">6 Actions</span></div>
+      <div class="stat-item"><span class="stat-label">Đang chạy</span><span class="stat-val" id="active-action-name">Action_Idle</span></div>
+      <div class="stat-item"><span class="stat-label">FPS</span><span class="stat-val" id="fps-display">60</span></div>
+    </div>
+    <div style="font-size: 0.72rem; color: #64748b; line-height: 1.4;">
+      💡 <b>Thao tác chuột:</b><br>
+      • Chuột trái: Xoay 360°<br>
+      • Cuộn chuột: Phóng to / Thu nhỏ<br>
+      • Chuột phải: Kéo dời khung hình
+    </div>
+  </div>
+
+  <div class="panel" id="controls-panel">
+    <span style="font-size: 0.8rem; color: #94a3b8; margin-right: 4px;">Animation:</span>
+    <div class="btn-group" id="anim-buttons">
+      <button class="active" onclick="switchAnimation('Action_Idle')">Idle</button>
+      <button onclick="switchAnimation('Action_Walk')">Walk</button>
+      <button onclick="switchAnimation('Action_Attack_Combo')">Attack</button>
+      <button onclick="switchAnimation('Action_Threat')">Threat</button>
+      <button onclick="switchAnimation('Action_Take_Hit')">Take Hit</button>
+      <button onclick="switchAnimation('Action_Death')">Death</button>
+    </div>
+    <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 4px;"></div>
+    <button id="btn-toggle-play" onclick="togglePlay()">⏸ Tạm dừng</button>
+    <button id="btn-toggle-wire" onclick="toggleWireframe()">🕸 Wireframe</button>
+    <button id="btn-toggle-bones" onclick="toggleBones()">🦴 Xương</button>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+
+  <script>
+    let scene, camera, renderer, clock, mixer;
+    let model, skeletonHelper;
+    let actions = {};
+    let activeAction = null;
+    let isPlaying = true;
+    let isWireframe = false;
+    let showBones = false;
+
+    let isDragging = false;
+    let isPanning = false;
+    let prevMousePos = { x: 0, y: 0 };
+    let spherical = { radius: 4.8, theta: Math.PI / 4, phi: Math.PI / 3 };
+    let targetLookAt = new THREE.Vector3(0, 0.8, 0);
+
+    let frameCount = 0;
+    let lastFpsUpdate = performance.now();
+
+    init();
+
+    function init() {
+      const container = document.getElementById('canvas-container');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x06080f);
+      scene.fog = new THREE.FogExp2(0x06080f, 0.04);
+
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+      updateCameraPosition();
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      clock = new THREE.Clock();
+
+      const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.7);
+      scene.add(hemiLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfff7ed, 1.4);
+      dirLight.position.set(5, 8, 5);
+      dirLight.castShadow = true;
+      scene.add(dirLight);
+
+      const cyanRim = new THREE.PointLight(0x00f0ff, 2.5, 12);
+      cyanRim.position.set(-4, 3, -3);
+      scene.add(cyanRim);
+
+      const amberRim = new THREE.PointLight(0xff7700, 2.0, 10);
+      amberRim.position.set(3, 2, -4);
+      scene.add(amberRim);
+
+      const grid = new THREE.GridHelper(16, 32, 0x0284c7, 0x1e293b);
+      grid.position.y = 0.01;
+      scene.add(grid);
+
+      const loader = new THREE.GLTFLoader();
+      loader.load(
+        'genesis_sentinel.glb',
+        function (gltf) {
+          model = gltf.scene;
+          model.position.set(0, 0, 0);
+          model.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+              if (child.material && child.material.emissive) {
+                child.material.emissiveIntensity = 1.2;
+              }
+            }
+          });
+          scene.add(model);
+
+          skeletonHelper = new THREE.SkeletonHelper(model);
+          skeletonHelper.visible = false;
+          scene.add(skeletonHelper);
+
+          if (gltf.animations && gltf.animations.length > 0) {
+            mixer = new THREE.AnimationMixer(model);
+            gltf.animations.forEach((clip) => {
+              const action = mixer.clipAction(clip);
+              actions[clip.name] = action;
+            });
+            const defaultClip = actions['Action_Idle'] || actions[gltf.animations[0].name];
+            if (defaultClip) {
+              activeAction = defaultClip;
+              activeAction.play();
+            }
+          }
+          document.getElementById('loading').style.display = 'none';
+        },
+        undefined,
+        function (error) {
+          console.error('Lỗi nạp GLB:', error);
+          document.getElementById('loading').innerHTML = '<span style="color: #ef4444;">Lỗi khi nạp file genesis_sentinel.glb</span>';
+        }
+      );
+
+      window.addEventListener('resize', onWindowResize);
+      setupMouseControls(renderer.domElement);
+      animate();
+    }
+
+    function switchAnimation(name) {
+      if (!actions[name] || actions[name] === activeAction) return;
+      const prevAction = activeAction;
+      activeAction = actions[name];
+      if (prevAction) prevAction.fadeOut(0.25);
+      activeAction.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(0.25).play();
+      document.getElementById('active-action-name').textContent = name;
+      document.querySelectorAll('#anim-buttons button').forEach((btn) => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase() === name.replace('Action_', '').replace('_Combo', '').replace('_Alert', '').toLowerCase()) {
+          btn.classList.add('active');
+        }
+      });
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      document.getElementById('btn-toggle-play').textContent = isPlaying ? '⏸ Tạm dừng' : '▶ Tiếp tục';
+    }
+
+    function toggleWireframe() {
+      isWireframe = !isWireframe;
+      if (model) {
+        model.traverse((child) => {
+          if (child.isMesh && child.material) child.material.wireframe = isWireframe;
+        });
+      }
+      document.getElementById('btn-toggle-wire').classList.toggle('active', isWireframe);
+    }
+
+    function toggleBones() {
+      showBones = !showBones;
+      if (skeletonHelper) skeletonHelper.visible = showBones;
+      document.getElementById('btn-toggle-bones').classList.toggle('active', showBones);
+    }
+
+    function updateCameraPosition() {
+      camera.position.x = targetLookAt.x + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+      camera.position.y = targetLookAt.y + spherical.radius * Math.cos(spherical.phi);
+      camera.position.z = targetLookAt.z + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+      camera.lookAt(targetLookAt);
+    }
+
+    function setupMouseControls(domElement) {
+      domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+      domElement.addEventListener('mousedown', (e) => {
+        if (e.button === 0) isDragging = true;
+        else if (e.button === 2) isPanning = true;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mousemove', (e) => {
+        const dx = e.clientX - prevMousePos.x;
+        const dy = e.clientY - prevMousePos.y;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+        if (isDragging) {
+          spherical.theta -= dx * 0.007;
+          spherical.phi = Math.max(0.1, Math.min(Math.PI / 2 + 0.1, spherical.phi - dy * 0.007));
+          updateCameraPosition();
+        } else if (isPanning) {
+          const panSpeed = 0.003 * spherical.radius;
+          const right = new THREE.Vector3();
+          camera.getWorldDirection(right);
+          right.cross(camera.up).normalize();
+          targetLookAt.addScaledVector(right, -dx * panSpeed);
+          targetLookAt.y += dy * panSpeed;
+          updateCameraPosition();
+        }
+      });
+      window.addEventListener('mouseup', () => { isDragging = false; isPanning = false; });
+      domElement.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        spherical.radius = Math.max(1.2, Math.min(15.0, spherical.radius + e.deltaY * 0.004));
+        updateCameraPosition();
+      }, { passive: false });
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      if (mixer && isPlaying) mixer.update(delta);
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsUpdate >= 1000) {
+        document.getElementById('fps-display').textContent = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+        frameCount = 0;
+        lastFpsUpdate = now;
+      }
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>

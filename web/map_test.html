@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Genesis Zero · Spider Map Navigation & Animation Test</title>
+  <link rel="icon" href="data:,">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a0e17;
+      color: #f1f5f9;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+    #viewport {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+    .hud-card {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75), 0 0 20px rgba(56, 189, 248, 0.15);
+      z-index: 10;
+    }
+    #info-box { top: 20px; left: 20px; width: 340px; }
+    #controls-box {
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      max-width: 95vw;
+      justify-content: center;
+    }
+    h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .badge {
+      font-size: 0.68rem;
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      font-weight: 700;
+    }
+    .badge-offline {
+      background: rgba(245, 158, 11, 0.2);
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+    .grid-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 12px;
+      font-size: 0.78rem;
+      margin: 10px 0;
+      padding: 8px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .stat-row { display: flex; justify-content: space-between; }
+    .stat-lbl { color: #94a3b8; }
+    .stat-v { color: #f8fafc; font-family: monospace; font-weight: 700; }
+    button {
+      background: rgba(30, 41, 59, 0.9);
+      color: #f1f5f9;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover {
+      background: rgba(56, 189, 248, 0.3);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      transform: translateY(-1px);
+    }
+    button.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: white;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.6);
+    }
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1rem;
+      color: #38bdf8;
+      background: rgba(15, 23, 42, 0.95);
+      padding: 16px 28px;
+      border-radius: 12px;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 50;
+      box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    }
+    .spin {
+      width: 22px;
+      height: 22px;
+      border: 2.5px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: s 0.8s linear infinite;
+    }
+    @keyframes s { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div id="loading">
+    <div class="spin"></div>
+    <span>Đang tải mô hình Nhện khổng lồ 3D & Bản đồ Genesis Zero...</span>
+  </div>
+
+  <div id="viewport"></div>
+
+  <!-- Info HUD -->
+  <div class="hud-card" id="info-box">
+    <h1>🕷️ Genesis Spider <span class="badge badge-offline">Reflex Offline</span></h1>
+    <p style="font-size: 0.76rem; color: #94a3b8; line-height: 1.4;">
+      Thử nghiệm di chuyển nhện khổng lồ 3D trên bản đồ Genesis Zero 24x24 ô. Không dùng LLM local, tiết kiệm 100% tài nguyên!
+    </p>
+
+    <div class="grid-stats">
+      <div class="stat-row"><span class="stat-lbl">Tọa độ:</span><span class="stat-v" id="txt-pos">X: 0.0, Z: 0.0</span></div>
+      <div class="stat-row"><span class="stat-lbl">Địa hình:</span><span class="stat-v" id="txt-terrain" style="color: #4ade80;">Đồng cỏ (Grass)</span></div>
+      <div class="stat-row"><span class="stat-lbl">Chế độ:</span><span class="stat-v" id="txt-mode" style="color: #38bdf8;">Tự động tuần tra</span></div>
+      <div class="stat-row"><span class="stat-lbl">Animation:</span><span class="stat-v" id="txt-anim" style="color: #fbbf24;">Spider_Idle</span></div>
+      <div class="stat-row"><span class="stat-lbl">Độ cao:</span><span class="stat-v" id="txt-elev">0.12 m</span></div>
+      <div class="stat-row"><span class="stat-lbl">FPS:</span><span class="stat-v" id="txt-fps">60</span></div>
+    </div>
+
+    <div style="font-size: 0.73rem; color: #64748b; line-height: 1.5;">
+      🎮 <b>Cách điều khiển:</b><br>
+      • <b>Click chuột trái vào map:</b> Nhện sẽ tự xoay đầu và bò đến ô đó.<br>
+      • <b>Phím W / A / S / D:</b> Trực tiếp điều khiển hướng bò của nhện.<br>
+      • <b>Phím Space:</b> Tấn công cắn nanh độc (Attack).<br>
+      • <b>Phím T:</b> Đứng thẳng giương chân đe dọa (Threat).<br>
+      • <b>Phím R:</b> Gầm rú cảnh báo (Roar / Alert).<br>
+      • <b>Phím H:</b> Phản ứng trúng đòn (Take Hit).<br>
+      • <b>Phím K:</b> Tư thế chết co quắp (Death Curl).<br>
+      • <b>Chuột trái kéo:</b> Xoay camera 3D xung quanh nhện.<br>
+      • <b>Cuộn chuột:</b> Phóng to / thu nhỏ góc nhìn.
+    </div>
+  </div>
+
+  <!-- Controls HUD -->
+  <div class="hud-card" id="controls-box">
+    <button id="btn-mode-auto" class="active" onclick="toggleMode('auto')">🤖 Tự động tuần tra (Reflex)</button>
+    <button id="btn-mode-manual" onclick="toggleMode('manual')">🎮 Lái thủ công (WASD / Click)</button>
+    <div style="width: 1px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 4px;"></div>
+    <button onclick="triggerAttack()">⚔️ Tấn công (Space)</button>
+    <button onclick="triggerThreat()">⚠️ Đe dọa (T)</button>
+    <button onclick="triggerRoar()">🔊 Gầm rú (R)</button>
+    <button onclick="triggerHit()">💥 Trúng đòn (H)</button>
+    <button onclick="triggerDeath()">💀 Co quắp chết (K)</button>
+    <div style="width: 1px; height: 22px; background: rgba(255,255,255,0.15); margin: 0 4px;"></div>
+    <button id="btn-cam-view" onclick="toggleCamView()">🎥 Camera: Góc tự do</button>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+
+  <script>
+    const HALF_SIZE = 12; // Grid from -12 to +12 (Total 24x24)
+    let scene, camera, renderer, clock;
+    let spiderModel, mixer;
+    let actions = {};
+    let activeAction = null;
+
+    // Movement state
+    let spiderPos = { x: 0.0, z: 0.0, yaw: 0 };
+    let targetPos = { x: 0.0, z: 0.0 };
+    let isMoving = false;
+    let controlMode = 'auto'; // 'auto' | 'manual'
+    let camMode = 'orbit';    // 'orbit' | 'follow' | 'top'
+    let isBusyAction = false;
+    let currentPitch = 0, currentRoll = 0, walkCycleTimer = 0;
+    let autoPatrolTimeout = null;
+    let targetMarker = null;
+
+    // Orbit Camera State (Centered on spider)
+    let isDragging = false;
+    let prevMousePos = { x: 0, y: 0 };
+    let spherical = { radius: 8.5, theta: Math.PI / 4, phi: Math.PI / 3.2 };
+
+    // Terrain types
+    const terrainColors = {
+      WATER: 0x0284c7,
+      SAND: 0xd97706,
+      GRASS: 0x22c55e,
+      FOREST: 0x15803d,
+      ROCK: 0x64748b
+    };
+    let gridData = {}; // keyed by "x,z"
+    const keys = {};
+    let frameC = 0, lastF = performance.now();
+
+    init();
+
+    function init() {
+      const container = document.getElementById('viewport');
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0e17);
+
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+      updateCameraPosition();
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      clock = new THREE.Clock();
+
+      // Bright, clear lighting
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+      scene.add(ambientLight);
+
+      const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x1e293b, 0.6);
+      scene.add(hemiLight);
+
+      const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.2);
+      sunLight.position.set(15, 25, 15);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.set(2048, 2048);
+      scene.add(sunLight);
+
+      const rimLight = new THREE.PointLight(0xff7700, 2.5, 30);
+      rimLight.position.set(-8, 10, -8);
+      scene.add(rimLight);
+
+      // Build Genesis Zero 24x24 Map Grid centered at (0, 0)
+      buildGenesisMap();
+
+      // Destination target marker
+      targetMarker = createTargetMarker();
+
+      // Load 3D Spider Model
+      const loader = new THREE.GLTFLoader();
+      loader.load(
+        'genesis_spider.glb',
+        (gltf) => {
+          spiderModel = gltf.scene;
+          spiderModel.scale.set(0.8, 0.8, 0.8); // Impressive visible size
+          spiderModel.position.set(spiderPos.x, getElevation(spiderPos.x, spiderPos.z), spiderPos.z);
+
+          spiderModel.traverse((child) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+
+          scene.add(spiderModel);
+
+          // Setup Animations
+          if (gltf.animations && gltf.animations.length > 0) {
+            mixer = new THREE.AnimationMixer(spiderModel);
+            gltf.animations.forEach((clip) => {
+              actions[clip.name] = mixer.clipAction(clip);
+              if (clip.name.startsWith('Action_')) {
+                actions['Spider_' + clip.name.replace('Action_', '')] = actions[clip.name];
+              }
+            });
+            if (actions['Spider_Death']) {
+              actions['Spider_Death'].setLoop(THREE.LoopOnce, 1);
+              actions['Spider_Death'].clampWhenFinished = true;
+            }
+            playAction('Spider_Idle', 0.2);
+          }
+
+          document.getElementById('loading').style.display = 'none';
+        },
+        undefined,
+        (err) => {
+          console.error('Lỗi nạp genesis_spider.glb:', err);
+          const isFileProto = window.location.protocol === 'file:';
+          const msg = isFileProto
+            ? '⚠️ Trình duyệt chặn nạp GLB qua file:// (CORS).<br><small style="color:#94a3b8;display:block;margin-top:4px;">Chạy lệnh: <code>python3 -m http.server 8000 --directory web</code> và mở <a href="http://localhost:8000/map_test.html" style="color:#38bdf8;">http://localhost:8000/map_test.html</a></small>'
+            : '⚠️ Lỗi nạp genesis_spider.glb (Đang hiển thị mô hình 3D thay thế)';
+          document.getElementById('loading').innerHTML = `<span style="color:#ef4444;line-height:1.4;">${msg}</span>`;
+          setTimeout(() => {
+            const el = document.getElementById('loading');
+            if (el) el.style.display = 'none';
+          }, 5000);
+
+          createFallbackSpider();
+        }
+      );
+
+      setupEvents(renderer.domElement);
+      animate();
+    }
+
+    function buildGenesisMap() {
+      const mapGroup = new THREE.Group();
+      const tileGeo = new THREE.BoxGeometry(0.96, 0.25, 0.96);
+
+      for (let x = -HALF_SIZE; x < HALF_SIZE; x++) {
+        for (let z = -HALF_SIZE; z < HALF_SIZE; z++) {
+          const dist = Math.hypot(x, z);
+          let type = 'GRASS';
+          let elev = 0.12;
+
+          if (dist > 11.2) {
+            type = 'WATER';
+            elev = -0.05;
+          } else if (dist > 9.5) {
+            type = 'SAND';
+            elev = 0.05;
+          } else if ((x + z) % 6 === 0 && dist > 3) {
+            type = 'ROCK';
+            elev = 0.40;
+          } else if ((x * 3 + z * 5) % 7 === 0) {
+            type = 'FOREST';
+            elev = 0.22;
+          }
+
+          gridData[`${x},${z}`] = { type, elev };
+
+          const mat = new THREE.MeshLambertMaterial({ color: terrainColors[type] });
+          const tile = new THREE.Mesh(tileGeo, mat);
+          tile.position.set(x + 0.5, elev - 0.125, z + 0.5);
+          tile.receiveShadow = true;
+          tile.userData = { mapX: x, mapZ: z, type, elev };
+          mapGroup.add(tile);
+
+          // Trees for forest
+          if (type === 'FOREST') {
+            const treeGeo = new THREE.ConeGeometry(0.25, 0.65, 5);
+            const treeMat = new THREE.MeshLambertMaterial({ color: 0x064e3b });
+            const tree = new THREE.Mesh(treeGeo, treeMat);
+            tree.position.set(x + 0.5, elev + 0.32, z + 0.5);
+            tree.castShadow = true;
+            mapGroup.add(tree);
+          }
+        }
+      }
+
+      // Add grid helper on top
+      const grid = new THREE.GridHelper(24, 24, 0x38bdf8, 0x1e293b);
+      grid.position.y = 0.15;
+      mapGroup.add(grid);
+
+      scene.add(mapGroup);
+    }
+
+    function createTargetMarker() {
+      const group = new THREE.Group();
+
+      const ringGeo = new THREE.RingGeometry(0.36, 0.46, 32);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      group.add(ring);
+
+      const dotGeo = new THREE.CircleGeometry(0.12, 16);
+      dotGeo.rotateX(-Math.PI / 2);
+      const dotMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+      const dot = new THREE.Mesh(dotGeo, dotMat);
+      group.add(dot);
+
+      group.position.set(targetPos.x, 0.16, targetPos.z);
+      scene.add(group);
+      return group;
+    }
+
+    function createFallbackSpider() {
+      if (spiderModel) return;
+      const group = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.3, metalness: 0.8 });
+      const orangeMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 });
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+      // Cephalothorax (head) facing +Z
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), bodyMat);
+      head.scale.set(0.9, 0.65, 1.1);
+      head.position.set(0, 0.35, 0.45);
+      head.castShadow = true;
+      group.add(head);
+
+      // Glowing Eyes
+      for (let i = -1; i <= 1; i += 2) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), eyeMat);
+        eye.position.set(i * 0.12, 0.42, 0.78);
+        group.add(eye);
+      }
+
+      // Abdomen at -Z
+      const abdomen = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 14), bodyMat);
+      abdomen.scale.set(0.95, 0.8, 1.25);
+      abdomen.position.set(0, 0.45, -0.5);
+      abdomen.castShadow = true;
+      group.add(abdomen);
+
+      // 8 Legs
+      for (let side = -1; side <= 1; side += 2) {
+        for (let j = 0; j < 4; j++) {
+          const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.02, 0.9, 6), orangeMat);
+          leg.position.set(side * 0.55, 0.3, 0.2 - j * 0.25);
+          leg.rotation.z = side * (Math.PI / 4 + j * 0.05);
+          leg.rotation.y = (j - 1.5) * 0.25;
+          group.add(leg);
+        }
+      }
+
+      spiderModel = group;
+      spiderModel.position.set(spiderPos.x, getElevation(spiderPos.x, spiderPos.z), spiderPos.z);
+      scene.add(spiderModel);
+    }
+
+    function getElevation(x, z) {
+      const gx = Math.floor(x);
+      const gz = Math.floor(z);
+      return gridData[`${gx},${gz}`]?.elev || 0.12;
+    }
+
+    function getTerrainName(x, z) {
+      const gx = Math.floor(x);
+      const gz = Math.floor(z);
+      const t = gridData[`${gx},${gz}`]?.type || 'GRASS';
+      const names = {
+        WATER: 'Hồ nước (Water)',
+        SAND: 'Bãi cát (Sand)',
+        GRASS: 'Đồng cỏ (Grass)',
+        FOREST: 'Rừng rậm (Forest)',
+        ROCK: 'Đá cao (Rock)'
+      };
+      return names[t];
+    }
+
+    function playAction(name, fadeTime = 0.2) {
+      const newAct = actions[name];
+      if (!newAct || newAct === activeAction) return;
+      if (activeAction) activeAction.fadeOut(fadeTime);
+      newAct.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(fadeTime).play();
+      activeAction = newAct;
+      document.getElementById('txt-anim').textContent = name;
+    }
+
+    function toggleMode(mode) {
+      controlMode = mode;
+      if (autoPatrolTimeout) {
+        clearTimeout(autoPatrolTimeout);
+        autoPatrolTimeout = null;
+      }
+      document.getElementById('btn-mode-auto').classList.toggle('active', mode === 'auto');
+      document.getElementById('btn-mode-manual').classList.toggle('active', mode === 'manual');
+      document.getElementById('txt-mode').textContent = mode === 'auto' ? 'Tự động tuần tra' : 'Điều khiển thủ công';
+      if (mode === 'auto') pickRandomTarget();
+    }
+
+    function pickRandomTarget() {
+      let attempts = 0;
+      while (attempts++ < 30) {
+        const rx = (Math.random() - 0.5) * 18;
+        const rz = (Math.random() - 0.5) * 18;
+        const gx = Math.floor(rx);
+        const gz = Math.floor(rz);
+        if (gridData[`${gx},${gz}`]?.type !== 'WATER') {
+          targetPos.x = rx;
+          targetPos.z = rz;
+          break;
+        }
+      }
+    }
+
+    function triggerAttack() {
+      if (!actions['Spider_Attack'] || isBusyAction) return;
+      isBusyAction = true;
+      playAction('Spider_Attack', 0.15);
+      setTimeout(() => {
+        isBusyAction = false;
+        playAction(isMoving ? 'Spider_Walk' : 'Spider_Idle', 0.2);
+      }, 1200);
+    }
+
+    function triggerThreat() {
+      if (!actions['Spider_Threat'] || isBusyAction) return;
+      isBusyAction = true;
+      playAction('Spider_Threat', 0.15);
+      setTimeout(() => {
+        isBusyAction = false;
+        playAction(isMoving ? 'Spider_Walk' : 'Spider_Idle', 0.2);
+      }, 1700);
+    }
+
+    function triggerRoar() {
+      if (!actions['Spider_Roar_Alert'] || isBusyAction) return;
+      isBusyAction = true;
+      playAction('Spider_Roar_Alert', 0.15);
+      setTimeout(() => {
+        isBusyAction = false;
+        playAction(isMoving ? 'Spider_Walk' : 'Spider_Idle', 0.2);
+      }, 1800);
+    }
+
+    function triggerHit() {
+      if (!actions['Spider_Take_Hit'] || isBusyAction) return;
+      isBusyAction = true;
+      playAction('Spider_Take_Hit', 0.1);
+      setTimeout(() => {
+        isBusyAction = false;
+        playAction(isMoving ? 'Spider_Walk' : 'Spider_Idle', 0.2);
+      }, 800);
+    }
+
+    function triggerDeath() {
+      if (!actions['Spider_Death']) return;
+      isBusyAction = true;
+      playAction('Spider_Death', 0.2);
+      setTimeout(() => {
+        isBusyAction = false;
+        playAction('Spider_Idle', 0.3);
+      }, 3500);
+    }
+
+    function toggleCamView() {
+      const modes = ['orbit', 'follow', 'top'];
+      const nextIdx = (modes.indexOf(camMode) + 1) % modes.length;
+      camMode = modes[nextIdx];
+      const labels = {
+        orbit: '🎥 Camera: Góc tự do',
+        follow: '🎥 Camera: Theo sau nhện',
+        top: '🎥 Camera: Nhìn từ trên cao'
+      };
+      document.getElementById('btn-cam-view').textContent = labels[camMode];
+    }
+
+    function updateCameraPosition() {
+      const centerTarget = new THREE.Vector3(spiderPos.x, 0.4, spiderPos.z);
+
+      if (camMode === 'follow' && spiderModel) {
+        const offset = new THREE.Vector3(0, 2.4, -4.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), spiderPos.yaw);
+        camera.position.set(spiderPos.x + offset.x, spiderModel.position.y + offset.y, spiderPos.z + offset.z);
+        camera.lookAt(spiderPos.x, spiderModel.position.y + 0.4, spiderPos.z);
+      } else if (camMode === 'top') {
+        camera.position.set(spiderPos.x, 18, spiderPos.z + 0.01);
+        camera.lookAt(spiderPos.x, 0, spiderPos.z);
+      } else {
+        camera.position.x = centerTarget.x + spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+        camera.position.y = centerTarget.y + spherical.radius * Math.cos(spherical.phi);
+        camera.position.z = centerTarget.z + spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+        camera.lookAt(centerTarget);
+      }
+    }
+
+    function setupEvents(domElement) {
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // Mouse drag controls
+      let mouseMovedAfterDown = false;
+      let startMousePos = { x: 0, y: 0 };
+      domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+      domElement.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        mouseMovedAfterDown = false;
+        startMousePos = { x: e.clientX, y: e.clientY };
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mousemove', (e) => {
+        const dx = e.clientX - prevMousePos.x;
+        const dy = e.clientY - prevMousePos.y;
+        if (isDragging) {
+          if (Math.hypot(e.clientX - startMousePos.x, e.clientY - startMousePos.y) > 5) {
+            mouseMovedAfterDown = true;
+          }
+          if (camMode === 'orbit') {
+            spherical.theta -= dx * 0.008;
+            spherical.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, spherical.phi - dy * 0.008));
+            updateCameraPosition();
+          }
+        }
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      domElement.addEventListener('wheel', (e) => {
+        if (camMode === 'orbit') {
+          e.preventDefault();
+          spherical.radius = Math.max(3.5, Math.min(30, spherical.radius + e.deltaY * 0.012));
+          updateCameraPosition();
+        }
+      }, { passive: false });
+
+      // Click on map to move
+      const raycaster = new THREE.Raycaster();
+      const mouseVec = new THREE.Vector2();
+      domElement.addEventListener('click', (e) => {
+        if (mouseMovedAfterDown) return;
+        const rect = domElement.getBoundingClientRect();
+        mouseVec.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouseVec.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouseVec, camera);
+        const intersects = raycaster.intersectObjects(scene.children, true);
+        for (const hit of intersects) {
+          if (hit.object.userData && hit.object.userData.mapX !== undefined) {
+            targetPos.x = hit.object.userData.mapX + 0.5;
+            targetPos.z = hit.object.userData.mapZ + 0.5;
+            toggleMode('manual');
+            break;
+          }
+        }
+      });
+
+      // Touch controls for mobile / tablet support
+      let touchStartX = 0, touchStartY = 0, touchMoved = false;
+      domElement.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchMoved = false;
+          prevMousePos = { x: touchStartX, y: touchStartY };
+        }
+      }, { passive: true });
+      domElement.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1) {
+          const cx = e.touches[0].clientX, cy = e.touches[0].clientY;
+          const dx = cx - prevMousePos.x, dy = cy - prevMousePos.y;
+          if (Math.hypot(cx - touchStartX, cy - touchStartY) > 6) {
+            touchMoved = true;
+          }
+          prevMousePos = { x: cx, y: cy };
+          if (camMode === 'orbit') {
+            spherical.theta -= dx * 0.008;
+            spherical.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, spherical.phi - dy * 0.008));
+            updateCameraPosition();
+          }
+        }
+      }, { passive: true });
+      domElement.addEventListener('touchend', (e) => {
+        if (!touchMoved && e.changedTouches.length === 1) {
+          const t = e.changedTouches[0];
+          const rect = domElement.getBoundingClientRect();
+          mouseVec.x = ((t.clientX - rect.left) / rect.width) * 2 - 1;
+          mouseVec.y = -((t.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(mouseVec, camera);
+          const intersects = raycaster.intersectObjects(scene.children, true);
+          for (const hit of intersects) {
+            if (hit.object.userData && hit.object.userData.mapX !== undefined) {
+              targetPos.x = hit.object.userData.mapX + 0.5;
+              targetPos.z = hit.object.userData.mapZ + 0.5;
+              toggleMode('manual');
+              break;
+            }
+          }
+        }
+      });
+
+      // Keyboard Controls
+      window.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
+        if (e.code === 'Space') { e.preventDefault(); triggerAttack(); }
+        if (e.key.toLowerCase() === 't') triggerThreat();
+        if (e.key.toLowerCase() === 'r') triggerRoar();
+        if (e.key.toLowerCase() === 'h') triggerHit();
+        if (e.key.toLowerCase() === 'k') triggerDeath();
+      });
+      window.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+      });
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const now = performance.now();
+
+      if (spiderModel && !isBusyAction) {
+        let moveX = 0, moveZ = 0;
+        if (keys['w'] || keys['arrowup']) moveZ -= 1;
+        if (keys['s'] || keys['arrowdown']) moveZ += 1;
+        if (keys['a'] || keys['arrowleft']) moveX -= 1;
+        if (keys['d'] || keys['arrowright']) moveX += 1;
+
+        if (moveX !== 0 || moveZ !== 0) {
+          toggleMode('manual');
+          const speed = 2.6 * delta;
+          const len = Math.hypot(moveX, moveZ);
+          targetPos.x = Math.max(-10, Math.min(10, spiderPos.x + (moveX / len) * speed * 2));
+          targetPos.z = Math.max(-10, Math.min(10, spiderPos.z + (moveZ / len) * speed * 2));
+        }
+
+        const dx = targetPos.x - spiderPos.x;
+        const dz = targetPos.z - spiderPos.z;
+        const dist = Math.hypot(dx, dz);
+
+        if (dist > 0.08) {
+          isMoving = true;
+          const targetYaw = Math.atan2(dx, dz);
+          let diffYaw = targetYaw - spiderPos.yaw;
+          while (diffYaw > Math.PI) diffYaw -= 2 * Math.PI;
+          while (diffYaw < -Math.PI) diffYaw += 2 * Math.PI;
+
+          // Xoay hướng tự nhiên: khi góc lệch lớn, nhện sẽ bước chân xoay trước
+          const turnRate = Math.min(Math.abs(diffYaw), 7.5 * delta);
+          spiderPos.yaw += Math.sign(diffYaw) * turnRate;
+
+          // Hệ số tiến tới: chỉ tiến nhanh khi đã quay gần đúng hướng mục tiêu
+          const facingFactor = Math.max(0.15, Math.cos(diffYaw));
+          // Giảm tốc mượt mà khi tiến vào đích
+          const arrivalDamping = Math.min(1.0, dist / 0.75);
+          const maxSpeed = 2.5;
+          const currentSpeed = maxSpeed * facingFactor * arrivalDamping;
+          const moveStep = Math.min(dist, currentSpeed * delta);
+
+          spiderPos.x += Math.sin(spiderPos.yaw) * moveStep;
+          spiderPos.z += Math.cos(spiderPos.yaw) * moveStep;
+
+          playAction('Spider_Walk', 0.2);
+
+          // Đồng bộ tốc độ hoạt ảnh sải chân theo vận tốc mặt đất (Triệt tiêu trượt chân)
+          if (actions['Spider_Walk']) {
+            const groundVelocity = moveStep / Math.max(delta, 0.001);
+            const turnVelocity = turnRate / Math.max(delta, 0.001);
+            const strideScale = Math.max(0.6, Math.min(2.2, groundVelocity * 0.75 + turnVelocity * 0.2));
+            actions['Spider_Walk'].setEffectiveTimeScale(strideScale);
+          }
+          walkCycleTimer += delta * 9.0;
+        } else {
+          isMoving = false;
+          playAction('Spider_Idle', 0.25);
+          if (actions['Spider_Idle']) {
+            actions['Spider_Idle'].setEffectiveTimeScale(1.0);
+          }
+          if (controlMode === 'auto' && !autoPatrolTimeout) {
+            autoPatrolTimeout = setTimeout(() => {
+              autoPatrolTimeout = null;
+              if (controlMode === 'auto') pickRandomTarget();
+            }, 900);
+          }
+        }
+
+        // Bám địa hình 3D tự nhiên: nghiêng thân (Pitch & Roll) theo độ dốc mặt đất
+        const fX = Math.sin(spiderPos.yaw);
+        const fZ = Math.cos(spiderPos.yaw);
+        const rX = Math.cos(spiderPos.yaw);
+        const rZ = -Math.sin(spiderPos.yaw);
+
+        const eAhead = getElevation(spiderPos.x + fX * 0.65, spiderPos.z + fZ * 0.65);
+        const eBehind = getElevation(spiderPos.x - fX * 0.65, spiderPos.z - fZ * 0.65);
+        const targetPitch = Math.atan2(eBehind - eAhead, 1.3);
+
+        const eRight = getElevation(spiderPos.x + rX * 0.65, spiderPos.z + rZ * 0.65);
+        const eLeft = getElevation(spiderPos.x - rX * 0.65, spiderPos.z - rZ * 0.65);
+        const targetRoll = Math.atan2(eLeft - eRight, 1.3);
+
+        currentPitch += (targetPitch - currentPitch) * 0.15;
+        currentRoll += (targetRoll - currentRoll) * 0.15;
+
+        const elev = getElevation(spiderPos.x, spiderPos.z);
+        const stepBob = isMoving ? Math.sin(walkCycleTimer) * 0.025 : 0;
+        spiderModel.position.set(spiderPos.x, elev + stepBob, spiderPos.z);
+
+        // Áp dụng góc xoay kết hợp: Hướng di chuyển (Yaw) + Độ dốc tiến (Pitch) + Nghiêng ngang (Roll)
+        spiderModel.rotation.set(0, 0, 0);
+        spiderModel.rotateY(spiderPos.yaw);
+        spiderModel.rotateX(currentPitch);
+        spiderModel.rotateZ(currentRoll);
+
+        document.getElementById('txt-pos').textContent = `X: ${spiderPos.x.toFixed(1)}, Z: ${spiderPos.z.toFixed(1)}`;
+        document.getElementById('txt-terrain').textContent = getTerrainName(spiderPos.x, spiderPos.z);
+        document.getElementById('txt-elev').textContent = `${elev.toFixed(2)} m`;
+      }
+
+      // Update destination target marker
+      if (targetMarker) {
+        const targetElev = getElevation(targetPos.x, targetPos.z);
+        targetMarker.position.set(targetPos.x, targetElev + 0.04, targetPos.z);
+        const pulse = 1.0 + Math.sin(now * 0.006) * 0.12;
+        targetMarker.scale.set(pulse, 1, pulse);
+        targetMarker.rotation.y = now * 0.002;
+        const targetDist = Math.hypot(targetPos.x - spiderPos.x, targetPos.z - spiderPos.z);
+        targetMarker.visible = (controlMode === 'manual' || targetDist > 0.3);
+      }
+
+      if (mixer) {
+        mixer.update(delta);
+      }
+
+      updateCameraPosition();
+
+      frameC++;
+      if (now - lastF >= 1000) {
+        document.getElementById('txt-fps').textContent = Math.round((frameC * 1000) / (now - lastF));
+        frameC = 0;
+        lastF = now;
+      }
+
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>

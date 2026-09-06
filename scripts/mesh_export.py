@@ -68,6 +68,8 @@ def main() -> int:
     ap.add_argument("--creatures", type=int, default=0,
                     help="xuất thêm mô tả sinh vật cho N seed (7 loài × N seed)")
     ap.add_argument("--only", default="", help="chỉ làm một id")
+    ap.add_argument("--blender", action="store_true", help="dựng 3D trực tiếp bằng Blender local (miễn phí, có Rig + Animation)")
+    ap.add_argument("--agy", action="store_true", help="sử dụng AGY CLI để suy luận từ prompt và tinh chỉnh qua Blender MCP")
     args = ap.parse_args()
 
     rows = all_static_prompts()
@@ -100,8 +102,27 @@ def main() -> int:
 
     print(f"đã ghi {len(rows)} mô tả → {OUT}/prompts.json và prompts.md")
 
+    if args.blender or args.agy:
+        from scripts.build_creatures import build_single_creature, find_blender, run_with_agy
+        blender_bin = find_blender()
+        c_rows = [r for r in rows if r.get("nhom") == "sinh_vat"]
+        if not c_rows:
+            print("Chưa có sinh vật để dựng 3D. Thêm --creatures N (ví dụ --creatures 1)")
+            return 0
+        print(f"\nBắt đầu dựng {len(c_rows)} mô hình 3D sinh học qua {'AGY CLI' if args.agy else 'Blender'}...")
+        for r in c_rows:
+            sp = r["species_id"]
+            sd = r["seed"]
+            if args.agy:
+                run_with_agy(sp, sd)
+            else:
+                build_single_creature(sp, sd, blender_bin)
+        print(f"✓ Đã xuất toàn bộ GLB + BLEND vào assets/creatures/")
+        return 0
+
     if not args.send:
-        print("chưa gửi. Thêm --send để gọi Meshy thật (tốn tiền).")
+        print("chưa gửi mạng. Thêm --blender để dựng 3D miễn phí bằng Blender local,")
+        print("hoặc --send để gọi Meshy thật (tốn tiền).")
         return 0
 
     key = os.environ.get("MESHY_API_KEY", "").strip()
