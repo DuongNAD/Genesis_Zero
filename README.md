@@ -145,7 +145,7 @@ kiểm điều đó từ ngoài.
 
 | | |
 |---|---|
-| Test | **1718 mục được thu thập / 113 files**; baseline 2026-09-17 (20260917T132824Z): 1664 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
+| Test | **1718 mục được thu thập / 113 files**; baseline 2026-09-17 (20260917T154659Z): 1679 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
 | Phiếu việc | 65, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
