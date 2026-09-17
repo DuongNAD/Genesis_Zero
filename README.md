@@ -145,7 +145,7 @@ kiểm điều đó từ ngoài.
 
 | | |
 |---|---|
-| Test | **1712 mục được thu thập / 111 files**; baseline 2026-09-17 (20260917T132824Z): 1664 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
+| Test | **1718 mục được thu thập / 113 files**; baseline 2026-09-17 (20260917T132824Z): 1664 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
 | Phiếu việc | 65, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
@@ -199,7 +199,7 @@ bất biến, cách nghiệm thu, và — quan trọng nhất — **những lỗ
 
 ```bash
 make preflight    # máy này chạy được một ván thật chưa?
-make test         # 1712 test (số lượng collection; không phải tất cả đã pass)
+make test         # 1718 test (số lượng collection; không phải tất cả đã pass)
 make serve        # server ván, cổng 8000
 make hostile      # kiểm cửa chống lạm dụng — chạy TRƯỚC khi phơi ra internet
 make expose       # mở tunnel ngrok
@@ -226,9 +226,9 @@ Số mục bao gồm các biến thể parametrized; collection không đồng n
 
 | Thư mục | Số mục |
 |---|---:|
-| `tests` | 1504 |
+| `tests` | 1510 |
 | `tests/e2e` | 208 |
-| **Tổng** | **1712** |
+| **Tổng** | **1718** |
 
 Đối soát và xuất danh sách từng file/node ID:
 
