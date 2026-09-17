@@ -119,20 +119,72 @@ def test_dossier_codex_entries_va_loc_theo_id(dossier_env, phase, confidence, mo
 
     client, runner = dossier_env
     runner.advance_phase()                       # -> SEEDING
+    if phase is Phase.RUNNING:
+        runner.advance_phase()
+        runner.step()
+    assert runner.phase is phase
     c = runner.creatures[0]
-    runner.minds.codices[c.id] = Codex(size=1)
-    runner.minds.codices[c.id].apply(
-        "SET", 0,
-        Law(Trigger(TriggerKind.DRINK), (),
-            Effect(EffectKind.ENERGY_GAIN, Mag.BIG, Dur.INSTANT)),
-        3, tick=0)
+    codex = Codex(size=2)  # Ô trống cũng phải được bỏ qua an toàn.
+    runner.minds.codices[c.id] = codex
+    law = Law(Trigger(TriggerKind.EAT, "FRUIT_A"), (),
+              Effect(EffectKind.ENERGY_GAIN, Mag.BIG, Dur.INSTANT))
+    assert codex.apply("SET", 0, law, confidence, tick=runner.tick_no).ok
+    entries = codex.entries
+    calls = []
+
+    def public_entries():
+        calls.append(True)
+        return entries()
+
+    monkeypatch.setattr(codex, "entries", public_entries)
     data = client.get("/v1/spectate/dossier").json()
+    assert calls, "dossier phải đọc qua API công khai Codex.entries()"
+    assert runner.laws_public() == []
+    assert "law_id" not in str(data)
     row = next(r for r in data["creatures"] if r["id"] == c.id)
     assert row["inferred_rules"], "codex có 1 mục mà dossier không thấy"
     rule = row["inferred_rules"][0]
-    assert rule["conf"] == 3 and rule["status"] == "Giả thuyết chưa xác minh"
-    assert "law_id" not in rule
+    from genesis.lawdsl import to_vietnamese
+
+    assert len(row["inferred_rules"]) == 1
+    assert rule == {
+        "text": to_vietnamese(law, runner.world.surface_map),
+        "conf": confidence,
+        "written_at": runner.tick_no,
+        "source": "self",
+        "status": "Giả thuyết chưa xác minh",
+    }
 
     filtered = client.get("/v1/spectate/dossier", params={"creature_id": c.id}).json()
     assert [r["id"] for r in filtered["creatures"]] == [c.id]
+    species = client.get("/v1/spectate/dossier", params={"creature_id": c.species}).json()
+    assert {r["id"] for r in species["creatures"]} == {
+        cr.id for cr in runner.creatures if cr.species == c.species
+    }
+    missing = client.get("/v1/spectate/dossier", params={"creature_id": "missing"}).json()
+    assert missing["creatures"] == []
+
+
+def test_frame_metadata_qua_hai_van(dossier_env):
+    client, runner = dossier_env
+    keys = []
+    for _ in range(2):
+        runner.advance_phase()
+        assert runner.phase is Phase.SEEDING
+        runner.advance_phase()
+        runner.step()
+        frame = runner.frames[-1]
+        assert frame["schema_version"] == "1.0"
+        assert frame["match_id"] == runner.match_id
+        keys.append((frame["match_id"], frame["t"]))
+        runner.advance_phase()
+        assert runner.phase is Phase.REVEAL
+        assert runner.laws_public()
+        for revealed in runner.reveal_frames():
+            assert revealed["match_id"] == runner.match_id
+            assert revealed["schema_version"] == "1.0"
+        runner.advance_phase()
+        runner.advance_phase()
+    assert keys[0][1] == keys[1][1]
+    assert keys[0][0] != keys[1][0]
 

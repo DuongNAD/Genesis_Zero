@@ -55,7 +55,8 @@ def test_routes_work_truyen_ca_hai():
     """
     from pathlib import Path
 
-    src = (Path(__file__).resolve().parent.parent / "net" / "routes_work.py").read_text()
+    # Tệp nguồn là UTF-8; đọc theo bảng mã locale (cp1252) sẽ nổ UnicodeDecodeError.
+    src = (Path(__file__).resolve().parent.parent / "net" / "routes_work.py").read_text(encoding="utf-8")
     i = src.index("js = schema_for(")
     goi = src[i:i + 200]
     assert "targets=" in goi, "đường mạng quên targets"

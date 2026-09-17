@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Dict
@@ -21,7 +22,13 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BLEND_PATH = PROJECT_ROOT / "models" / "genesis_diorama_master.blend"
-BLENDER_BIN = Path("/Applications/Blender.app/Contents/MacOS/Blender")
+# Resolve đa nền tảng (quy ước genesis/concept_creator._find_blender); skip CÓ
+# LÝ DO khi thiếu Blender hoặc asset master đã bị xoá khỏi revision.
+BLENDER_BIN = next(
+    (c for c in (os.environ.get("BLENDER_BIN"), shutil.which("blender"),
+                 "/Applications/Blender.app/Contents/MacOS/Blender") if c and Path(c).exists()),
+    None,
+)
 
 IN_BLENDER_STRESS_PROBE_SCRIPT = r"""
 import bpy
@@ -201,7 +208,9 @@ print(json.dumps(results, indent=2))
 @pytest.fixture(scope="module")
 def empirical_probe_results() -> Dict[str, Any]:
     """Runs the in-Blender standalone stress probe and returns structured metrics."""
-    assert BLENDER_BIN.is_file(), f"Blender not found at {BLENDER_BIN}"
+    if BLENDER_BIN is None or not BLEND_PATH.is_file():
+        pytest.skip("Blender probe environment unavailable (no Blender binary or master blend removed)")
+    assert BLENDER_BIN is not None
     assert BLEND_PATH.is_file(), f"Blend file not found at {BLEND_PATH}"
 
     cmd = [

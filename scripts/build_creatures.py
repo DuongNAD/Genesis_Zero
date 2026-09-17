@@ -20,7 +20,7 @@ Cách dùng:
 from __future__ import annotations
 
 import argparse
-import json
+import math
 import os
 import shutil
 import subprocess
@@ -47,10 +47,16 @@ BLENDER_BIN_CANDIDATES = [
 
 
 def find_blender() -> str:
-    for path in BLENDER_BIN_CANDIDATES:
+    override = os.environ.get("GENESIS_BLENDER_BIN") or os.environ.get("BLENDER_BIN")
+    base = Path(os.environ.get("PROGRAMFILES", "C:/Program Files")) / "Blender Foundation"
+    candidates = [override] if override else [
+        *BLENDER_BIN_CANDIDATES,
+        *(str(p) for p in sorted(base.glob("Blender*/blender.exe"), reverse=True)),
+    ]
+    for path in candidates:
         if path and os.path.isfile(path) and os.access(path, os.X_OK):
             return path
-    raise RuntimeError("Không tìm thấy Blender trên hệ thống (/Applications/Blender.app)!")
+    raise RuntimeError("Không tìm thấy Blender; đặt GENESIS_BLENDER_BIN tới blender executable.")
 
 
 def find_agy() -> str:
@@ -70,31 +76,47 @@ def build_single_creature(
     seed: int,
     blender_bin: str,
     verbose: bool = False,
+    *,
+    output_dir: Path | None = None,
+    timeout: float = 180,
 ) -> Path:
     """Sinh mô hình sinh vật bằng Blender headless procedural generator."""
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out_glb = OUT_DIR / f"creature_{species_id}_s{seed}.glb"
-    out_blend = OUT_DIR / f"creature_{species_id}_s{seed}.blend"
+    if species_id not in config.FOUNDERS:
+        raise ValueError(f"Unknown species: {species_id}")
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("timeout must be finite and positive")
+    destination = (output_dir or OUT_DIR).resolve()
+    destination.mkdir(parents=True, exist_ok=True)
+    out_glb = destination / f"creature_{species_id}_s{seed}.glb"
+    out_blend = destination / f"creature_{species_id}_s{seed}.blend"
+    if output_dir is not None and (out_glb.exists() or out_blend.exists()):
+        raise FileExistsError("Output exists; choose a new --output directory")
 
     code = build_creature_blender_code(
         species_id=species_id,
         seed=seed,
-        out_glb=str(out_glb),
-        out_blend=str(out_blend),
+        out_glb=out_glb.as_posix(),
+        out_blend=out_blend.as_posix(),
     )
+    code = "import bpy\nbpy.context.preferences.filepaths.save_version = 0\n" + code
+    compile(code, "<local-creature>", "exec")
 
     with tempfile.NamedTemporaryFile(suffix=".py", mode="w", encoding="utf-8", delete=False) as tf:
         tf.write(code)
         tmp_script = tf.name
 
     try:
-        cmd = [blender_bin, "--background", "--python", tmp_script]
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        cmd = [blender_bin, "--background", "--factory-startup", "--python", tmp_script]
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
         if proc.returncode != 0:
             print(f"Lỗi khi chạy Blender cho {species_id}_s{seed}:\n{proc.stderr[:400]}")
             raise RuntimeError(f"Blender failed with exit code {proc.returncode}")
+        if not (out_glb.is_file() and out_glb.stat().st_size > 0):
+            raise RuntimeError("Blender exited successfully but GLB was not produced")
         if verbose:
             print(proc.stdout)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"Blender timeout after {timeout}s") from exc
     finally:
         if os.path.isfile(tmp_script):
             os.remove(tmp_script)
@@ -146,6 +168,8 @@ def main() -> int:
     ap.add_argument("--seeds", type=int, default=1, help="Số lượng seed khi chạy --all")
     ap.add_argument("--agy", action="store_true", help="Sử dụng AGY CLI để suy luận và điều khiển sinh vật")
     ap.add_argument("--verbose", action="store_true", help="In chi tiết log Blender")
+    ap.add_argument("--output", type=Path, default=None,
+                    help="Thư mục output riêng (bắt đầu trống; mặc định assets/creatures)")
     args = ap.parse_args()
 
     blender_bin = find_blender()
@@ -165,7 +189,8 @@ def main() -> int:
         return 0
 
     print(f"Bắt đầu sinh mô hình sinh vật {args.species} (seed {args.seed})...")
-    build_single_creature(args.species, args.seed, blender_bin, verbose=args.verbose)
+    build_single_creature(args.species, args.seed, blender_bin, verbose=args.verbose,
+                          output_dir=args.output)
     return 0
 
 

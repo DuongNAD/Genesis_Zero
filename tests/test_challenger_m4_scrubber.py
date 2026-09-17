@@ -226,6 +226,7 @@ def _run_node_script(script: str) -> dict:
         cwd=ROOT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=30,
     )
     if proc.returncode != 0:

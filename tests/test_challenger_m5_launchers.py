@@ -36,7 +36,7 @@ def test_launch_py_unrecognized_argument_clean_exit():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--adversarial-unrecognized-flag-xyz"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=10,
     )
@@ -50,7 +50,7 @@ def test_launch_py_invalid_ticks_type():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--ticks", "not_an_integer"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=10,
     )
@@ -64,7 +64,7 @@ def test_launch_py_invalid_seed_type():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--seed", "3.14159"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=10,
     )
@@ -78,7 +78,7 @@ def test_launch_py_invalid_llm_choice():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--llm", "skynet_quantum_gpt"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=10,
     )
@@ -92,7 +92,7 @@ def test_preflight_py_unrecognized_argument_clean_exit():
     res = subprocess.run(
         [sys.executable, str(PREFLIGHT_PY), "--bogus-preflight-option"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=10,
     )
@@ -110,7 +110,7 @@ def test_launch_py_ticks_zero():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--reflex", "--ticks", "0", "--no-render"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -123,7 +123,7 @@ def test_launch_py_ticks_one():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--reflex", "--ticks", "1", "--no-render"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -136,7 +136,7 @@ def test_launch_py_ticks_negative():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--reflex", "--ticks", "-5", "--no-render"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -153,7 +153,7 @@ def test_launch_py_negative_seed():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--reflex", "--ticks", "2", "--seed", "-1", "--no-render"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -166,7 +166,7 @@ def test_launch_py_overflow_seed():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--reflex", "--ticks", "2", "--seed", "999999999", "--no-render"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -179,7 +179,7 @@ def test_launch_py_zero_seed():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--reflex", "--ticks", "2", "--seed", "0", "--no-render"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -197,7 +197,7 @@ def test_launch_py_preflight_precedence_over_simulation():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--preflight", "--reflex", "--ticks", "5"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         env=fast_env,
         timeout=25,
@@ -215,7 +215,7 @@ def test_launch_py_preflight_with_no_render():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--preflight", "--no-render"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         env=fast_env,
         timeout=25,
@@ -230,7 +230,7 @@ def test_launch_py_fix_with_preflight():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--fix", "--preflight"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         env=fast_env,
         timeout=25,
@@ -244,7 +244,7 @@ def test_launch_py_reflex_precedence_over_llm_flag():
     res = subprocess.run(
         [sys.executable, str(LAUNCH_PY), "--reflex", "--llm", "vllm", "--ticks", "1", "--no-render"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -274,7 +274,7 @@ def test_launch_py_non_interactive_closed_stdin():
         [sys.executable, str(LAUNCH_PY), "--reflex", "--ticks", "2", "--no-render"],
         stdin=subprocess.DEVNULL,
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -286,34 +286,75 @@ def test_launch_py_web_headless_browser_suppression():
     """Adversarial headless test: In headless environments where webbrowser fails, error is suppressed without crashing server."""
     from scripts.launch import run_web_server
     with patch("webbrowser.open", side_effect=Exception("No DISPLAY or browser available in headless container")):
-        with patch("subprocess.run") as mock_subproc:
-            mock_subproc.return_value.returncode = 0
-            ret = run_web_server(port=8015, open_browser=True)
-            assert ret == 0
+        with patch("scripts.launch.threading.Thread") as mock_thread:
+            mock_thread.side_effect = lambda target, daemon=False: type("MockThread", (), {"start": lambda self: target()})()
+            with patch("time.sleep"):
+                with patch("subprocess.run") as mock_subproc:
+                    mock_subproc.return_value.returncode = 0
+                    ret = run_web_server(port=8015, open_browser=True)
+                    assert ret == 0
 
 
+
+def test_launch_py_web_keyboard_interrupt():
+    """Exercise the launcher handler without pretending to send a console event."""
+    from scripts.launch import run_web_server
+
+    with patch("subprocess.run", side_effect=KeyboardInterrupt) as child:
+        assert run_web_server(open_browser=False) == 0
+    child.assert_called_once()
+
+
+@pytest.mark.parametrize("returncode", [0, 3])
+def test_launch_py_web_preserves_child_status(returncode):
+    from scripts.launch import run_web_server
+
+    with patch("subprocess.run") as child:
+        child.return_value.returncode = returncode
+        assert run_web_server(open_browser=False) == returncode
+    assert child.call_args.kwargs["env"]["PYTHONIOENCODING"] == "utf-8"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Popen.send_signal(SIGINT) is POSIX-only; Windows console Ctrl+C needs separate validation")
 def test_launch_py_web_sigint_graceful_shutdown():
-    """Adversarial stress: Spawning web server and sending SIGINT (Ctrl+C) must cleanly exit with returncode 0."""
-    port = 8016
-    proc = subprocess.Popen(
-        [sys.executable, str(LAUNCH_PY), "--web", "--port", str(port)],
-        cwd=ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    # Wait for web server to bind
-    time.sleep(2.0)
-    # Send SIGINT
-    proc.send_signal(signal.SIGINT)
-    try:
-        stdout, stderr = proc.communicate(timeout=6.0)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        pytest.fail("Web server failed to shut down within timeout upon receiving SIGINT")
+    """Send real SIGINT after readiness; closed stdin must not stop the server."""
+    import socket
+    from urllib.request import urlopen
 
-    assert proc.returncode == 0, f"Expected returncode 0 on SIGINT, got {proc.returncode}"
-    assert "Đã dừng máy chủ Web." in stdout or "Application shutdown complete" in stderr or "Application shutdown complete" in stdout
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
+    proc = subprocess.Popen(
+        [sys.executable, "-c",
+         "from scripts.launch import run_web_server; "
+         f"raise SystemExit(run_web_server(port={port}, open_browser=False))"],
+        cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        stdin=subprocess.DEVNULL, text=True, encoding="utf-8",
+        start_new_session=True,
+    )
+    try:
+        deadline = time.monotonic() + 15
+        while True:
+            if proc.poll() is not None:
+                stdout, stderr = proc.communicate(timeout=2)
+                pytest.fail(f"Server exited before readiness: {proc.returncode}\n{stdout}\n{stderr}")
+            try:
+                with urlopen(f"http://127.0.0.1:{port}/v1/healthz", timeout=0.5) as response:
+                    if response.status == 200:
+                        break
+            except OSError:
+                pass
+            assert time.monotonic() < deadline, "Server did not become ready"
+            time.sleep(0.05)
+        proc.send_signal(signal.SIGINT)
+        stdout, stderr = proc.communicate(timeout=10)
+        assert proc.returncode == 0, f"rc={proc.returncode}\n{stdout}\n{stderr}"
+        assert "Đã dừng máy chủ Web." in stdout or "Application shutdown complete" in stderr
+    finally:
+        # Kill the isolated group, including any child left after a test failure.
+        with contextlib.suppress(ProcessLookupError):
+            os.killpg(proc.pid, signal.SIGKILL)
+        proc.communicate(timeout=5)
 
 
 def test_preflight_unreachable_llm_port_is_warning_not_failure():
@@ -321,7 +362,7 @@ def test_preflight_unreachable_llm_port_is_warning_not_failure():
     res = subprocess.run(
         [sys.executable, str(PREFLIGHT_PY), "--llm-url", "http://127.0.0.1:59999"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=15,
     )
@@ -345,7 +386,7 @@ def test_preflight_malformed_url_raises_value_error():
     res = subprocess.run(
         [sys.executable, str(PREFLIGHT_PY), "--llm-url", "foo"],
         capture_output=True,
-        text=True,
+        text=True, encoding="utf-8", errors="replace",
         cwd=ROOT,
         timeout=10,
     )

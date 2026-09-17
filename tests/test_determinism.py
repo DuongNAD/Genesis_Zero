@@ -80,7 +80,7 @@ def module_level_random_calls(pkg_dir: Path) -> list[tuple[str, int]]:
                 and isinstance(node.func, ast.Attribute)
                 and isinstance(node.func.value, ast.Name)
                 and node.func.value.id == "random"):
-            hits.append((str(path.relative_to(pkg_dir.parent)), node.lineno))
+            hits.append((path.relative_to(pkg_dir.parent).as_posix(), node.lineno))
         scan(node, path)
 
     for path in sorted(pkg_dir.rglob("*.py")):

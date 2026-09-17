@@ -42,13 +42,13 @@ def test_codex_acceptance() -> None:
     assert cx.entries()[0] is not None
     assert not cx.apply("SET", 1, law, 3, tick=500).ok
     # B5: reflex KHÔNG import codex
-    t = ast.parse(open("genesis/reflex.py").read())
+    t = ast.parse(open("genesis/reflex.py", encoding="utf-8").read())
     assert not [
         n
         for n in ast.walk(t)
         if isinstance(n, ast.ImportFrom) and n.module and "codex" in n.module
     ]
-    assert "codex" not in open("genesis/reflex.py").read().lower()
+    assert "codex" not in open("genesis/reflex.py", encoding="utf-8").read().lower()
 
 
 def test_codex_operations_set_drop_conf() -> None:

@@ -121,7 +121,9 @@ def test_chi_mot_duong_ra(env):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         and any(isinstance(n, ast.Attribute) and n.attr == "_laws" for n in ast.walk(node))
     }
-    assert readers <= {"laws_public", "_seed_match", "step", "__init__", "_close_log"}, readers
+    # Seeding was extracted into the shared sync/async generator. Keep the
+    # same private initialization exception, not an extra public disclosure path.
+    assert readers <= {"laws_public", "_seed_steps", "step", "__init__", "_close_log"}, readers
 
 
 def test_prompt_tu_chan_ro_ri_o_goc(env):

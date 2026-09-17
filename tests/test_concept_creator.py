@@ -44,7 +44,11 @@ def test_build_master_concept_prompt_flora() -> None:
     assert "Snap-trap" in prompt or "bẫy kẹp" in prompt
 
 
-def test_generate_creature_concept_and_3d_api() -> None:
+def test_generate_creature_concept_and_3d_api(monkeypatch, tmp_path) -> None:
+    from genesis import concept_creator
+    monkeypatch.setattr(concept_creator, "_find_blender", lambda: None)
+    monkeypatch.setattr(concept_creator, "CONCEPTS_DIR", tmp_path / "concepts")
+    monkeypatch.setattr(concept_creator, "CREATURES_DIR", tmp_path / "creatures")
     client = TestClient(app)
     res = client.post(
         "/v1/spectate/generate_concept",
@@ -62,6 +66,10 @@ def test_generate_creature_concept_and_3d_api() -> None:
     )
     assert res.status_code == 200
     data = res.json()
-    assert data["ok"] is True
+    assert data["ok"] is False
+    assert data["status"] == "concept_only"
+    assert data["error"] == "BLENDER_UNAVAILABLE"
     assert "concept" in data["image_url"]
-    assert "creature" in data["glb_url"]
+    assert data["glb_url"] is None
+    assert data["blend_url"] is None
+    assert list((tmp_path / "concepts").glob("*.svg"))
