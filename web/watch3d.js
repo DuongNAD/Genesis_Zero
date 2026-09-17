@@ -586,7 +586,12 @@
 
   // ── Client Frame History Ring Buffer & Timeline Replay Engine ──
   const MAX_HISTORY = 1200;
-  const historyBuffer = [];
+  const frameHistory = new window.GenesisTelemetry.FrameHistory({ maxFrames: MAX_HISTORY });
+  let historyBuffer = [];
+  frameHistory.onMatchChanged((matchId, previous) => {
+    resetMatch();
+    if (el("match-id")) el("match-id").textContent = matchId;
+  });
   let isPaused = false;
   let playbackSpeed = 1;
   let scrubTick = 0;
@@ -613,17 +618,8 @@
   }
 
   function getFrameByTick(t) {
-    if (!historyBuffer.length) return null;
-    let closest = historyBuffer[0];
-    let minDiff = Math.abs(closest.t - t);
-    for (let i = 1; i < historyBuffer.length; i++) {
-      const diff = Math.abs(historyBuffer[i].t - t);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closest = historyBuffer[i];
-      }
-    }
-    return closest;
+    return frameHistory.getFrame(frameHistory.matchId, t) ??
+      frameHistory.nearestFrame(frameHistory.matchId, t);
   }
 
   function renderHistoricalFrame(t, isInstant = true) {
@@ -1373,7 +1369,7 @@
   }
 
   function getSpeciesName(c) {
-    return (c.id || "").split(":")[0] || "L1";
+    return c.species_id ?? c.species ?? ((c.id || "").split(":")[0] || "L1");
   }
 
   // ── 4. Độ cao 3 tầng sinh thái chuẩn hoá ──
@@ -1663,7 +1659,7 @@
 
   // ── 6. Đồng bộ và Interpolate Chuyển động Sinh Vật ──
   function syncBodies(frame, isInstant = false) {
-    const aliveSet = new Set();
+    const aliveSet = new Set((frame.creatures || []).map(c => c.id));
     let cntNuoc = 0, cntCan = 0, cntTroi = 0;
 
     for (const c of frame.creatures || []) {
@@ -1743,9 +1739,10 @@
 
     for (const [id, entity] of bodies) {
       if (!aliveSet.has(id)) {
-        for (const m of entity.group.userData.mats) {
-          if (m.opacity !== undefined) { m.transparent = true; m.opacity = 0.2; }
-        }
+        disposeObject(entity.group);
+        bodyGroup.remove(entity.group);
+        bodies.delete(id);
+        if (selectedCreatureId === id) deselectCreature();
       }
     }
 
@@ -1790,6 +1787,7 @@
     }
     for (const [k, mesh] of plantMeshes) {
       if (!currentPlants.has(k)) {
+        disposeObject(mesh);
         plantsGroup.remove(mesh);
         plantMeshes.delete(k);
       }
@@ -1813,6 +1811,7 @@
     }
     for (const [k, mesh] of corpseMeshes) {
       if (!currentCorpses.has(k)) {
+        disposeObject(mesh);
         corpsesGroup.remove(mesh);
         corpseMeshes.delete(k);
       }
@@ -2982,7 +2981,10 @@
 
   function applyFrame(frame, isInstant = false) {
     latestFrame = frame;
+    if (frame.w && frame.h) { W = frame.w; H = frame.h; }
     buildTerrain(frame.terrain);
+    if (el("match-id")) el("match-id").textContent = frame.match_id;
+    if (el("schema-version")) el("schema-version").textContent = frame.schema_version;
 
     if (el("phase")) {
       el("phase").textContent = frame.phase;
@@ -3028,16 +3030,61 @@
     renderMinimap(frame);
   }
 
-  function onFrame(frame) {
-    // 1. Ghi nhận khung vào Ring Buffer 1200 khung
-    const existingIdx = historyBuffer.findIndex((f) => f.t === frame.t);
-    if (existingIdx >= 0) {
-      historyBuffer[existingIdx] = frame;
-    } else {
-      historyBuffer.push(frame);
-      if (historyBuffer.length > MAX_HISTORY) {
-        historyBuffer.shift();
+  function disposeObject(object) {
+    const resources = new Set();
+    object.traverse((child) => {
+      if (child.geometry) resources.add(child.geometry);
+      for (const material of (Array.isArray(child.material) ? child.material : [child.material])) {
+        if (material) resources.add(material);
       }
+    });
+    for (const resource of resources) resource.dispose?.();
+  }
+
+  function clearGroup(group) {
+    for (const child of [...group.children]) {
+      disposeObject(child);
+      group.remove(child);
+    }
+  }
+
+  function resetMatch() {
+    latestFrame = null;
+    terrainGrid = []; terrainKey = "";
+    W = 24; H = 24;
+    for (const group of [bodyGroup, plantsGroup, corpsesGroup, terrainGroup,
+                         shockwaveGroup, podiumGroup]) clearGroup(group);
+    hearBufferGeo.setDrawRange(0, 0);
+    if (!dioramaMasterModel) { clearGroup(dioramaGroup); dioramaOceanMesh = null; }
+    if (el("reveal-modal")) el("reveal-modal").style.display = "none";
+    if (el("reveal-laws-list")) el("reveal-laws-list").textContent = "";
+    bodies.clear(); plantMeshes.clear(); corpseMeshes.clear();
+    waterSurfaceMesh = null;
+    flashes.length = 0; shockwaves.length = 0;
+    totalLawTriggers = 0; podiumsBuilt = false;
+    deselectCreature();
+    if (creatureSelect) creatureSelect.innerHTML = "";
+    for (const id of ["log", "journal-status"]) if (el(id)) el(id).textContent = "";
+    if (el("law-triggers-count")) el("law-triggers-count").textContent = "0";
+    if (minimapCtx) minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+    lastWeatherState = null;
+    const clearWeather = { state: "CLEAR", diurnal: "DAY", progress: 0, modifiers: {} };
+    updateWeatherHUD(clearWeather);
+    updateWeatherAtmosphere(clearWeather);
+    isLive = true; isPaused = false; scrubTick = 0; lastPlaybackStepTime = 0;
+    if (el("btn-playback-toggle")) el("btn-playback-toggle").textContent = "⏸ Tạm dừng";
+    updateLiveButtonState();
+  }
+
+  function onFrame(frame) {
+    frame = frameHistory.add(frame);
+    if (!frame) return;
+    historyBuffer = frameHistory.frames();
+    const newest = historyBuffer[historyBuffer.length - 1];
+    // Reconnect backlogs may arrive out of order; never regress the live view.
+    if (frame.t !== newest.t) return;
+    if (scrubTick < historyBuffer[0].t && (!isLive || isPaused)) {
+      renderHistoricalFrame(historyBuffer[0].t, true);
     }
 
     // 2. Cập nhật phạm vi timeline slider
@@ -3098,8 +3145,8 @@
         if (scrubTick >= maxTick) {
           goToLive();
         } else {
-          scrubTick += 1;
-          renderHistoricalFrame(scrubTick, false);
+          const next = historyBuffer.find(f => f.t > scrubTick);
+          if (next) renderHistoricalFrame(next.t, false);
         }
       }
     }
@@ -3108,6 +3155,8 @@
     for (let i = shockwaves.length - 1; i >= 0; i--) {
       const p = (now - shockwaves[i].t0) / 600;
       if (p >= 1.0) {
+        disposeObject(shockwaves[i].ring);
+        disposeObject(shockwaves[i].torus);
         shockwaveGroup.remove(shockwaves[i].ring);
         shockwaveGroup.remove(shockwaves[i].torus);
         shockwaves.splice(i, 1);
@@ -3256,7 +3305,12 @@
 
   if (typeof window !== "undefined") {
     window.Genesis3D = {
-      historyBuffer,
+      get historyBuffer() { return historyBuffer; },
+      frameHistory,
+      getFrame: (matchId, t) => frameHistory.getFrame(matchId, t),
+      onMatchChanged: (listener) => frameHistory.onMatchChanged(listener),
+      onFrame,
+      get entityIds() { return [...bodies.keys()]; },
       playLawFired,
       playDeath,
       playReproduce,

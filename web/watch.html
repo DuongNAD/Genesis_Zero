@@ -147,12 +147,20 @@
     <h1>GENESIS ZERO &middot; SPECTATE</h1>
     <div class="status-bar">
       <div class="status-item">Pha: <span id="phase-badge" class="badge-phase LOBBY">LOBBY</span></div>
+      <div class="status-item">Match: <span id="match-id" class="val">—</span></div>
+      <div class="status-item">Schema: <span id="schema-version" class="val">—</span></div>
+
       <div class="status-item">Tick: <span id="tick-val" class="val">0</span></div>
       <div class="status-item">Sống: <span id="alive-val" class="val">0/0</span></div>
       <div class="status-item">Quả: <span id="plants-val" class="val">0</span></div>
       <div class="status-item">Xác: <span id="corpses-val" class="val">0</span></div>
     </div>
   </header>
+  <nav aria-label="Timeline" style="padding: 8px 24px;">
+    <label for="timeline-slider">Tua ván hiện tại</label>
+    <input type="range" id="timeline-slider" min="0" max="0" value="0">
+    <button id="btn-live-sync" type="button">LIVE</button>
+  </nav>
   <main>
     <div class="canvas-container">
       <canvas id="sim-canvas" width="720" height="720"></canvas>
@@ -180,6 +188,7 @@
       <div class="event-log" id="event-log"></div>
     </div>
   </main>
+  <script src="frame_history.js"></script>
   <script src="watch.js"></script>
 </body>
 </html>

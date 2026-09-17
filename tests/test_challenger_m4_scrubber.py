@@ -202,6 +202,7 @@ function createHarness() {
     render() {}
   };
 
+  vm.runInContext(fs.readFileSync('web/frame_history.js', 'utf8'), sandbox);
   vm.runInContext(fs.readFileSync('web/watch3d.js', 'utf8'), sandbox);
 
   return {

@@ -139,7 +139,7 @@ def test_plant_glyph_and_print_map() -> None:
     """PLANT_GLYPH là '*' và lệnh --print-map in ra bản đồ có chứa '*'."""
     assert PLANT_GLYPH == "*"
     cmd = [sys.executable, "-m", "genesis.run", "--seed", "7", "--print-map"]
-    res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    res = subprocess.run(cmd, capture_output=True, encoding="utf-8", check=True)
     out = res.stdout
     assert "*" in out
     assert out.count("*") == config.PLANT_MAX

@@ -389,6 +389,8 @@ global.THREE = {
   LineSegments: class { constructor() { this.visible = true; } },
 };
 
+// Evaluate the shared history module before the viewer, as in the HTML page.
+global.GenesisTelemetry = require('./web/frame_history.js');
 // Evaluate watch3d.js
 const code = fs.readFileSync(path.join(process.cwd(), 'web/watch3d.js'), 'utf8');
 eval(code);

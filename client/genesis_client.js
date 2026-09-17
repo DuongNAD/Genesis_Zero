@@ -121,4 +121,5 @@ async function main() {
   }
 }
 
+// Standalone worker. Viewer history lives separately in web/frame_history.js.
 main().catch((e) => { log("thoát vì:", e); process.exit(1); });

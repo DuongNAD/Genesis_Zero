@@ -40,7 +40,7 @@ def creature_telemetry(runner: MatchRunner, creature: Creature) -> CreatureTelem
     """Serialize current body traits using the same contract for frame and dossier."""
     traits = list(astuple(creature.traits))
     founder = config.FOUNDERS.get(creature.species, traits)
-    features = list(creature.features)
+    features = list(getattr(creature, "features", []))
     if not features and runner.world is not None:
         kit = runner.world.kits.get(creature.species)
         if kit is not None:
@@ -61,11 +61,11 @@ def creature_telemetry(runner: MatchRunner, creature: Creature) -> CreatureTelem
         ),
         "tr": traits,
         "features": features,
-        "gen": creature.generation,
-        "parent_id": creature.parent_id,
-        "lineage": creature.lineage_id or creature.id,
+        "gen": getattr(creature, "generation", 0),
+        "parent_id": getattr(creature, "parent_id", None),
+        "lineage": getattr(creature, "lineage_id", None) or creature.id,
         "d_tr": [value - baseline for value, baseline in zip(traits, founder)],
-        "age": creature.age,
+        "age": getattr(creature, "age", 0),
     }
 
 

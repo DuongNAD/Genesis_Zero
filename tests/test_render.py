@@ -55,11 +55,12 @@ def test_glyph_and_hue_determinism() -> None:
     """B3: Glyph và hue phải tất định hoàn toàn theo md5 giữa các tiến trình."""
     cmd = [
         sys.executable,
+        "-X", "utf8",
         "-c",
         "from genesis.render import glyph_of, hue_of; print(glyph_of('L1'), hue_of('L1'))",
     ]
-    out1 = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
-    out2 = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
+    out1 = subprocess.run(cmd, capture_output=True, encoding="utf-8", check=True).stdout.strip()
+    out2 = subprocess.run(cmd, capture_output=True, encoding="utf-8", check=True).stdout.strip()
     assert out1 == out2
     g, h = out1.split()
     assert g == glyph_of("L1")

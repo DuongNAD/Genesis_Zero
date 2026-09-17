@@ -33,6 +33,65 @@
   let latestFrame = null;
   let latestTerrain = null;   // khung tick 0 mang dia hinh; giu lai cho ca van
   const speakFlashes = []; // { speakerId, hearerIds, startTime }
+  const frameHistory = new window.GenesisTelemetry.FrameHistory();
+  const slider = document.getElementById('timeline-slider');
+  let isLive = true;
+  frameHistory.onMatchChanged(() => {
+    latestFrame = null; latestTerrain = null;
+    speakFlashes.length = 0;
+    eventLog.textContent = '';
+    GRID_W = 24; GRID_H = 24; CELL_PX = canvas.width / GRID_W;
+    isLive = true;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  function showFrame(frame) {
+    if (!frame) return;
+    latestFrame = frame;
+    latestTerrain = frame.terrain;
+    updateUI(frame);
+    if (slider) slider.value = frame.t;
+  }
+
+  function onFrame(raw) {
+    const frame = frameHistory.add(raw);
+    if (!frame) return;
+    const frames = frameHistory.frames();
+    const first = frames[0], last = frames[frames.length - 1];
+    if (slider) { slider.min = first.t; slider.max = last.t; }
+    if (isLive) showFrame(last);
+    else if (latestFrame && latestFrame.t < first.t) showFrame(first);
+    if (!isLive || frame.t !== last.t) return;
+    const now = performance.now();
+    for (const ev of frame.events || []) {
+      addEventLog(ev);
+      if (ev.k === 'SPEAK') speakFlashes.push({
+        speakerId: ev.who, hearerIds: ev.hear || [], startTime: now,
+      });
+    }
+  }
+
+  slider?.addEventListener('input', (event) => {
+    const tick = Number(event.target.value);
+    const frames = frameHistory.frames();
+    if (!frames.length) return;
+    isLive = tick >= frames[frames.length - 1].t;
+    speakFlashes.length = 0;
+    showFrame(frameHistory.getFrame(frameHistory.matchId, tick) ??
+      frameHistory.nearestFrame(frameHistory.matchId, tick));
+  });
+  document.getElementById('btn-live-sync')?.addEventListener('click', () => {
+    isLive = true;
+    const frames = frameHistory.frames();
+    showFrame(frames[frames.length - 1]);
+  });
+  window.Genesis2D = {
+    frameHistory, onFrame,
+    getFrame: (matchId, t) => frameHistory.getFrame(matchId, t),
+    onMatchChanged: (listener) => frameHistory.onMatchChanged(listener),
+    get latestFrame() { return latestFrame; },
+    get terrain() { return latestTerrain; },
+  };
 
   function addEventLog(ev) {
     const entry = document.createElement('div');
@@ -63,24 +122,7 @@
 
     ws.onmessage = function(event) {
       try {
-        const frame = JSON.parse(event.data);
-        if (frame.terrain) latestTerrain = frame.terrain;
-        latestFrame = frame;
-        updateUI(frame);
-
-        if (frame.events && Array.isArray(frame.events)) {
-          const now = performance.now();
-          frame.events.forEach(ev => {
-            addEventLog(ev);
-            if (ev.k === 'SPEAK') {
-              speakFlashes.push({
-                speakerId: ev.who,
-                hearerIds: ev.hear || [],
-                startTime: now,
-              });
-            }
-          });
-        }
+        onFrame(JSON.parse(event.data));
       } catch (err) {
         // parsing error
       }
@@ -97,6 +139,10 @@
     phaseBadge.textContent = frame.phase;
     phaseBadge.className = `badge-phase ${frame.phase}`;
     tickVal.textContent = frame.t;
+    const match = document.getElementById('match-id');
+    const schema = document.getElementById('schema-version');
+    if (match) match.textContent = frame.match_id;
+    if (schema) schema.textContent = frame.schema_version;
 
     const aliveCount = (frame.creatures || []).filter(c => c.alive).length;
     const totalCount = (frame.creatures || []).length;
@@ -237,7 +283,7 @@
   }
 
   function drawCreature(c) {
-    const sp = c.id.split(':')[0];
+    const sp = c.species_id ?? c.species ?? c.id.split(':')[0];
     const t = c.tr || [2, 2, 2, 2, 2, 2];
     const traits = {
       brain: t[TR.brain], attack: t[TR.attack], armor: t[TR.armor],

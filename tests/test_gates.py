@@ -120,7 +120,7 @@ def test_live_gate_b_eliminates_dead_laws() -> None:
                     run_tick(w, cs, t, rng, st, log=log, laws=laws)
             import json
             fired = collections.Counter(
-                r["law_id"] for r in (json.loads(l) for l in out.read_text().splitlines())
+                r["law_id"] for r in (json.loads(l) for l in out.read_text(encoding="utf-8").splitlines())
                 if r["kind"] == "LAW_FIRED"
             )
             for i in range(len(laws)):
