@@ -10,13 +10,27 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 import webbrowser
 from pathlib import Path
 from typing import Any
+
+# Vá họ lỗi UnicodeEncodeError (cp1252) trên Windows: khi stdout/stderr bị
+# pipe (pytest capture, CI, redirect), Rich với legacy console vẫn mã hoá
+# theo cp1252 và nổ ngay ký tự đầu tiên có dấu. Reconfigure UTF-8/replace
+# NGAY TRƯỚC khi dựng `Console` để Rich kế thừa đúng stream đã vá.
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError, ValueError):
+            continue
 
 # Ensure project root is in sys.path
 ROOT = Path(__file__).resolve().parent.parent
@@ -146,7 +160,9 @@ def run_simulation(
         console.print(f"[bold green]▶ Khởi chạy mô phỏng:[/bold green] Seed={seed}, Ticks={ticks}, Mode={controller} ({backend})")
 
     try:
-        proc = subprocess.run(cmd, cwd=ROOT)
+        # Cặp cài đặt đã cô lập và kiểm chứng (scratch/verify_encoding_pair.py):
+        # child phát UTF-8 qua env, không bao giờ crash cp1252 khi output bị pipe.
+        proc = subprocess.run(cmd, cwd=ROOT, env=dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1"))
         return proc.returncode
     except KeyboardInterrupt:
         if HAS_RICH:
@@ -169,6 +185,7 @@ def run_demo_pipeline(seed: int = 9, ticks: int = 200) -> int:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             cwd=ROOT,
+            env=dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1"),
         )
         time.sleep(0.8)
 
@@ -207,7 +224,6 @@ def run_web_server(host: str = "127.0.0.1", port: int = 8000, open_browser: bool
 
     if open_browser:
         # Mở trình duyệt sau 1 giây khi server khởi động
-        import threading
         def _open():
             time.sleep(1.2)
             with contextlib.suppress(Exception):
@@ -224,13 +240,18 @@ def run_web_server(host: str = "127.0.0.1", port: int = 8000, open_browser: bool
         "--port",
         str(port),
     ]
+    # Inherit the console process group so keyboard Ctrl+C reaches the child.
+    # Closed stdin is not a shutdown request: headless servers must stay alive.
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
     try:
-        proc = subprocess.run(cmd, cwd=ROOT)
+        proc = subprocess.run(cmd, cwd=ROOT, env=env)
         return proc.returncode
     except KeyboardInterrupt:
+        # subprocess.run reaps its child before propagating KeyboardInterrupt.
         if HAS_RICH:
             console.print("\n[yellow]Đã dừng máy chủ Web.[/yellow]")
         return 0
+
 
 
 def interactive_menu(detected_backends: dict[str, dict[str, Any]]) -> None:

@@ -23,6 +23,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# Cùng bản vá họ cp1252 với genesis/run.py và launch.py: khi stdout/stderr bị
+# pipe (pytest capture, CI), bảng mã console là cp1252 và các ký tự tiếng
+# Việt/✓ làm crash ngay dòng báo cáo đầu tiên — đúng lúc "kiểm tra hệ thống"
+# cần in ra LỆNH SỬA nhất.
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError, ValueError):
+            continue
+
 OK, WARN, FAIL = "OK  ", "CẢNH", "HỎNG"
 _rows: list[tuple[str, str, str, str]] = []
 

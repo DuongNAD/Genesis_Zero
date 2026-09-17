@@ -30,19 +30,23 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 PORT = 8099
 SEED = 9
 TICKS = 120
 
 
 def main() -> int:
+    from genesis.run import configure_console_encoding
+    configure_console_encoding()
     tmp = Path(tempfile.mkdtemp())
+    print(f"Smoke artifacts: {tmp}", flush=True)
     log, truth = tmp / "ci.jsonl", tmp / "ci.truth.json"
 
     server = subprocess.Popen(
-        [sys.executable, str(ROOT / "scripts" / "fake_model_server.py"),
+        [sys.executable, "-X", "utf8", "-u", "-m", "scripts.fake_model_server",
          "--port", str(PORT), "--cheat-seed", str(SEED)],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        cwd=ROOT, stdout=subprocess.DEVNULL,
     )
     try:
         # Chờ CỔNG MỞ thay vì ngủ một khoảng đoán chừng: `sleep 4` là thứ sẽ đỏ
@@ -53,7 +57,10 @@ def main() -> int:
         # lượt rồi báo "server không lên được" trong khi server đã lên từ lâu.
         # Bản đầu của chính file này mắc đúng lỗi ấy.
         import socket
-        for _ in range(60):
+        for _ in range(240):
+            if server.poll() is not None:
+                print(f"model exited: {server.returncode}", file=sys.stderr)
+                return 1
             with socket.socket() as sk:
                 sk.settimeout(0.5)
                 if sk.connect_ex(("127.0.0.1", PORT)) == 0:
@@ -84,7 +91,7 @@ def main() -> int:
         return 1
     best = max(float(r["match"]) for r in rows)
     print(f"match cao nhất {best:.3f} trên {len(rows)} dòng")
-    if best < 0.99:
+    if best != 1.0:
         print("BỘ CHẤM KHÔNG BẮT ĐƯỢC LỜI GIẢI ĐÚNG.\n"
               "Model giả biết trước đáp án mà vẫn không ăn điểm — lỗi nằm ở bộ\n"
               "chấm, không ở model. Mọi kết luận về năng lực quy nạp đang treo\n"

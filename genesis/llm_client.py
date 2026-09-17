@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 from typing import Any
 
 import httpx
@@ -102,6 +104,8 @@ async def ask(
     client: httpx.AsyncClient | None = None,
     backend: str = "auto",
     model: str = "default",
+    thinking_tokens: int | None = None,
+    api_key: str | None = None,
     **kwargs: Any,
 ) -> dict[str, Any] | None:
     """Gọi LLM backend (llama.cpp, Ollama, vLLM, Mock, hoặc fallback Reflex).
@@ -112,6 +116,10 @@ async def ask(
     if backend == "reflex":
         return None
 
+    if backend == "auto":
+        backend = os.environ.get("GENESIS_LLM_BACKEND", "auto")
+    if model == "default":
+        model = os.environ.get("GENESIS_LLM_MODEL", "default")
     resolved_backend = detect_backend(base_url) if backend == "auto" else backend.lower()
     root = base_url.rstrip("/")
 
@@ -157,8 +165,10 @@ async def ask(
                 "timings": {"eval_duration": data.get("eval_duration")},
             }
 
-        elif resolved_backend in ("vllm", "openai"):
-            url = root if root.endswith("/v1/chat/completions") else f"{root}/v1/chat/completions"
+        elif resolved_backend in ("vllm", "openai", "frontier"):
+            url = (root if root.endswith("/chat/completions") else
+                   f"{root}/chat/completions" if root.endswith("/v1") else
+                   f"{root}/v1/chat/completions")
             messages = []
             if system:
                 messages.append({"role": "system", "content": system})
@@ -171,7 +181,18 @@ async def ask(
                 "max_tokens": max_tokens,
                 "response_format": {"type": "json_object"},
             }
-            resp = await client.post(url, json=payload)
+            headers = {}
+            if resolved_backend == "frontier":
+                from genesis.prompt import completion_budget
+                reserve = (int(os.environ.get("GENESIS_THINKING_TOKENS", "2048"))
+                           if thinking_tokens is None else thinking_tokens)
+                payload["max_completion_tokens"] = completion_budget(max_tokens, reserve)
+                del payload["max_tokens"]
+                del payload["temperature"]
+                key = api_key or os.environ.get("GENESIS_LLM_API_KEY")
+                if key:
+                    headers["Authorization"] = f"Bearer {key}"
+            resp = await client.post(url, json=payload, headers=headers)
             if resp.status_code != 200:
                 logger.warning(
                     "vLLM gọi hỏng %s: HTTP %d %s",
@@ -184,11 +205,33 @@ async def ask(
             if not isinstance(content, str):
                 logger.warning("vLLM phản hồi không hợp lệ: %r", str(data)[:200])
                 return None
+            if choices[0].get("finish_reason") in ("length", "content_filter"):
+                logger.warning("model response incomplete (slot %d)", slot_id)
+                return None
+            if resolved_backend == "frontier":
+                # Strip only a leading, closed thinking block, never search for
+                # JSON inside reasoning (which may itself contain examples).
+                content = re.sub(r"^\s*<think>.*?</think>\s*", "", content, flags=re.S)
+                if "<think>" in content or "</think>" in content:
+                    return None
+                content = content.strip()
+                if content.startswith("```json\n") and content.endswith("```"):
+                    content = content[8:-3].strip()
+            answer = json.loads(content)
+            if not isinstance(answer, dict):
+                return None
+            usage = data.get("usage") or {}
+            total = int(usage.get("completion_tokens", 0))
+            reasoning = int((usage.get("completion_tokens_details") or {}).get("reasoning_tokens", 0))
+            if not 0 <= reasoning <= total:
+                return None
             return {
-                "json": json.loads(content),
-                "n": int(data.get("usage", {}).get("completion_tokens", 0)),
+                "json": answer,
+                "n": total,  # Charge all generated tokens, including reasoning.
+                "thinking_tokens": reasoning,
+                "answer_tokens": total - reasoning,
                 "raw": content,
-                "timings": data.get("usage", {}),
+                "timings": usage,
             }
 
         else:
@@ -233,6 +276,9 @@ async def ask(
         logger.warning("model trả JSON hỏng (slot %d, %d token): %s | ...%s",
                        slot_id, int((data or {}).get("tokens_predicted", -1))
                        if isinstance(locals().get("data"), dict) else -1, exc, tail)
+        return None
+    except (ValueError, TypeError, AttributeError, KeyError, IndexError) as exc:
+        logger.warning("invalid model response/config (slot %d): %s", slot_id, type(exc).__name__)
         return None
     except httpx.HTTPError as exc:
         logger.warning("lỗi mạng khi gọi %s (slot %d): %s", base_url, slot_id, exc)

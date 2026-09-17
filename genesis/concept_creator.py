@@ -8,6 +8,9 @@ Quy trình 2 bước Studio hoàn chỉnh:
 from __future__ import annotations
 
 import os
+import logging
+import shutil
+import uuid
 import re
 import subprocess
 import tempfile
@@ -24,8 +27,15 @@ ROOT = Path(__file__).resolve().parent.parent
 CONCEPTS_DIR = ROOT / "web" / "concepts"
 CREATURES_DIR = ROOT / "assets" / "creatures"
 
-CONCEPTS_DIR.mkdir(parents=True, exist_ok=True)
-CREATURES_DIR.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
+
+
+def _find_blender() -> str | None:
+    candidates = [os.environ.get("BLENDER_BIN"), shutil.which("blender"),
+                  "/Applications/Blender.app/Contents/MacOS/Blender"]
+    base = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Blender Foundation"
+    candidates.extend(str(p) for p in sorted(base.glob("Blender*/blender.exe"), reverse=True))
+    return next((p for p in candidates if p and os.path.isfile(p) and os.access(p, os.X_OK)), None)
 
 
 def build_master_concept_prompt(
@@ -294,7 +304,7 @@ def create_svg_concept_card(
   <rect x="25" y="348" width="550" height="78" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="rgba(56, 189, 248, 0.2)"/>
   <text x="40" y="370" font-family="system-ui, sans-serif" font-size="10.5" font-weight="bold" fill="#38bdf8">MÔ TẢ CỦA BẠN ({len(description)}/500 KÝ TỰ):</text>
   <text x="40" y="392" font-family="system-ui, sans-serif" font-size="10" fill="#e2e8f0" font-style="italic">"{user_desc_safe or 'Mô tả sinh thái mặc định'}"</text>
-  <text x="40" y="412" font-family="system-ui, sans-serif" font-size="9" fill="#64748b">Hệ thống đã nạp trọn bộ Armature Rigging và 8 Action Clips vào file GLB.</text>
+  <text x="40" y="412" font-family="system-ui, sans-serif" font-size="9" fill="#64748b">Bản concept SVG; trạng thái xuất mô hình được báo riêng trong kết quả.</text>
 </svg>'''
     filename.write_text(svg, encoding="utf-8")
 
@@ -312,7 +322,9 @@ def generate_creature_concept_and_3d(
     custom_api_key: str | None = None,
 ) -> dict[str, Any]:
     """Tạo Concept Art (AGY/SVG) + Dựng 3D Blender trọn bộ 8 Animations."""
-    slug = slugify(f"{name}_{domain}_{diet}")
+    slug = slugify(f"{name}_{domain}_{diet}") + "_" + uuid.uuid4().hex[:12]
+    CONCEPTS_DIR.mkdir(parents=True, exist_ok=True)
+    CREATURES_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. Tổng hợp master prompt
     master_prompt = build_master_concept_prompt(
@@ -389,28 +401,39 @@ def generate_creature_concept_and_3d(
         out_blend=str(out_blend),
     )
 
-    blender_bin = "/Applications/Blender.app/Contents/MacOS/Blender"
-    if os.path.isfile(blender_bin) and os.access(blender_bin, os.X_OK):
+    blender_bin = _find_blender()
+    model_ready = False
+    error = "BLENDER_UNAVAILABLE"
+    if blender_bin:
         with tempfile.NamedTemporaryFile(suffix=".py", mode="w", encoding="utf-8", delete=False) as tf:
             tf.write(blender_code)
             tmp_py = tf.name
         try:
             cmd = [blender_bin, "--background", "--python", tmp_py]
-            subprocess.run(cmd, capture_output=True, text=True, timeout=18)
-        except Exception as e:
-            print(f"Blender warning: {e}")
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                    encoding="utf-8", errors="replace", timeout=18)
+            model_ready = (result.returncode == 0 and out_glb.is_file()
+                           and out_glb.stat().st_size > 0 and out_blend.is_file()
+                           and out_blend.stat().st_size > 0)
+            error = None if model_ready else "BLENDER_FAILED_OR_MISSING_OUTPUT"
+        except (OSError, subprocess.SubprocessError) as exc:
+            error = "BLENDER_TIMEOUT" if isinstance(exc, subprocess.TimeoutExpired) else "BLENDER_FAILED"
+            logger.warning("Concept model generation failed: %s", error)
         finally:
             if os.path.isfile(tmp_py):
                 os.remove(tmp_py)
 
     return {
-        "ok": True,
+        "ok": model_ready,
+        "status": "complete" if model_ready else "concept_only",
+        "error": error,
+        "image_kind": "svg_card",
         "name": name,
         "latin": latin,
         "kingdom": kingdom,
         "prompt": master_prompt,
         "image_url": image_url,
-        "glb_url": f"/assets/creatures/{glb_filename}",
-        "blend_url": f"/assets/creatures/{blend_filename}",
-        "message": f"Đã tổng hợp prompt, vẽ ảnh concept và dựng 3D Blender (8 animations) cho {name}!",
+        "glb_url": f"/assets/creatures/{glb_filename}" if model_ready else None,
+        "blend_url": f"/assets/creatures/{blend_filename}" if model_ready else None,
+        "message": "Đã tạo SVG và xuất mô hình." if model_ready else "Đã tạo SVG; chưa xuất được mô hình 3D.",
     }

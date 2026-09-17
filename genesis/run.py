@@ -9,9 +9,22 @@ import argparse
 import asyncio
 import json
 import random
+import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
+
+
+def configure_console_encoding() -> None:
+    """Cấu hình stdout/stderr dùng UTF-8 errors=replace để tránh crash Unicode trên Windows (cp1252)."""
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, OSError, ValueError):
+                # Captured/closed streams need not expose a reconfigurable buffer.
+                continue
 
 from rich.live import Live
 
@@ -113,6 +126,7 @@ def select_creatures(spec: str | None, creatures: list[Creature]) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    configure_console_encoding()
     args = parse(argv)
 
     # ĐÚNG MỘT bộ sinh ngẫu nhiên cho cả ván. Truyền nó xuống, không tạo cái thứ hai.
@@ -201,6 +215,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def cli() -> None:
+    configure_console_encoding()
     raise SystemExit(main())
 
 

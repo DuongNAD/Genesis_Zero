@@ -47,6 +47,13 @@ if TYPE_CHECKING:
     from genesis.world import World
 
 
+def completion_budget(answer_tokens: int, thinking_tokens: int = 0) -> int:
+    """Separate JSON capacity from reasoning; never spend answer headroom on thinking."""
+    if answer_tokens <= 0 or thinking_tokens < 0:
+        raise ValueError("answer_tokens must be positive and thinking_tokens non-negative")
+    return answer_tokens + thinking_tokens
+
+
 def prompt_hash(system: str, user: str) -> str:
     """md5 của prompt đầy đủ. Chỉ hash này đi vào log, không bao giờ prompt gốc —
     ghi cả prompt thì log phình gấp ~20 lần (B-06 bất biến 1)."""
