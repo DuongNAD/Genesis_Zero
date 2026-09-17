@@ -17,6 +17,7 @@ vào mô phỏng.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import astuple
 from typing import Any
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
@@ -27,6 +28,7 @@ from genesis.lawdsl import to_vietnamese
 from genesis.surface import SurfaceMap
 from net import state
 from net.match import Phase
+from net.telemetry import creature_telemetry, envelope
 
 router = APIRouter(prefix="/v1", tags=["spectate"])
 
@@ -62,24 +64,24 @@ async def spectate_history(max_frames: int = Query(default=500, le=2000)) -> dic
 async def spectate_dossier(creature_id: str | None = Query(default=None)) -> dict[str, Any]:
     """Hồ sơ cá thể, loài sinh học và danh sách các quy luật mô hình suy luận được."""
     runner = state.runner
-    sm = runner.world.sm if (runner.world and hasattr(runner.world, "sm")) else SurfaceMap({})
+    sm = runner.world.surface_map if runner.world else SurfaceMap({})
 
     creatures_data = []
     species_map: dict[str, dict[str, Any]] = {}
 
-    for reg_id, reg in getattr(runner, "registrations", {}).items():
-        species_map[reg.species] = {
-            "species": reg.species,
-            "founder_traits": list(reg.traits) if hasattr(reg, "traits") else [2, 2, 2, 2, 2, 2],
+    for reg in runner.registrations.values():
+        species_map[reg.species_id] = {
+            "species": reg.species_id,
+            "founder_traits": list(astuple(reg.traits)) if reg.traits is not None else [],
             "features": list(reg.features) if hasattr(reg, "features") else [],
             "creatures_count": 0,
             "alive_count": 0,
             "max_gen": 0,
         }
 
-    raw_creatures = getattr(runner, "creatures", [])
-    for c in raw_creatures:
-        sp = getattr(c, "species", (c.id.split(":")[0] if hasattr(c, "id") else "L1"))
+    for c in runner.creatures:
+        profile = creature_telemetry(runner, c)
+        sp = profile["species"]
         if sp not in species_map:
             species_map[sp] = {
                 "species": sp,
@@ -92,7 +94,7 @@ async def spectate_dossier(creature_id: str | None = Query(default=None)) -> dic
         species_map[sp]["creatures_count"] += 1
         if getattr(c, "alive", True):
             species_map[sp]["alive_count"] += 1
-        gen = getattr(c, "gen", 0)
+        gen = c.generation
         if gen > species_map[sp]["max_gen"]:
             species_map[sp]["max_gen"] = gen
 
@@ -100,8 +102,8 @@ async def spectate_dossier(creature_id: str | None = Query(default=None)) -> dic
         inferred_rules = []
         if hasattr(runner, "minds") and hasattr(runner.minds, "codices"):
             cx = runner.minds.codices.get(c.id)
-            if cx and hasattr(cx, "_entries"):
-                for entry in cx._entries:
+            if cx:
+                for entry in cx.entries():
                     if entry is not None and hasattr(entry, "law"):
                         vn_desc = to_vietnamese(entry.law, sm)
                         inferred_rules.append({
@@ -109,23 +111,15 @@ async def spectate_dossier(creature_id: str | None = Query(default=None)) -> dic
                             "conf": getattr(entry, "conf", 3),
                             "written_at": getattr(entry, "written_at", 0),
                             "source": getattr(entry, "source", "self"),
-                            "status": "Đã kiểm chứng" if getattr(entry, "conf", 3) >= 3 else "Đang theo dõi",
+                            "status": "Giả thuyết chưa xác minh",
                         })
 
-        c_traits = [getattr(c.traits, attr, 2) for attr in ("brain", "attack", "armor", "speed", "sense", "stomach")] if hasattr(c, "traits") else [2, 2, 2, 2, 2, 2]
         creatures_data.append({
-            "id": c.id,
-            "species": sp,
-            "domain": getattr(c, "domain", "CAN"),
-            "alive": getattr(c, "alive", True),
-            "hp": getattr(c, "hp", 100),
-            "energy": getattr(c, "energy", 50.0),
-            "e_max": getattr(c, "e_max", 100.0),
-            "gen": getattr(c, "gen", 0),
-            "parent_id": getattr(c, "parent_id", None),
-            "traits": c_traits,
-            "dt_traits": getattr(c, "dt_traits", [0, 0, 0, 0, 0, 0]),
-            "features": list(getattr(c, "features", ())),
+            **profile,
+            # Giữ alias dossier cho viewer hiện tại.
+            "energy": c.energy,
+            "traits": profile["tr"],
+            "dt_traits": profile["d_tr"],
             "inferred_rules": inferred_rules,
         })
 
@@ -133,9 +127,9 @@ async def spectate_dossier(creature_id: str | None = Query(default=None)) -> dic
         creatures_data = [c for c in creatures_data if c["id"] == creature_id or c["species"] == creature_id]
 
     return {
-        "match_id": getattr(runner, "match_id", "m_00000"),
-        "phase": str(getattr(runner, "phase", "RUNNING")),
-        "tick": getattr(runner, "tick_no", 0),
+        **envelope(runner.match_id),
+        "phase": str(runner.phase),
+        "tick": runner.tick_no,
         "species": list(species_map.values()),
         "creatures": creatures_data,
     }

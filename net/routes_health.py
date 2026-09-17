@@ -13,6 +13,20 @@ from net.routes_work import get_bearer_token, get_registration
 router = APIRouter(prefix="/v1", tags=["health"])
 
 
+@router.get("/healthz")
+async def healthz() -> dict[str, Any]:
+    """Liveness does not depend on model availability or law generation."""
+    return {"ok": True}
+
+
+@router.get("/readyz")
+async def readyz() -> dict[str, Any]:
+    runner = state.runner
+    if runner.stopped or runner.preparing or runner.preparation_failed:
+        raise HTTPException(status_code=503, detail="NOT_READY")
+    return {"ok": True, "phase": str(runner.phase)}
+
+
 class HeartbeatPayload(BaseModel):
     healthy: bool = True
     queue_depth: int = 0

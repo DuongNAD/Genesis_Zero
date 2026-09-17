@@ -30,7 +30,7 @@ import contextlib
 import json
 import random
 import time
-from dataclasses import astuple, dataclass, field
+from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -48,6 +48,7 @@ from genesis.strategist import RemoteClientStrategist
 from genesis.tick import build_match
 from genesis.tick import tick as run_tick
 from genesis.weather import weather_at
+from net.telemetry import creature_telemetry, envelope
 
 
 class _FrameCollector:
@@ -222,6 +223,8 @@ class MatchRunner:
         )
         self.victory = None          # điền ở REVEAL, xem `_close_log`
         self.stopped = False
+        self.preparing = False
+        self.preparation_failed = False
 
     # ── ranh giới tin cậy ────────────────────────────────────────────────
     def compute_victory(self) -> None:
@@ -271,6 +274,8 @@ class MatchRunner:
             "n_creatures": len(self.creatures),
             "n_alive": sum(1 for c in self.creatures if c.alive),
             "seconds_in_phase": round(self._clock() - self._phase_started, 1),
+            "preparing": self.preparing,
+            "preparation_failed": self.preparation_failed,
         }
 
     # ── máy trạng thái ───────────────────────────────────────────────────
@@ -323,6 +328,38 @@ class MatchRunner:
             )
 
     def _seed_match(self) -> None:
+        steps = self._seed_steps()
+        request = next(steps)
+        while True:
+            laws = generate_cached(request[0], arm=request[1])
+            try:
+                request = steps.send(laws)
+            except StopIteration:
+                return
+
+    async def seed_match_async(self) -> None:
+        """Only pure law preparation runs off-loop; commit stays on the owner loop."""
+        self.preparing = True
+        self.preparation_failed = False
+        steps = self._seed_steps()
+        try:
+            request = next(steps)
+            while True:
+                laws = await asyncio.to_thread(generate_cached, request[0], arm=request[1])
+                if self.stopped:
+                    return
+                try:
+                    request = steps.send(laws)
+                except StopIteration:
+                    return
+        except BaseException:
+            self.preparation_failed = True
+            raise
+        finally:
+            steps.close()
+            self.preparing = False
+
+    def _seed_steps(self):
         self.match_no += 1
         self.match_id = f"m_{self.match_no:05d}"
         self.seed = self._seed_source.randrange(1, 2**31 - 1)
@@ -351,7 +388,7 @@ class MatchRunner:
         # hơn nhiều so với một ván không bao giờ bắt đầu.
         rerolls: list[int] = []
         for _attempt in range(net_config.LAW_NOVELTY_TRIES):
-            laws = generate_cached(self.seed, arm=f"STANDARD@{self.map_name}")
+            laws = yield (self.seed, f"STANDARD@{self.map_name}")
             sig = self._law_signature(laws)
             if sig not in self._recent_law_sigs:
                 break
@@ -565,30 +602,14 @@ class MatchRunner:
         """
         reveal = self.phase in (Phase.REVEAL, Phase.COOLDOWN)
         pub = {l["law_id"]: l["vi"] for l in self.laws_public()}
-        feral_species = {
-            r.species_id for cid, r in self.registrations.items() if self.is_feral(cid)
-        }
         return {
+            **envelope(self.match_id),
             "t": tick_no,
             "phase": str(self.phase),
             "w": self.world.w if self.world else 0,
             "h": self.world.h if self.world else 0,
             "creatures": [
-                {
-                    "id": c.id, "x": c.pos[0], "y": c.pos[1],
-                    "hp": round(c.hp, 1), "e": round(c.energy, 1),
-                    "e_max": round(c.traits.energy_max, 1),
-                    "alive": c.alive, "feral": c.species in feral_species,
-                    "tr": list(astuple(c.traits)),
-                    "species": c.species,
-                    "domain": config.SPECIES_DOMAIN.get(c.species, "CAN"),
-                    "features": list(c.features) if getattr(c, "features", ()) else (list(self.world.kits[c.species].keys) if (self.world and hasattr(self.world, "kits") and c.species in self.world.kits) else []),
-                    "gen": getattr(c, "generation", 0),
-                    "parent_id": getattr(c, "parent_id", None),
-                    "lineage": getattr(c, "lineage_id", "") or getattr(c, "id", ""),
-                    "d_tr": [getattr(c.traits, t, 0) - (config.FOUNDERS[c.species][i] if (hasattr(c, "species") and c.species in config.FOUNDERS) else getattr(c.traits, t, 0)) for i, t in enumerate(config.TRAIT_NAMES)],
-                    "age": getattr(c, "age", 0),
-                }
+                creature_telemetry(self, c)
                 for c in sorted(self.creatures, key=creature_sort_key)
             ],
             "plants": [list(p) for p in sorted(self.world.fruits)] if self.world else [],
@@ -742,5 +763,11 @@ class MatchRunner:
                 await asyncio.sleep(max(0.0, deadline - self._clock()))
             else:
                 if self._clock() - self._phase_started >= self.phase_budget():
-                    self.advance_phase()
+                    if self.phase is Phase.LOBBY:
+                        self.phase = Phase.SEEDING
+                        self._phase_started = self._clock()
+                        await self.seed_match_async()
+                        self._phase_started = self._clock()
+                    else:
+                        self.advance_phase()
                 await asyncio.sleep(0.05)
