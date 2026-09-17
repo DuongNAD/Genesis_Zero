@@ -71,13 +71,16 @@ async def test_client_full_cycle_brief_work_decision(monkeypatch):
     )
 
     # Chờ client join vào LOBBY
-    await asyncio.sleep(0.03)
+    for _ in range(100):
+        if len(r.registrations) == 1:
+            break
+        await asyncio.sleep(0.01)
     assert len(r.registrations) == 1
 
     # Chuyển ván sang SEEDING -> client lấy brief
     r.advance_phase()
     assert r.phase is Phase.SEEDING
-    await asyncio.sleep(0.03)
+    await asyncio.sleep(0.05)
 
     # Chuyển ván sang RUNNING -> client lấy work và gửi decision
     r.advance_phase()
@@ -130,9 +133,13 @@ async def test_client_system_prompt_byte_exact(monkeypatch):
         )
     )
 
-    await asyncio.sleep(0.03)
+    for _ in range(100):
+        if len(r.registrations) == 1:
+            break
+        await asyncio.sleep(0.01)
+    assert len(r.registrations) == 1
     r.advance_phase()  # -> SEEDING
-    await asyncio.sleep(0.03)
+    await asyncio.sleep(0.05)
     r.advance_phase()  # -> RUNNING
 
     await asyncio.wait_for(client_task, timeout=3.0)
