@@ -407,3 +407,197 @@ Viết kịch bản kiểm thử độc lập (`scripts/verify_creatures_pipelin
 ### 5. Kiểm Thử Tự Động (Programmatic Verification)
 - [ ] Kịch bản `python3 scripts/verify_creatures_pipeline.py` chạy hoàn tất với 100% tiêu chí đạt chuẩn (Exit Code 0).
 - [ ] Test suite `pytest tests/test_creature_assets.py` vượt qua 100% các bài kiểm tra tự động.
+
+## 2026-09-10T03:22:50Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched — Delegated to teamwork_preview
+> Goal: Execute multi-agent refactor & implementation
+> Requested team: Full team (Software Architect, Graphics/Simulation Engineer, AI Pipeline Integrator, QA Engineer)
+
+Toàn diện tái cấu trúc và hiện đại hóa engine `terra_forge` (Python/Blender/Headless) để tương thích 100% với hệ sinh thái mô phỏng sự sống `Anima-Engine` (Rust Bevy ECS + React Three.js), tích hợp dịch vụ tạo hình 3D AI `Meshy AI` với cơ chế Local Asset Vault/Cache/LOD, và thiết lập bối cảnh "Thiên nhiên Nguyên thủy Sơ khai" (Primordial Nature) tuyệt đối không có dấu vết nhân tạo.
+
+Working directory: E:\tool\mcp\terra_forge
+Target directory: e:\Project\03_Engines_Simulation\Anima-Engine
+Integrity mode: benchmark
+Meshy API Key: msy_yFOKAOFOk9yjKUcwuk9rlkb0lTyuWMI0sT1T
+
+## Requirements
+
+### R1. Chuẩn hóa Tầng Dữ liệu & Khử phụ thuộc Runtime (Data Contract & Headless Export)
+- Hiện thực mô-đun thuần Python/NumPy (không phụ thuộc `bpy`) đọc/ghi chuẩn binary `WorldArtifact` v2 (`ANMW`, FNV-1a 32-bit checksum, kích thước chuẩn 256x256, canonical scale 200.0, world bounds [-100, 100], elevation [0, 10]).
+- Xuất đầy đủ 5 tầng trường dữ liệu song song: `elevation` (f32), `moisture` (f32), `temperature` (f32), `flow` (f32), `biome` (u8 chuẩn hóa 22 canonical biomes của Anima-Engine).
+- Sinh tự động `map_manifest.json` theo đúng `map_manifest.schema.json` của Anima-Engine.
+- Loại bỏ bắt buộc diorama slab (chân đế đóng hộp), hỗ trợ chế độ xuất địa hình liên tục vô hạn/nối ghép (Continuous Open World Heightfield & Chunked Mesh).
+- Hỗ trợ xuất trực tiếp mô hình địa hình sang GLB thời gian thực và binary heightfield mà không cần khởi động Blender GUI.
+
+### R2. Tích hợp Đường ống Meshy AI Chuyên sâu & Kho Asset Nội bộ (Meshy AI Pipeline & Asset Vault)
+- Xây dựng HTTP Client bất đồng bộ với cơ chế retry, rate limit và quản lý API Key an toàn cho Meshy v2 API (`https://api.meshy.ai/openapi/v2/text-to-3d`).
+- Thiết lập hệ thống `Local Asset Vault & Cache` lưu trữ định danh theo hash (SHA-256 của prompt + seed + tham số), tránh gọi API trùng lặp, lưu trữ kèm metadata sinh học và thumbnail.
+- Tự động hóa bộ chuẩn hóa hình học cho asset từ Meshy:
+  + Dời tâm Pivot Point về đáy vật thể (`min_y = 0` / `min_z = 0`) để bám sát mặt địa hình, chống lún/lơ lửng.
+  + Chuẩn hóa kích thước thực tế theo hệ mét (Metric scaling).
+  + Tự động tạo các cấp độ chi tiết LOD (LOD0 ~10k, LOD1 ~2k, LOD2 ~300 tris / billboard).
+  + Tự động sinh khối bao va chạm (Collision Primitives: Cylinder/AABB/Convex Hull).
+
+### R3. Ràng buộc Bối cảnh Thiên nhiên Nguyên thủy & Phân tầng Sinh thái Hữu cơ (Primordial Nature & Organic Ecology)
+- Động cơ sinh Prompt thông minh cho Meshy AI loại bỏ triệt để thiên kiến con người (Human Bias): áp dụng kỹ thuật positive descriptor chặt chẽ (cây cổ thụ ngàn năm, thân gỗ mục tự nhiên gãy đổ do bão, rễ bám khe đá, đá cuội bào mòn dòng chảy, địa y bám vách ẩm, tuyệt đối không vết cưa, đường mòn, phế tích).
+- Thay thế toàn bộ các hình khối thô sơ trong `asset_fetcher.py` bằng các mẫu sinh học chân thực hoặc asset chất lượng cao từ Vault.
+- Phân tầng sinh thái hữu cơ theo địa mạo (Ecological Stratification): rễ cây ăn sâu vào khe nứt địa chất, thân cây mục định hướng theo sườn dốc/dòng nước lũ, bãi cuội lòng suối tập trung theo trường vận tốc dòng chảy (`flow`), rêu mọc ưu tiên sườn dốc khuất nắng và độ ẩm cao.
+
+### R4. Đồng bộ Ma trận Phân tán GPU Instancing & Bản đồ Cản trở Điều hướng (Instancing & Navigation Sync)
+- Chuyển đổi phương pháp phân tán Geometry Nodes của Blender thành dữ liệu ma trận biến đổi thực thể GPU (`GPU Instancing Matrices: position, rotation quaternion, scale`) có thể nạp trực tiếp vào Three.js (`WorldVegetation.tsx`) và Bevy ECS với 1 draw call cho mỗi chủng loại.
+- Sinh bản đồ cản trở điều hướng (Obstacle Grid & NavMesh Reachability) đồng bộ hoàn toàn giữa bán kính vật lý của cây cối/tảng đá với hệ thống di chuyển của sinh vật trong Anima-Engine (`navmeshCoverage >= 0.80`, tránh tình trạng sinh vật đi xuyên qua cây đá hoặc rơi khỏi thế giới).
+
+### R5. Phản ánh Động lực học Môi trường (Ecological Dynamics & Seasonal State)
+- Tham số hóa địa hình và thảm thực vật theo các biến số trạng thái sinh thái của Anima-Engine: mực nước động học (`water_level`), độ ẩm theo mùa (mùa mưa ngập bãi bồi, mùa khô trơ sỏi đá), chu kỳ suy giảm/tái sinh sinh khối thực vật (NPP Biomass).
+- Cung cấp shader uniforms và thuộc tính đỉnh (vertex colors / mask planes) hỗ trợ hiệu ứng chuyển mùa thời gian thực trên WebGL/Three.js.
+
+## Acceptance Criteria
+
+### Tính Toàn vẹn Dữ liệu & Tương thích Anima-Engine
+- [ ] File nhị phân `.anmw` sinh ra từ `terra_forge` giải mã thành công bởi cả Rust decoder (`world_artifact.rs`) và TypeScript decoder (`worldArtifact.ts`) với FNV-1a 32-bit checksum khớp 100%.
+- [ ] `map_manifest.json` vượt qua toàn bộ các kiểm định của `validateMapManifest` và khớp với schema draft-07.
+- [ ] Tọa độ thực thể và độ cao tuân thủ tuyệt đối `COORDINATE_CONTRACT.md` (X, Z trong [-100, 100], Y trong [0, 10], canonical scale 200.0).
+
+### Hoạt động của Đường ống Meshy AI & Asset Vault
+- [ ] Meshy API Client gửi task Text-to-3D, tự động polling trạng thái cho đến khi hoàn thành, tải `.glb` về local vault an toàn.
+- [ ] Cache hit test: Cùng một prompt + seed không gửi request lặp lại sang Meshy, nạp trực tiếp từ Local Vault trong thời gian < 50ms.
+- [ ] Mọi asset từ Meshy sau xử lý đều có đáy chạm mặt đất (`min_y == 0`), có ít nhất 2 cấp độ LOD và có collider primitive.
+
+### Bối cảnh Nguyên thủy & Sinh thái
+- [ ] 100% prompt sinh asset và bản đồ vượt qua bộ lọc kiểm duyệt không chứa vết cưa, đường xẻ gỗ, kiến trúc nhân tạo.
+- [ ] Thảm thực vật và vật thể hữu cơ bám dính tự nhiên trên địa hình theo trường độ ẩm, hướng nắng và dòng chảy thủy văn.
+
+### Hiệu năng Render & Điều hướng
+- [ ] Dữ liệu phân tán xuất ra định dạng mảng ma trận nhị phân / JSON tương thích với Three.js `InstancedMesh`.
+- [ ] Navmesh BFS đạt độ phủ `navmeshCoverage >= 0.80`, không có thực thể cây/đá nào tạo xung đột không đi được tại các vị trí sinh vật xuất phát.
+- [ ] Toàn bộ test suite tự động vượt qua 100%.
+
+## 2026-09-10T05:12:31Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched — Delegated to teamwork_preview
+> Goal: Execute full AI-driven Primordial Abiotic 3D Map creation
+> Requested team: Full team (3D Graphics/Simulation Architect, AI 3D Generative Engineer, Procedural Geologist, QA Verification Specialist)
+
+Tạo lại toàn bộ bản đồ 3D thiên nhiên sơ khai (Primordial Nature) cho dự án Genesis_Zero bằng việc kết hợp AI tạo sinh 3D (Meshy AI v2) và động cơ mô phỏng địa chất/thủy văn chuyên sâu của terra_forge. Bản đồ tập trung 100% vào địa hình, núi non hiểm trở, hệ thống thủy văn (sông, suối, thác nước, hồ trung tâm, bãi cát/sỏi), và hệ thống hang động Karst ngầm; tạm thời chưa đưa thực vật (cây cối) và động vật vào giai đoạn này để tập trung tối đa chi tiết và độ tinh xảo cho nền tảng thế giới.
+
+Working directory: E:\tool\mcp\terra_forge
+Target directory: e:\Project\01_AI_Agents\Genesis_Zero
+Integrity mode: benchmark
+Meshy API Key: msy_yFOKAOFOk9yjKUcwuk9rlkb0lTyuWMI0sT1T
+
+## Requirements
+
+### R1. Tạo Hình Địa Mạo & Cấu Trúc Núi Bằng AI & Mô Phỏng Địa Chất Cao Cấp (Geological Topography & AI Crags)
+- Sử dụng Meshy AI v2 để tạo sinh các khối núi đá hiểm trở (horn peaks, crags, basalt columns, phong hóa tự nhiên) và đưa vào Local Asset Vault với đầy đủ chuẩn hóa hình học (bottom pivot min_y = 0.0, metric scaling, collision primitives).
+- Mô phỏng địa chất đa tầng: bedrock nếp uốn (strata folding), đứt gãy kiến tạo tự nhiên, xói mòn thủy lực sâu (hydraulic droplet erosion) và xói mòn sườn dốc (thermal talus erosion) tạo nên các vách đá dựng đứng và thung lũng sâu chân thực.
+- Xuất lưới địa hình độ phân giải cao kết hợp micro-roughness và shader triplanar đá cổ đại PBR.
+
+### R2. Hệ Thống Thủy Văn Hoàn Chỉnh: Sông, Suối, Thác Nước, Hồ & Bãi Cát Bờ Vịnh (Comprehensive Hydrology & Sedimentology)
+- Dựng hệ thống thủy văn 4 tầng liên tục:
+  1. Thác nước và suối nguồn từ đỉnh núi cao đổ xuống.
+  2. Đoạn sông uốn khúc tự nhiên (river meanders) với rãnh lòng sông khoét sâu (parabolic channel carving).
+  3. Lòng hồ trung tâm sâu với gờ chắn nước tự nhiên (natural retaining berm).
+  4. Vịnh cửa sông đổ ra biển, thềm cát ngập nước và bãi bồi ven bờ (riparian sandbanks & pebble deposits).
+- Tạo sinh các khối đá cuội bào mòn dòng chảy và bãi cát lòng sông chân thực từ Meshy AI / Vault.
+- Shader mặt nước PBR hỗ trợ độ sâu quang học (volume absorption depth color), bọt sóng va chạm bờ đá (contact foam) và vec-tơ dòng chảy (flow direction).
+
+### R3. Hệ Thống Hang Động Karst Ngầm Kỳ Vĩ (Subterranean Karst Cavern System)
+- Thiết kế hệ thống hang Karst ngầm tự nhiên ăn sâu vào lòng núi đá:
+  - Cửa hang tự nhiên với vòm đá gồ ghề (rocky arch entrance) bám vách núi.
+  - Trần hang với chuỗi nhũ đá (stalactites), măng đá (stalagmites) và cột đá vôi kết tinh (columns).
+  - Hồ nước ngầm tĩnh lặng trong hang với mực nước liên thông thủy văn.
+  - Vỉa khoáng thạch hoặc nấm phát quang nguyên thủy (bioluminescent cavern minerals) tạo điểm nhấn huyền bí.
+- Mô hình các cấu trúc karst được sinh và tối ưu hình học qua Meshy AI và procedural geometry.
+
+### R4. Chuẩn Hóa Dữ Liệu & Tương Thích Tuyệt Đối Anima-Engine (Genesis_Zero Integration)
+- Xuất nhị phân `WorldArtifact` v2 (`world_256.anmw`) với FNV-1a checksum chuẩn xác, bao gồm 5 tầng trường dữ liệu: `elevation`, `moisture`, `temperature`, `flow`, `biome` (22 canonical biomes).
+- Xuất `map_manifest.json` chuẩn schema của Genesis_Zero.
+- Xuất bản đồ 3D hoàn chỉnh sang cả 2 định dạng:
+  - `assets/blender_map/ecosystem_map.glb` (Three.js thời gian thực cho `viewer.html`).
+  - `assets/blender_map/ecosystem_map.blend` (File master Blender 4.5/5.x với Cycles/Eevee shader).
+- Đảm bảo lưới điều hướng (NavMesh BFS) đạt độ phủ >= 80.0% trên toàn bộ bề mặt đất liền có thể đi lại, xác định rõ điểm xuất phát (spawn position) an toàn.
+
+### R5. Loại Trừ Triệt Để Sinh Vật & Thực Vật (Pure Abiotic World Foundation)
+- Tuyệt đối KHÔNG phân tán cây cối, bụi cỏ, hoa màu, hoa quả hay thú vật/sinh vật trong giai đoạn này.
+- Dành 100% dung lượng đa giác (polygon budget), bộ nhớ texture và năng lực tính toán cho độ chi tiết của đá, cát, trầm tích, dòng chảy và hang động.
+
+## Acceptance Criteria
+
+### Tính Thẩm Mỹ & Độ Chi Tiết 3D
+- [ ] Địa hình hiển thị rõ nét các nếp gấp địa tầng, đỉnh núi nhọn sắc sảo, vách đá phong hóa tự nhiên và bờ biển cát thoai thoải.
+- [ ] Dòng sông có lòng rãnh sâu, dòng suối từ núi cao đổ vào hồ có phân tầng vận tốc dòng chảy (`flow`).
+- [ ] Hang động ngầm Karst có đầy đủ cửa hang, nhũ đá, măng đá, hồ ngầm và vật liệu phát quang.
+- [ ] 0% cây cối và 0% động vật trên toàn bản đồ.
+- [ ] Render 4 góc nhìn chuẩn thị giác (Isometric toàn cảnh, góc Đông Bắc, Top-down, Cận cảnh mép nước/hang động) thể hiện rõ chiều sâu và độ chi tiết ấn tượng.
+
+### Tương Thích & Tính Toàn Vẹn Hệ Thống
+- [ ] `world_256.anmw` giải mã thành công, FNV-1a checksum khớp, tuân thủ khế ước `COORDINATE_CONTRACT.md` (X, Z trong [-100, 100], Y trong [0, 10]).
+- [ ] `map_manifest.json` vượt qua kiểm định schema.
+- [ ] `ecosystem_map.glb` tải mượt mà trên `viewer.html` ở 60 FPS, camera tự động căn giữa toàn cảnh.
+- [ ] NavMesh BFS đạt `navmeshCoverage >= 0.80`.
+
+## 2026-09-10T11:07:26Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched — Delegated to teamwork_preview
+> Goal: Execute multi-agent AAA Primordial Abiotic 3D Map creation
+> Requested team: Full team (3D Simulation Architect, AI Generative 3D Artist, Procedural Geologist, WebGL Graphics Engineer, QA Victory Auditor)
+
+Tái cấu trúc và nâng cấp toàn diện bản đồ 3D thiên nhiên sơ khai (Primordial Nature) cho Genesis_Zero lên chuẩn chất lượng game AAA: khắc phục triệt để hiện tượng bậc thang (staircasing) và các hình khối thô sơ (khối núi nón trơn, hang cục tròn); kết hợp mô phỏng địa chất xói mòn sâu với các mô hình 3D tạo sinh trực tiếp từ Meshy AI v2 (khối núi đá granite hiểm trở, vòm hang Karst & nhũ đá vôi, bãi đá cuội lòng suối, vách đá bờ biển); thiết kế hệ thống thủy văn 4 tầng liền mạch (thác, sông uốn khúc, hồ sâu, vịnh biển) không bị các tấm phẳng cắt ngang; phủ vật liệu PBR địa tầng tự nhiên và tối ưu Three.js WebGL 60 FPS cho viewer.html.
+
+Working directory: E:\tool\mcp\terra_forge
+Target directory: e:\Project\01_AI_Agents\Genesis_Zero
+Integrity mode: benchmark
+Meshy API Key: msy_yFOKAOFOk9yjKUcwuk9rlkb0lTyuWMI0sT1T
+
+## Requirements
+
+### R1. Tái Thiết Kế Địa Mạo & Loại Bỏ Triệt Để Bậc Thang (Organic Topography & Anti-Staircasing)
+- Khử bỏ 100% các vết khấc bậc thang (stepping/terracing artifacts) trên toàn bộ bề mặt địa hình; áp dụng bộ lọc làm mịn hữu cơ (Laplacian & Bilateral surface smoothing) kết hợp Ridged Multi-Fractal Noise và mô phỏng xói mòn thủy lực (Hydraulic Droplet Erosion) để tạo nên các sườn núi tự nhiên, rãnh xói mòn sâu và bãi bồi trầm tích chân thực.
+- Thay thế hoàn toàn các khối núi hình nón trơn nhẵn bằng cấu trúc địa chất sắc sảo: đỉnh sừng (horn peaks), sống núi lởm chởm (aretes), vách đá đứt gãy kiến tạo với nếp uốn địa tầng rõ rệt.
+
+### R2. Tích Hợp Mô Hình 3D Thực Tế Từ Meshy AI v2 (Meshy AI Abiotic Generation & Asset Vault)
+- Gọi trực tiếp API Meshy v2 (`https://api.meshy.ai/openapi/v2/text-to-3d`) để tạo sinh các mô hình 3D địa chất chất lượng cao (lưới hình học chi tiết + texture PBR):
+  1. *Khối vách đá granite cổ đại phong hóa lởm chởm (Weathered granite crags & sharp jagged peaks)*.
+  2. *Cửa vòm đá hang Karst tự nhiên khoét sâu vào lòng núi (Natural rocky karst arch cavern entrance)*.
+  3. *Chuỗi nhũ đá và măng đá vôi ngầm (Limestone stalactites & stalagmites cluster)*.
+  4. *Cụm đá cuội lòng suối bào mòn dòng chảy và bãi đá ven vịnh biển (Fluvial riverbed boulders & coastal rocks)*.
+- Chuẩn hóa hình học tự động (`min_y = 0.0`, kích thước thực tế theo hệ mét, trích xuất va chạm) và lưu trữ vào Local Asset Vault (`terra_forge/assets/vault/`).
+- Ghép nối liền mạch (seamless boolean/geometry blend) các asset từ Meshy AI vào địa hình tổng thể, chấm dứt hoàn toàn tình trạng cửa hang là khối tròn/lồi lõm thô sơ gắn vào sườn núi.
+
+### R3. Hệ Thống Thủy Văn Liền Mạch & Mặt Nước Chân Thực (Seamless Hydrology & PBR Water)
+- Thiết kế lòng sông và đáy hồ có tiết diện cong tự nhiên (parabolic carved bed), chấm dứt tình trạng các tấm mặt nước phẳng hình chữ nhật cắt ngang địa hình tạo rìa góc nhọn thô kệch.
+- Hệ thống lưới mặt nước liên tục 4 tầng: thác nước từ sườn dốc đổ vào hồ trung tâm sâu, kênh thoát nước uốn khúc tự nhiên đổ ra vịnh biển góc đông nam.
+- Shader nước Three.js và Blender hỗ trợ: độ sâu quang học (nước sâu xanh thẫm, nước nông trong vắt), bọt trắng va chạm ven bờ đá (contact foam) và độ phản xạ PBR chuẩn.
+
+### R4. Hệ Thống Vật Liệu & Màu Sắc Địa Tầng PBR (PBR Strata & Texture Mapping)
+- Phủ vật liệu địa tầng tự nhiên: vân đá granite phong hóa, cát sỏi ven hồ/biển, rêu ẩm thung lũng và tuyết đỉnh núi. Bề mặt thể hiện rõ độ nhám (roughness) và vi cấu trúc gồ ghề dưới mọi góc chiếu sáng.
+- Bãi cát ven hồ và vịnh biển có độ chuyển màu mượt mà sang đá ngầm và trầm tích ướt.
+- Tuyệt đối tuân thủ nguyên tắc **100% Abiotic**: 0% cây cối nhân tạo/hoạt họa, 0% công trình kiến trúc, 0% động vật trong giai đoạn này để tập trung trọn vẹn ngân sách đa giác và bộ nhớ cho địa mạo.
+
+### R5. Chuẩn Hóa Dữ Liệu & Khế Ước Genesis_Zero (Anima-Engine Parity)
+- Cập nhật file nhị phân `world_256.anmw` (256x256, 5 lớp dữ liệu: `elevation`, `moisture`, `temperature`, `flow`, `biome`), FNV-1a checksum chuẩn xác.
+- Xuất file master `assets/blender_map/ecosystem_map.blend` và mô hình thời gian thực `assets/blender_map/ecosystem_map.glb`.
+- Tối ưu `viewer.html` đạt 60 FPS mượt mà trên WebGL, tự động nạp bản đồ mới không bị lưu cache cũ, camera tự động căn chỉnh và hỗ trợ đầy đủ 4 góc nhìn chuẩn thị giác.
+- Độ phủ điều hướng NavMesh BFS $\ge 80.0\%$ trên phần đất liền đi lại được.
+
+## Acceptance Criteria
+
+### Tính Thẩm Mỹ & Độ Tinh Xảo 3D
+- [ ] Không còn bất kỳ vết khấc bậc thang nhân tạo nào trên bề mặt địa hình; sườn núi và rãnh xói mòn hiển thị mịn màng và tự nhiên.
+- [ ] Các asset 3D độc lập (Vách đá crag, Cửa hang Karst, Nhũ đá, Bãi đá cuội) được tạo sinh thành công từ Meshy AI API và tích hợp hữu cơ vào bản đồ.
+- [ ] Cửa hang Karst và lòng hang có hình khối vòm đá tự nhiên với nhũ đá bên trong, không còn là khối xám thô ráp.
+- [ ] Mặt nước sông hồ kết nối liền mạch với địa hình, không bị viền phẳng đa giác đâm xuyên thô kệch.
+- [ ] Ảnh chụp từ 4 góc nhìn chuẩn (Toàn cảnh, Đông Bắc, Top-down, Cận cảnh hang/mép nước) đạt độ chi tiết cao, chân thực chuẩn AAA, màu sắc hài hòa.
+
+### Tương Thích & Tính Toàn Vẹn Hệ Thống
+- [ ] `ecosystem_map.glb` nạp mượt mà trên `viewer.html` ở 60 FPS với thời gian tải < 3s, hiển thị đầy đủ màu sắc vật liệu PBR và hiệu ứng nước.
+- [ ] `world_256.anmw` giải mã thành công với FNV-1a checksum hợp lệ, tuân thủ `COORDINATE_CONTRACT.md`.
+- [ ] `map_manifest.json` khớp với schema draft-07.
+- [ ] Toàn bộ test suite tự động vượt qua 100%.

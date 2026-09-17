@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-03T16:52:00Z
+﻿# BRIEFING — 2026-09-10T05:20:00Z
 
 ## Mission
-Investigate technical design & best practices in Blender Python (bpy) for R3 (Fauna, Rigging, Animation), R4 (Scene Composition, .blend/.glb dual deliverables), and R5 (Headless Verification & Render Preview).
+Investigate Meshy AI v2 Pipeline, Local Asset Vault & Cache, Asset Normalization, Abiotic Constraints (0% flora/fauna), and Abiotic Asset Catalog for Primordial 3D Map creation in Genesis_Zero and terra_forge.
 
 ## 🔒 My Identity
 - Archetype: explorer
@@ -9,41 +9,50 @@ Investigate technical design & best practices in Blender Python (bpy) for R3 (Fa
 - Working directory: /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_explorer_survey_3
 - Original parent: dc131d28-9eff-4ba7-a2a6-4ed2c23da624
 - Milestone: teamwork_preview_survey
+- [2026-09-10] Roles: investigation, synthesis
+- [2026-09-10] Working directory: e:\Project\01_AI_Agents\Genesis_Zero\.agents\teamwork_preview_explorer_survey_3\
+- [2026-09-10] Parent: a0311de3-7e8d-4194-9456-eb8ad799b042
+- [2026-09-10] Milestone: phase_0_survey_meshy_abiotic
 
 ## 🔒 Key Constraints
 - Read-only investigation — do NOT implement
 - Scope restricted to R3 (Fauna/Rigging/Anim), R4 (Scene Composition/Export), R5 (Verification/Render)
 - Output findings to survey_report.md and handoff.md in working directory
 - Communicate via send_message to parent (dc131d28-9eff-4ba7-a2a6-4ed2c23da624)
+- [2026-09-10] Read-only investigation — do NOT implement
+- [2026-09-10] Strictly abiotic: 0% trees, 0% plants/flora, 0% animals/fauna
+- [2026-09-10] Investigate Meshy AI v2 pipeline, asset vault/cache, normalization, abiotic assets
+- [2026-09-10] Output handoff to e:\Project\01_AI_Agents\Genesis_Zero\.agents\teamwork_preview_explorer_survey_3\handoff.md
+- [2026-09-10] Communicate via send_message to parent (a0311de3-7e8d-4194-9456-eb8ad799b042)
 
 ## Current Parent
-- Conversation ID: dc131d28-9eff-4ba7-a2a6-4ed2c23da624
-- Updated: not yet
+- Conversation ID: a0311de3-7e8d-4194-9456-eb8ad799b042
+- Updated: 2026-09-10T05:20:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - Binary `/Applications/Blender.app/Contents/MacOS/Blender` (Blender 5.2.1 LTS, Python 3.13.13 on Darwin/Metal).
-  - Existing scripts `scripts/create_organic_rigged_lizard.py` and `genesis/creature_builder.py`.
-  - Survey 1 findings in `.agents/teamwork_preview_explorer_survey_1/survey_report.md`.
-  - Live prototype scripts verifying Stag (Quadruped) and Eagle (Avian) procedural modeling, armatures, skinning, and actions.
-  - glTF export options (`export_animation_mode='NLA_TRACKS'`, `export_apply=False`).
-  - Headless EEVEE rendering (1920x1080 preview generated in ~1s).
+  - `ORIGINAL_REQUEST.md` (§ 2026-09-10T05:12:31Z)
+  - `terra_forge/ai/meshy_client.py`, `vault.py`, `normalizer.py`, `lod.py`
+  - `terra_forge/blender/asset_fetcher.py`, `cave_builder.py`, `geonodes.py`, `runner.py`
+  - `terra_forge/schema/presets/` (karst_cavern.json, genesis_primordial_wilderness.json)
+  - `terra_forge/instancing/matrices.py` and `terra_forge/navigation/navmesh.py`
+  - `Genesis_Zero/net/mesh.py` and `Genesis_Zero/assets/blender_map/`
+  - Live Meshy v2 API probe via httpx and Blender 4.5.4 LTS probe
 - **Key findings**:
-  - Selected 2 distinct species: Highland Red Stag (valley meadow herbivore) and Golden Eagle (mountain aerial raptor).
-  - Dual animation pattern: active action for direct Blender viewport playback + NLA tracks with fake users for multi-clip glTF export.
-  - Skinned mesh parenting to armature avoids glTF exporter skinning warnings.
-  - EEVEE headless rendering runs via Metal backend on macOS without display server issues.
-- **Unexplored areas**: None within assigned scope (R3, R4, R5 fully surveyed and prototyped).
+  - Meshy AI v2 client in `terra_forge` is production-ready with retry backoff and key masking.
+  - LocalAssetVault delivers <0.05ms retrieval, <5ms cold-disk.
+  - Normalizer enforces min_y = 0.0 bottom pivot, metric scaling, cylinder/AABB/convex hull colliders.
+  - Current vault has 0 abiotic assets (only 1 old pine tree).
+  - Presets and asset_fetcher currently contain flora biomes; must be purged for strict 0% flora invariant.
+  - Abiotic catalog defined: crags, horn peaks, basalt columns, pebbles, sandbanks, stalactites, stalagmites, columns, bioluminescent minerals.
+- **Unexplored areas**: None within Phase 0 scope.
 
 ## Key Decisions Made
-- Selected Highland Red Stag (Quadruped) and Golden Eagle (Avian) as core species.
-- Designed 6-collection scene layout: Terrain, Water, Flora, Fauna, Lighting, Camera.
-- Formulated complete automated verification script checking collections, dimensions, hydrology, flora, fauna, and deliverables.
-- Produced comprehensive `survey_report.md` (45 KB) and `handoff.md`.
+- Formulated complete architectural roadmap for pure abiotic foundation with 0% flora/fauna.
+- Documented negative prompt sanitization filter to prevent human/biological artifacts from Meshy.
 
 ## Artifact Index
 - DISPATCH.md — incoming task dispatches
 - BRIEFING.md — persistent situational awareness
 - progress.md — liveness heartbeat
-- survey_report.md — detailed technical survey report (45 KB)
-- handoff.md — structured handoff report
+- handoff.md — structured 5-component survey report (256 lines, 20 KB)

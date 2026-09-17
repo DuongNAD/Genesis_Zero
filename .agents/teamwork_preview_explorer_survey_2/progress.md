@@ -1,12 +1,14 @@
 # Progress — teamwork_preview_explorer_survey_2
 
-Last visited: 2026-09-03T16:52:00Z
+Last visited: 2026-09-10T12:21:30Z
 
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Investigate Blender environment and exact version (API compatibility check: Blender 5.2.1 LTS)
-- [x] Investigate R1: Terrain generation (scale 200m x 200m, delta 35.05m >= 15m, multi-biome heightmap math, river/lake hydrology)
-- [x] Investigate R1: Shaders (Elevation/slope PBR blending via POINT color attribute, Principled BSDF, translucent water)
-- [x] Investigate R2: Flora procedural generation (4 species: Conifer, Broadleaf, Reed, Lily)
-- [x] Investigate R2: Smooth shading (`poly.use_smooth = True` & `mesh.shade_smooth()`), biome-based scattering & instancing
-- [x] Synthesize findings into survey_report.md
-- [x] Write handoff.md and notify caller parent
+- [x] Initialized DISPATCH.md and updated BRIEFING.md
+- [x] Section 1: Investigate existing map assets in `assets/blender_map/` (`ecosystem_map.blend`, `ecosystem_map.glb`, renders, generator scripts)
+- [x] Section 2: Investigate 3D Viewer application (`viewer.html`, `web/viewer.html`, `web/watch3d.html`, etc. - Three.js setup, GLB loading, camera framing, 60 FPS)
+- [x] Section 3: Investigate Coordinate and Data Contracts (`COORDINATE_CONTRACT.md`, `map_manifest.schema.json`, binary decoding `world_artifact.py`, `world_256.anmw`, FNV-1a checksums)
+- [x] Section 4: Investigate NavMesh BFS reachability algorithms, `navmeshCoverage >= 0.80`, spawn point definitions
+- [x] Section 5: Investigate Verification scripts and tests (`tests/`, `scripts/`, headless Blender on Windows)
+- [x] Section 6: Identify all existing files, interfaces, acceptance test scripts, and exact verification commands
+- [/] Write comprehensive handoff.md and send completion message to parent
+
+

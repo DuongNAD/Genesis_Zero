@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-05T10:33:00Z
+# BRIEFING — 2026-09-10T11:07:26Z
 
 ## Mission
-Oversee end-to-end redesign and upgrade of Genesis Zero core creature ecosystem: photorealistic BMesh anatomy (.blend & .glb), hierarchical rigging & 8 action animation clips, organic PBR shaders (SSS/bump/specular eyes), 4-angle turnaround concept sheets, interactive 3D Web Creature Viewer, and automated verification suite.
+Oversee AAA Primordial Abiotic 3D Map creation & refactor for Genesis_Zero (anti-staircasing, Meshy AI v2 assets, seamless 4-tier hydrology, PBR strata, WebGL 60 FPS viewer)
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -14,8 +14,14 @@ Oversee end-to-end redesign and upgrade of Genesis Zero core creature ecosystem:
 - Orchestrator (Flora Pipeline): c05f63b1-b12c-4ff5-856e-f6a353dc920f (teamwork_preview_orchestrator_6)
 - Victory Auditor (Flora Pipeline): 7ca98580-9f7d-4664-8a69-54ad7a10a96f (teamwork_preview_victory_auditor_4)
 - Orchestrator (Creature Pipeline): 89c6e5ac-69f1-4bc0-87e9-af2f048ab4f1 (teamwork_preview_orchestrator_7)
-- Victory Auditor (Creature Pipeline): to be spawned on victory claim
 - Victory Auditor (Creature Pipeline Active): 4764558f-41f5-4c6d-aa58-9a2caff7693a (teamwork_preview_victory_auditor_5)
+- Orchestrator (TerraForge / Anima-Engine Pipeline): 63ae626f-1bc8-4766-b18b-4adf29d4b7df (teamwork_preview_orchestrator_8)
+- Victory Auditor (TerraForge / Anima-Engine Pipeline): 1ac86d1a-d05a-4508-82f8-a43c9950f6e1 (teamwork_preview_victory_auditor_6)
+- Orchestrator (Primordial Abiotic 3D Map): a0311de3-7e8d-4194-9456-eb8ad799b042 (teamwork_preview_orchestrator_9)
+- Victory Auditor (Primordial Abiotic 3D Map): 800b76b1-379d-44f6-bb0a-60d91db00158 (teamwork_preview_victory_auditor_7)
+- Orchestrator (AAA Primordial Abiotic Map Active): 337857d3-4efa-465c-84a2-816c8deb93c4 (teamwork_preview_orchestrator_11)
+- Victory Auditor (AAA Primordial Abiotic Map): to be spawned on victory claim
+- Victory Auditor (AAA Primordial Abiotic Map Active): d3c411c5-6628-4012-a306-2ea0a8fcf769 (teamwork_preview_victory_auditor_8)
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -24,14 +30,16 @@ Oversee end-to-end redesign and upgrade of Genesis Zero core creature ecosystem:
 - Independent post-victory audit via teamwork_preview_victory_auditor is blocking
 
 ## User Context
-- **Last user request**: Tái thiết kế và nâng cấp toàn diện hệ sinh thái sinh vật cốt lõi trong Genesis Zero (10 loài cạn, nước, trời, đặc thù; BMesh sạch manifold; Rigging Armature + 8 animation clips NLA glTF; PBR SSS shaders; 4-angle turnaround sheets; Web Creature Viewer 3D; test suite 100%).
+- **Last user request**: Tái cấu trúc và nâng cấp toàn diện bản đồ 3D thiên nhiên sơ khai (Primordial Nature) cho Genesis_Zero lên chuẩn chất lượng game AAA: khắc phục triệt để hiện tượng bậc thang (staircasing) và các hình khối thô sơ (khối núi nón trơn, hang cục tròn); kết hợp mô phỏng địa chất xói mòn sâu với các mô hình 3D tạo sinh trực tiếp từ Meshy AI v2; thiết kế hệ thống thủy văn 4 tầng liền mạch; phủ vật liệu PBR địa tầng tự nhiên và tối ưu Three.js WebGL 60 FPS cho viewer.html.
 - **Pending clarifications**: none
-- **Delivered results**: Complete Creature Fauna Ecosystem Overhaul verified 100% (10 .blend files, 10 .glb files with 8 baked NLA action tracks, 20 4-angle turnaround concept sheets, interactive 3D Web Viewer, offline zero-CORS Base64 sync, 68/68 pipeline checks, 44/44 asset tests, 40/40 adversarial tests passed).
+- **Delivered results**: Previous iterations complete; AAA upgrade iteration launched with teamwork_preview_orchestrator_11.
 
 ## Project Status
 - **Phase**: complete
 - **Route**: General (teamwork_preview_orchestrator)
-- **Crons**: cancelled & cleaned up
+- **Active Orchestrator**: 337857d3-4efa-465c-84a2-816c8deb93c4 (teamwork_preview_orchestrator_11) [completed]
+- **Active Auditor**: d3c411c5-6628-4012-a306-2ea0a8fcf769 (teamwork_preview_victory_auditor_8) [completed]
+- **Crons**: cancelled
 
 ## Victory Audit Status
 - **Triggered**: yes
@@ -39,18 +47,12 @@ Oversee end-to-end redesign and upgrade of Genesis Zero core creature ecosystem:
 - **Retry count**: 0
 
 ## Artifact Index
-- /Users/duongnad/Documents/project/Genesis_Zero/.agents/ORIGINAL_REQUEST.md — Authoritative User Request record
-- /Users/duongnad/Documents/project/Genesis_Zero/.agents/sentinel/BRIEFING.md — Sentinel state memory
-- /Users/duongnad/Documents/project/Genesis_Zero/.agents/sentinel/handoff.md — Sentinel final handoff report
-- /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_orchestrator_7/handoff.md — Orchestrator handoff report
-- /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_victory_auditor_5/handoff.md — Independent Victory Auditor report
-- /Users/duongnad/Documents/project/Genesis_Zero/scripts/generate_photorealistic_creatures.py — Procedural generator pipeline
-- /Users/duongnad/Documents/project/Genesis_Zero/assets/creatures/ — Master 10 .blend and 10 .glb models
-- /Users/duongnad/Documents/project/Genesis_Zero/web/creature_images/ — 10 turnaround concept sheets (1024x1084 JPEG)
-- /Users/duongnad/Documents/project/Genesis_Zero/docs/creatures/images/ — 10 turnaround concept sheets (1024x1084 JPEG)
-- /Users/duongnad/Documents/project/Genesis_Zero/docs/creatures/README.md — Creature taxonomic matrix & documentation
-- /Users/duongnad/Documents/project/Genesis_Zero/web/creature_viewer.html — Interactive 3D Creature Web Viewer
-- /Users/duongnad/Documents/project/Genesis_Zero/web/creature_models_data.js — Offline Base64 models (100% SHA256 parity)
-- /Users/duongnad/Documents/project/Genesis_Zero/scripts/verify_creatures_pipeline.py — 68-check pipeline verification script
-- /Users/duongnad/Documents/project/Genesis_Zero/tests/test_creature_assets.py — 44-test automated pytest suite
-- /Users/duongnad/Documents/project/Genesis_Zero/tests/test_challenger_creatures_adversarial.py — 40-test adversarial test suite
+- e:\Project\01_AI_Agents\Genesis_Zero\.agents\ORIGINAL_REQUEST.md — Authoritative User Request record
+- e:\Project\01_AI_Agents\Genesis_Zero\.agents\sentinel\BRIEFING.md — Sentinel state memory
+- e:\Project\01_AI_Agents\Genesis_Zero\.agents\sentinel\handoff.md — Sentinel final handoff report
+- e:\Project\01_AI_Agents\Genesis_Zero\.agents\teamwork_preview_orchestrator_11\DISPATCH.md — Dispatch instructions
+- e:\Project\01_AI_Agents\Genesis_Zero\assets\world_256.anmw — Binary WorldArtifact v2
+- e:\Project\01_AI_Agents\Genesis_Zero\assets\map_manifest.json — MapManifest schema Draft-07 compliant
+- e:\Project\01_AI_Agents\Genesis_Zero\assets\blender_map\ecosystem_map.glb — Real-time Three.js 3D diorama
+- e:\Project\01_AI_Agents\Genesis_Zero\assets\blender_map\ecosystem_map.blend — Blender master scene
+- e:\Project\01_AI_Agents\Genesis_Zero\assets\blender_map\viewer.html — 100% offline Three.js viewer with local vendor scripts

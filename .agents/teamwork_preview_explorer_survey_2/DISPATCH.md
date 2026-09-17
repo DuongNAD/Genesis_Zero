@@ -1,30 +1,20 @@
-# Dispatch for Survey Explorer 2
+## 2026-09-10T05:14:00Z
 
-## 2026-09-03T16:47:04Z
+Task: Phase 0 Survey - Genesis_Zero Integration & Acceptance Infrastructure Investigation
+Working Directory: e:\Project\01_AI_Agents\Genesis_Zero\.agents\teamwork_preview_explorer_survey_2\
+Original Request: e:\Project\01_AI_Agents\Genesis_Zero\.agents\ORIGINAL_REQUEST.md
+Engine Directory: E:\tool\mcp\terra_forge
+Target Workspace: e:\Project\01_AI_Agents\Genesis_Zero
 
-You are teamwork_preview_explorer_survey_2.
-Working Directory: /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_explorer_survey_2
-Original Request: /Users/duongnad/Documents/project/Genesis_Zero/.agents/ORIGINAL_REQUEST.md (read section ## 2026-09-03T16:45:06Z).
-
-Your mission:
-1. Read ORIGINAL_REQUEST.md at /Users/duongnad/Documents/project/Genesis_Zero/.agents/ORIGINAL_REQUEST.md carefully.
-2. Investigate technical design & best practices in Blender Python (bpy) for:
-   - R1: Cohesive Multi-Biome 3D Terrain & Hydrology:
-     * Balanced scale terrain: 100m-500m horizontal span, >= 15m elevation delta.
-     * Topographic zones: mountain ridges, rolling hills, flat valley floors, lowlands.
-     * Hydrological mesh: continuous winding river discharging into a lake basin.
-     * Smooth slope transitions and topology.
-     * Elevation/slope-dependent PBR material shader (rock, soil, grass, sand) using Principled BSDF and procedural textures/color ramps or vertex colors/attribute blending.
-     * Translucent reflective water shader (transmission, roughness, IOR 1.333, depth color).
-   - R2: Organic Flora & Biome Vegetation:
-     * At least 3 distinct plant/tree species (e.g. Conifer/Pine for alpine/mountain, Broadleaf/Deciduous for lowland/hills, Reed/Willow/Lily for water edge).
-     * Procedural/algorithmic mesh generation of trunks, branches, foliage.
-     * Ensuring smooth shading (`polygon.use_smooth = True` / auto smooth).
-     * Natural biome-based distribution (elevation & water proximity criteria), rotation & scale variations.
-3. Formulate concrete, robust bpy implementation patterns and code snippets for these elements.
-
-Scope boundaries:
-- Read-only exploration.
-- Write your findings to /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_explorer_survey_2/survey_report.md
-- Write your handoff to /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_explorer_survey_2/handoff.md
-- When finished, send a message back to caller parent via send_message with a summary.
+Objectives:
+1. Read e:\Project\01_AI_Agents\Genesis_Zero\.agents\ORIGINAL_REQUEST.md (§ 2026-09-10T05:12:31Z).
+2. Deeply investigate e:\Project\01_AI_Agents\Genesis_Zero:
+   - Existing map assets in `assets/blender_map/` (`ecosystem_map.blend`, `ecosystem_map.glb`, renders).
+   - Viewer application (`viewer.html`, `web/watch3d.html`, `web/viewer.html` if any) and 60 FPS Three.js rendering requirements.
+   - Coordinate contracts: `COORDINATE_CONTRACT.md` (X, Z in [-100, 100], Y in [0, 10], canonical scale 200.0).
+   - `map_manifest.schema.json` and existing manifests.
+   - Binary format decoding/verification tools: `world_artifact.py`, `world_256.anmw`, FNV-1a checksum validators.
+   - NavMesh BFS reachability scripts/algorithms: how `navmeshCoverage >= 0.80` is measured and verified, spawn point definitions.
+   - Existing test suite (`pytest`, tests in `Genesis_Zero` or `terra_forge`).
+3. Identify existing files, interfaces, acceptance test scripts, and exact verification commands.
+4. Output a detailed survey report to e:\Project\01_AI_Agents\Genesis_Zero\.agents\teamwork_preview_explorer_survey_2\handoff.md.

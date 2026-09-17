@@ -31,10 +31,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install ruff pytest
+          pip install ruff pytest pytest-asyncio jsonschema
 
       - name: Lint
         run: ruff check genesis net tests scripts client tools
+
+      - name: Offline release contracts (under 60 seconds)
+        run: python scripts/ci_quick.py
 
       - name: Test
         # `-p no:randomly` KHÔNG dùng: thứ tự ngẫu nhiên là thứ bắt được test

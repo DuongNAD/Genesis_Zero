@@ -1,7 +1,12 @@
-.PHONY: test run serve expose preflight preflight-full demo model-check hostile lint lint-fix lock clean site
+.PHONY: test baseline run serve expose preflight preflight-full demo model-check hostile lint lint-fix lock clean site
 
 test:
 	pytest
+
+# Baseline regression: log chi tiết + JUnit XML + summary JSON vào runs/baselines/.
+# Không dừng giữa chừng khi gặp F/E — baseline phải đủ 100% danh mục lỗi tồn đọng.
+baseline:
+	python scripts/run_baseline.py
 
 run:
 	python -m genesis.run --seed 42 --ticks 400

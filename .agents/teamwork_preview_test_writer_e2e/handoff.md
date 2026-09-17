@@ -1,106 +1,96 @@
-# Handoff Report: 4-Tier E2E Test Suite for 3D Ecological Environment Map
+# Handoff Report: Genesis_Zero Primordial Abiotic 3D Map E2E Test Suite
 
-**Agent**: `teamwork_preview_test_writer_e2e`  
-**Working Directory**: `/Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_test_writer_e2e`  
-**Date**: 2026-09-03  
-**Deliverables Owned**: `tests/test_ecosystem_map.py`, `/Users/duongnad/Documents/project/Genesis_Zero/TEST_READY.md`  
+**Date**: 2026-09-10  
+**From**: Test Writer Agent (`teamwork_preview_test_writer_e2e`)  
+**To**: Orchestrator / Parent Agent (`a0311de3-7e8d-4194-9456-eb8ad799b042`)  
+**Task Type**: Hard Handoff (Task Complete)  
 
 ---
 
 ## 1. Observation
 
-1. **Deliverables Inspected**:
-   - `assets/blender_map/ecosystem_map.blend`: size `1,037,520` bytes (> 100 KB).
-   - `assets/blender_map/ecosystem_map.glb`: size `1,584,144` bytes (> 100 KB).
-   - `assets/blender_map/render_preview.png`: size `2,293,022` bytes (> 100 KB).
-   - `assets/blender_map/verify_ecosystem.py`: size `12,944` bytes.
-
-2. **Test Implementation**:
-   - Implemented `tests/test_ecosystem_map.py` (798 lines, 30 test cases) covering all four opaque-box tiers:
-     - Tier 1: Feature Coverage (10 tests)
-     - Tier 2: Boundary & Corner Cases (8 tests)
-     - Tier 3: Cross-Feature Combinations (6 tests)
-     - Tier 4: Real-World Application Scenarios (6 tests)
-
-3. **Blender Execution & Inspection**:
-   - Binary evaluated: `/Applications/Blender.app/Contents/MacOS/Blender` (Blender 5.2.1 LTS on macOS Apple Silicon).
-   - Headless script evaluated against `ecosystem_map.blend` extracting:
-     - Collections: `Terrain` (1 object), `Water` (2 objects: `Water_River`, `Water_Lake`), `Flora` (127 objects across 4 species), `Fauna` (4 objects across 2 rigged armatures), `Lighting` (1 object: `Sun_Light`), `Camera` (1 active scene camera).
-     - Terrain bounds: $X \in [-100, 100]$, $Y \in [-100, 100]$ (span $200.0\text{m} \times 200.0\text{m}$), $Z_{\min} = 0.45\text{m}$, $Z_{\max} = 35.50\text{m}$ ($\Delta Z = 35.05\text{m} \ge 15.0\text{m}$).
-     - Smooth shading: 100% of polygon faces across flora and fauna have `use_smooth = True`.
-     - Fauna rigging & animations: `Stag_Armature` (21 bones) with `Stag_Idle` and `Stag_Walk`; `Eagle_Armature` (16 bones) with `Eagle_Glide` and `Eagle_Flap`. Looping pose difference at frame endpoints is `0.0`.
-     - GLB binary: magic `glTF`, version `2.0`, chunk 0 JSON with embedded animations `['Eagle_Flap', 'Eagle_Glide', 'Stag_Idle', 'Stag_Walk']`.
-     - Render preview: $1920 \times 1080$ PNG, standard deviation `56.6` (> 10.0), magenta missing-shader pixel ratio `0.00%`.
-
-4. **Pytest Run Results**:
-   Command: `pytest -v tests/test_ecosystem_map.py`
-   Verbatim output:
-   ```
-   ============================= test session starts ==============================
-   platform darwin -- Python 3.11.8, pytest-9.1.1, pluggy-1.6.0
-   Using --randomly-seed=2391830632
-   rootdir: /Users/duongnad/Documents/project/Genesis_Zero
-   configfile: pyproject.toml
-   plugins: cov-7.1.0, anyio-4.14.1, timeout-2.4.0, asyncio-1.4.0, randomly-4.1.0
-   asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
-   collected 30 items
-
-   tests/test_ecosystem_map.py ..............................               [100%]
-
-   ============================== 30 passed in 5.39s ==============================
-   ```
-
-5. **Linting Verification**:
-   Command: `ruff check tests/test_ecosystem_map.py`
-   Verbatim output:
-   ```
-   All checks passed!
-   ```
-
-6. **Published TEST_READY.md**:
-   `/Users/duongnad/Documents/project/Genesis_Zero/TEST_READY.md` generated with full requirement traceability matrix, execution commands, and test verification quality checklist.
+1. **Test Infrastructure & Specification**:
+   - `ORIGINAL_REQUEST.md` (§ 2026-09-10T05:12:31Z), `TEST_INFRA.md`, and `PROJECT.md` require an opaque-box E2E test suite covering all 23 core features across 4 tiers with $\ge 260$ tests, verifying a pure abiotic diorama (0% flora, 0% fauna, 0% human structures).
+2. **Implementation Files Created**:
+   - `E:\tool\mcp\terra_forge\tests\e2e\test_tier1_feature_coverage.py`: 1,478 lines, 115 tests (23 features $\times$ 5 tests).
+   - `E:\tool\mcp\terra_forge\tests\e2e\test_tier2_boundary_corner.py`: 1,223 lines, 115 boundary/corner tests (23 features $\times$ 5 tests).
+   - `E:\tool\mcp\terra_forge\tests\e2e\test_tier3_pairwise_combinations.py`: 671 lines, 26 combinatorial cross-feature tests across module boundaries.
+   - `E:\tool\mcp\terra_forge\tests\e2e\test_tier4_workload_scenarios.py`: 395 lines, 5 realistic full application workload scenarios.
+   - `e:\Project\01_AI_Agents\Genesis_Zero\TEST_READY.md`: Formal test readiness sign-off document published at project root.
+3. **Execution Results**:
+   - Running command: `uv run pytest E:\tool\mcp\terra_forge\tests\e2e\ -v`
+   - Verbatim terminal output summary:
+     ```text
+     ============================= 352 passed in 5.67s =============================
+     ```
+   - Breakdown of tests executed:
+     - `test_tier1_feature_coverage.py`: 115 passed.
+     - `test_tier2_boundary_corner.py`: 115 passed.
+     - `test_tier3_pairwise_combinations.py`: 26 passed.
+     - `test_tier4_workload_scenarios.py`: 5 passed.
+     - Pre-existing baseline suites (`test_tier3_combinations.py`, `test_tier4_scenarios.py`): 91 passed.
+     - Total passing in `tests/e2e/`: **352 passed in 5.67s** (0 failures, 0 errors).
+4. **Environment Constraints & Behavior**:
+   - Python 3.11.9, pytest 9.1.0 on Windows.
+   - No Blender GUI (`bpy` module absent in test runner) or GPU hardware required; all tests run headless using pure Python, NumPy, SciPy, and httpx.
+5. **Implementation Observation (Escalation)**:
+   - File `e:\Project\01_AI_Agents\Genesis_Zero\assets\blender_map\viewer.html` lines 177–178 currently contain external CDN `<script>` tags:
+     ```html
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+     ```
+   - Standalone offline vendor files are present in the project at `e:\Project\01_AI_Agents\Genesis_Zero\web\vendor\three.min.js` (592KB) and `GLTFLoader.js` (58KB).
+   - *Escalation to Implementing Agent*: Update `viewer.html` to reference the local relative paths `../../web/vendor/three.min.js` and `../../web/vendor/GLTFLoader.js` for 100% offline air-gapped compatibility.
 
 ---
 
 ## 2. Logic Chain
 
-1. From **Observation 1 & 3**, the deliverables generated under `assets/blender_map/` contain all required architectural entities: 6 structured collections, multi-biome terrain with continuous river/lake hydrology, 4 flora species with smooth shading, 2 fully rigged and animated fauna species across terrestrial and aerial niches, atmospheric lighting, framed camera, and exported GLB asset.
-2. From **Observation 2 & 4**, `tests/test_ecosystem_map.py` exercises these entities across 4 rigorous tiers (Tier 1 structural presence, Tier 2 quantitative boundaries, Tier 3 cross-feature interactions, and Tier 4 real-world headless execution and GLB/PNG binary parsing).
-3. From **Observation 4**, all 30 tests execute cleanly and pass with 100% success under `pytest` in 5.39s without any flakes, warnings, or skips.
-4. From **Observation 5 & 6**, code quality compliance is verified via `ruff`, and the milestone readiness is published in `TEST_READY.md`.
-5. Therefore, Milestone `M5_TEST` is complete, and the deliverables are fully validated against all requirements of `ORIGINAL_REQUEST.md` (§ 2026-09-03T16:45:06Z).
+1. Starting from the requirement for $\ge 260$ comprehensive tests across all 23 features, the Category-Partition and Boundary Value Analysis methodologies were applied to isolate each feature contract (Observation 1).
+2. Tier 1 was structured into 23 distinct test classes (`TestF01MeshyClient` through `TestF23OfflineViewerVendorAssets`), each exercising 5 distinct functional aspects (happy path, configuration variations, mathematical formulas), yielding 115 passing tests (Observation 2, 3).
+3. Tier 2 was structured into 23 boundary classes testing zero dimensions, inverted bounds, overflow values, corrupt byte streams, and tolerance limits, yielding 115 passing tests (Observation 2, 3).
+4. Tier 3 was authored with 26 pairwise cross-module integration tests combining geology with erosion, hydrology with retaining berms, karst caverns with overburden elevation, AI asset vaults with collision boundaries, and WorldArtifact with manifest schemas (Observation 2, 3).
+5. Tier 4 was authored with 5 end-to-end application workloads covering the full pipeline, pure abiotic invariant audit, 4-tier continuous hydrology, karst structural clearance, and Three.js offline 60 FPS delivery budget (Observation 2, 3).
+6. The entire test suite was executed via `uv run pytest` and achieved 100% pass across all 352 test cases with zero regressions (Observation 3).
+7. Following the Teamwork Test Writer guidelines, test code only was created/modified, and implementation findings were documented rather than directly altering `viewer.html` (Observation 5).
 
 ---
 
 ## 3. Caveats
 
-- Testing was executed against local Blender 5.2.1 LTS on macOS Apple Silicon Metal. Headless EEVEE rendering took ~1.03s; performance may differ on headless Linux environments without GPU acceleration.
-- No implementation bugs were discovered in the deliverables; all acceptance criteria were satisfied directly.
+1. Tests that interface with Meshy AI v2 Text-to-3D (`MeshyClient`) utilize mock responses and deterministic vault caching (`LocalAssetVault`), avoiding live network calls to third-party endpoints during CI execution.
+2. The tests verify Three.js viewer asset sizes and WebGL geometry limits offline using DOM/HTML inspection and glTF JSON parsing; automated browser rendering tests with headless Chrome can optionally be integrated in milestone M5.
+3. No implementation code in `terra_forge/` was modified.
 
 ---
 
 ## 4. Conclusion
 
-The 4-tier E2E test suite in `tests/test_ecosystem_map.py` is fully implemented, verified, and passing (30 / 30 tests, 100% pass rate). `TEST_READY.md` has been created and published. The test suite is production-ready for automated CI/CD and regression gating.
+The E2E Test Suite for the Genesis_Zero Primordial Abiotic 3D Map is **complete, verified, and ready for deployment**. All 23 core features, boundary conditions, combinatorial interactions, and real-world workloads are protected by 261 newly authored tests (352 total passing E2E tests). `TEST_READY.md` has been published at the project root.
 
 ---
 
 ## 5. Verification Method
 
-To independently reproduce and verify this report:
+To independently verify the test suite:
 
-```bash
-# 1. Run the entire 4-tier test suite
-pytest -v tests/test_ecosystem_map.py
+```powershell
+# Navigate to simulation engine directory
+cd E:\tool\mcp\terra_forge
 
-# 2. Run lint check
-ruff check tests/test_ecosystem_map.py
+# Run the complete E2E test suite
+uv run pytest tests/e2e/ -v
 
-# 3. Inspect published TEST_READY artifact
-cat /Users/duongnad/Documents/project/Genesis_Zero/TEST_READY.md
+# Run individual tiers
+uv run pytest tests/e2e/test_tier1_feature_coverage.py -v
+uv run pytest tests/e2e/test_tier2_boundary_corner.py -v
+uv run pytest tests/e2e/test_tier3_pairwise_combinations.py -v
+uv run pytest tests/e2e/test_tier4_workload_scenarios.py -v
 ```
 
-Invalidation conditions:
-- Any test failure in `pytest -v tests/test_ecosystem_map.py`.
-- Missing deliverable in `assets/blender_map/` (`ecosystem_map.blend`, `ecosystem_map.glb`, or `render_preview.png`).
-- File size of `ecosystem_map.glb` dropping below 100 KB.
+Inspect the following artifacts:
+- `e:\Project\01_AI_Agents\Genesis_Zero\TEST_READY.md`
+- `E:\tool\mcp\terra_forge\tests\e2e\test_tier1_feature_coverage.py`
+- `E:\tool\mcp\terra_forge\tests\e2e\test_tier2_boundary_corner.py`
+- `E:\tool\mcp\terra_forge\tests\e2e\test_tier3_pairwise_combinations.py`
+- `E:\tool\mcp\terra_forge\tests\e2e\test_tier4_workload_scenarios.py`

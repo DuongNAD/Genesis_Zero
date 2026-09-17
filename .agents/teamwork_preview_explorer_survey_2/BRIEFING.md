@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-03T16:52:00Z
+# BRIEFING — 2026-09-10T12:15:00Z
 
 ## Mission
-Investigate technical design & best practices in Blender Python (bpy) for R1 (Cohesive Multi-Biome 3D Terrain & Hydrology) and R2 (Organic Flora & Biome Vegetation).
+Phase 0 Survey: Investigate Genesis_Zero integration and acceptance verification infrastructure for Primordial Abiotic 3D Map creation (terra_forge -> Genesis_Zero).
 
 ## 🔒 My Identity
 - Archetype: explorer
@@ -9,38 +9,46 @@ Investigate technical design & best practices in Blender Python (bpy) for R1 (Co
 - Working directory: /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_explorer_survey_2
 - Original parent: dc131d28-9eff-4ba7-a2a6-4ed2c23da624
 - Milestone: SURVEY_R1_R2
+- Working directory (2026-09-10): e:\Project\01_AI_Agents\Genesis_Zero\.agents\teamwork_preview_explorer_survey_2\
+- Parent (2026-09-10): a0311de3-7e8d-4194-9456-eb8ad799b042
+- Milestone (2026-09-10): Phase 0 Genesis_Zero Integration & Acceptance Verification
 
 ## 🔒 Key Constraints
 - Read-only investigation — do NOT implement production assets directly
 - Write survey report to /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_explorer_survey_2/survey_report.md
 - Write handoff to /Users/duongnad/Documents/project/Genesis_Zero/.agents/teamwork_preview_explorer_survey_2/handoff.md
 - Use send_message to report findings to caller parent (dc131d28-9eff-4ba7-a2a6-4ed2c23da624)
+- Phase 0 survey: read-only investigation, produce comprehensive handoff.md in e:\Project\01_AI_Agents\Genesis_Zero\.agents\teamwork_preview_explorer_survey_2\handoff.md
+- Use send_message to report findings to parent (a0311de3-7e8d-4194-9456-eb8ad799b042)
+- Inspect Genesis_Zero integration, map assets, viewer, contracts, NavMesh, tests, and headless Blender environment
 
 ## Current Parent
-- Conversation ID: dc131d28-9eff-4ba7-a2a6-4ed2c23da624
-- Updated: 2026-09-03T16:47:04Z
+- Conversation ID: a0311de3-7e8d-4194-9456-eb8ad799b042
+- Updated: 2026-09-10T12:21:30Z
 
 ## Investigation State
-- **Explored paths**: Local Blender 5.2.1 LTS runtime (`/Applications/Blender.app/Contents/MacOS/Blender`), `mathutils.noise`, `bpy.data.materials`, `bpy.ops.export_scene.gltf`, `bpy.ops.render.render`.
+- **Explored paths**:
+  - `ORIGINAL_REQUEST.md` (§ 2026-09-10T05:12:31Z)
+  - `DISPATCH.md`
+  - Genesis_Zero repository (`assets/blender_map/`, `assets/`, `web/`, `tests/`, `scripts/`)
+  - terra_forge engine (`E:\tool\mcp\terra_forge`)
+  - Anima-Engine repository (`e:\Project\03_Engines_Simulation\Anima-Engine` for `COORDINATE_CONTRACT.md` & `map_manifest.schema.json`)
 - **Key findings**:
-  - Blender 5.2.1 LTS uses Python 3.13.13 and NumPy 2.3.4.
-  - `mesh.use_auto_smooth` is removed in Blender 4.1+/5.x; must use `mesh.shade_smooth()` and `poly.use_smooth = True`.
-  - Principled BSDF inputs require `Transmission Weight` and `Specular IOR Level`.
-  - Vectorized NumPy terrain generation computes 160x160 grid ($200\text{m} \times 200\text{m}$, elevation delta $35.05\text{m}$) in 0.013s.
-  - Continuous winding river spline carvings into terrain with smooth Hermite banks discharging into lake basin at $Z=2.0\text{m}$.
-  - POINT-domain Color Attribute (`COLOR_0`) provides 100% glTF 2.0 PBR material export compatibility without external textures.
-  - Translucent water shader configured with transmission weight 0.92, IOR 1.333, roughness 0.05, bump ripples.
-  - 4 botanical species procedurally modeled: Conifer, Broadleaf, Reed, Lily.
-  - Linked duplicate instancing enables hundreds of plants with tiny GLB footprint (< 30 KB overhead).
-- **Unexplored areas**: R3 Fauna animation keyframing (delegated to Survey Explorer 3).
+  1. Map Assets: `assets/blender_map/` contains `ecosystem_map.blend` (1.45 MB), `ecosystem_map.glb` (3.86 MB), renders, and scripts (`assemble_ecosystem.py`, `verify_ecosystem.py`). Legacy scripts have hardcoded macOS paths (`/Users/duongnad/...`) and include flora/fauna/settlement, whereas R5 requires 100% abiotic map.
+  2. 3D Viewer: `assets/blender_map/viewer.html` uses Three.js r128, ACESFilmicToneMapping, PCFSoftShadowMap, auto-fits camera bounding box, has 5 camera presets, supports drag-and-drop GLB. Currently loads Three.js via CDN; offline copies exist at `web/vendor/`.
+  3. Contracts: `COORDINATE_CONTRACT.md` defines 4 spaces (cell, uv, world, render), scale 200.0, bounds `[-100, 100]`, elevation `[0, 10]`, S03 round-trip identity. `world_artifact.py` defines 36-byte header, FNV-1a checksum, 5 layers (f32, f32, f32, f32, u8). `assets/world_256.anmw` (1,114,148 bytes) has checksum `0x861b9b50` (100% match). `assets/map_manifest.json` matches draft-07 schema and SHA-256 matches `world_256.anmw`.
+  4. NavMesh: `NavMeshReachabilityValidator` in `terra_forge/navigation/navmesh.py` enforces 4-connected BFS without row-wrapping. Evaluated on `world_256.anmw`: reached 61,297 / 61,301 land cells = 99.99% coverage (>= 80.0%), spawn point at `(5.08, 2.35, 2.73)`.
+  5. Environment: Python 3.11.9 with `uv` 0.12.2. Blender 4.5.4 LTS at `C:\Program Files\Blender Foundation\Blender 4.5\blender.exe` (Python 3.11.11, NumPy 2.4.6). EEVEE engine in Blender 4.5+ is `'BLENDER_EEVEE_NEXT'`. Adding Blender dir to PATH makes `shutil.which('blender')` work. In Genesis_Zero `pyproject.toml`, warning filter requires `-o filterwarnings=""` for pytest.
+- **Unexplored areas**: None. All 6 investigation objectives thoroughly verified with empirical execution.
 
 ## Key Decisions Made
-- Deliver both `survey_report.md` (complete formulas and drop-in code) and `handoff.md` (5-component handoff).
-- Use POINT domain for vertex colors to enable instant NumPy array assignment without loop iteration.
+- Use `uv run` with `--with httpx --with scipy` or project dependencies.
+- Document exact Windows paths and engine differences (Blender 4.5 EEVEE Next).
+- Provide complete drop-in execution commands and verification steps in `handoff.md`.
 
 ## Artifact Index
 - DISPATCH.md — Assignment instructions
 - BRIEFING.md — Persistent working memory
 - progress.md — Liveness heartbeat
-- survey_report.md — Technical design & best practices report
 - handoff.md — Formal handoff report
+

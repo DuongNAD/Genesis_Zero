@@ -23,6 +23,23 @@ git clone https://github.com/DuongNAD/Genesis_Zero.git && cd Genesis_Zero
 Một ván chạy được ngay: tự động thiết lập `.venv`, quét đa backend LLM (Ollama, llama.cpp, vLLM, Mock), tự động fallback về Offline Reflex nếu không có GPU/LLM cục bộ.
 → **[Hướng dẫn đầy đủ](docs/HUONG-DAN.md)**
 
+### B-10 A/B: Frontier Thinking vs ReflexStrategist
+
+Đo so sánh có kiểm soát giữa model tư duy "frontier" và chiến lược offline, cùng seed & cùng bộ chấm:
+
+```bash
+# Khoá giao thức trước (không gọi model, in JSON 5 seed):
+python scripts/b10_ab.py --url <endpoint> --model <model> --out scratch/ab-plan --plan
+
+# Chạy thật — 5 seed, thứ tự nhánh xen kẽ, ghi log/truth/CSV cho từng nhánh:
+python scripts/b10_ab.py --url <endpoint> --model <model> --out scratch/ab1
+
+# Cấu hình backend qua env khi chạy server:
+GENESIS_LLM_BACKEND=frontier GENESIS_LLM_MODEL=<model> GENESIS_LLM_API_KEY=<key> python -m genesis.run --seed 7
+```
+
+Kết quả gồm `protocol.json` (giao thức khoá), log ván từng seed, và tổng hợp điểm theo nhánh. Mỗi lần chạy cần thư mục `--out` mới; không tái sử dụng thư mục của `--plan`. Giao thức chưa có kết quả đo với model thật.
+
 ---
 
 ## Vì sao có dự án này
@@ -128,7 +145,7 @@ kiểm điều đó từ ngoài.
 
 | | |
 |---|---|
-| Test | **1066 mục, xanh** |
+| Test | **1703 mục được thu thập / 111 files**; baseline 2026-09-17 (20260917T132824Z): 1664 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
 | Phiếu việc | 65, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
@@ -182,7 +199,7 @@ bất biến, cách nghiệm thu, và — quan trọng nhất — **những lỗ
 
 ```bash
 make preflight    # máy này chạy được một ván thật chưa?
-make test         # 1066 test
+make test         # 1703 test (số lượng collection; không phải tất cả đã pass)
 make serve        # server ván, cổng 8000
 make hostile      # kiểm cửa chống lạm dụng — chạy TRƯỚC khi phơi ra internet
 make expose       # mở tunnel ngrok
@@ -201,3 +218,21 @@ vấn đề: không có file `LICENSE` thì luật mặc định là **không ai
 lại gì cả** — ngược hẳn ý định — và "cho dùng tự do trừ thương mại" không khớp
 giấy phép mã nguồn mở chuẩn nào. Apache-2.0 cho dùng thương mại thoải mái, nên
 điều kiện "hỏi trước" đã bỏ để tài liệu và giấy phép nói cùng một điều.)*
+
+<!-- test-inventory:start -->
+### Danh mục test theo pytest discovery
+
+Số mục bao gồm các biến thể parametrized; collection không đồng nghĩa PASS.
+
+| Thư mục | Số mục |
+|---|---:|
+| `tests` | 1495 |
+| `tests/e2e` | 208 |
+| **Tổng** | **1703** |
+
+Đối soát và xuất danh sách từng file/node ID:
+
+```powershell
+& "E:\Project\01_AI_Agents\Genesis_Zero\.venv\Scripts\python.exe" "E:\Project\01_AI_Agents\Genesis_Zero\scripts\count_tests.py"
+```
+<!-- test-inventory:end -->
