@@ -1,0 +1,213 @@
+{
+  "$schema": "./map_manifest.schema.json",
+  "schemaVersion": 1,
+  "_generated": {
+    "by": "terra_forge.core.manifest",
+    "seed": 1337,
+    "generatorVersion": 2,
+    "worldScale": 200.0
+  },
+  "worldArtifact": {
+    "path": "assets/world_256.anmw",
+    "magic": "ANMW",
+    "version": 2,
+    "width": 256,
+    "height": 256,
+    "seaLevel": 0.0,
+    "checksum": "sha256:69c0270554181a7749b4467f810b64bf510d95d225319df3dd9e601cdbe4fb97",
+    "bytes": 1114148
+  },
+  "coordinateSystem": {
+    "worldMinXZ": -100,
+    "worldMaxXZ": 100,
+    "worldMinY": 0,
+    "worldMaxY": 10,
+    "gridDim": 256,
+    "unitsPerCell": 0.78125,
+    "worldScale": 200
+  },
+  "biomeTaxonomy": {
+    "canonicalCount": 22,
+    "legacyCount": 11
+  },
+  "views": [
+    {
+      "id": "overview",
+      "label": "Isometric Overview (Top-Down)",
+      "imagePath": "map-views/overview.png",
+      "camera": {
+        "position": [
+          0.0,
+          112.0,
+          112.0
+        ],
+        "target": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "fov": 45.0
+      },
+      "captured": false
+    },
+    {
+      "id": "navigation",
+      "label": "North Angle (Navigation)",
+      "imagePath": "map-views/navigation.png",
+      "camera": {
+        "position": [
+          7.9,
+          72.9,
+          -38.1
+        ],
+        "target": [
+          2.1,
+          11.8,
+          -8.8
+        ],
+        "fov": 45.0
+      },
+      "captured": false
+    },
+    {
+      "id": "collision",
+      "label": "West Angle (Collision / Cliffs)",
+      "imagePath": "map-views/collision.png",
+      "camera": {
+        "position": [
+          -62.1,
+          16.9,
+          6.8
+        ],
+        "target": [
+          -54.0,
+          11.1,
+          6.0
+        ],
+        "fov": 45.0
+      },
+      "captured": false
+    },
+    {
+      "id": "lighting",
+      "label": "Northwest Angle (Lighting / Sun)",
+      "imagePath": "map-views/lighting.png",
+      "camera": {
+        "position": [
+          -95.6,
+          59.5,
+          -32.2
+        ],
+        "target": [
+          -59.9,
+          30.7,
+          -17.4
+        ],
+        "fov": 45.0
+      },
+      "captured": false
+    },
+    {
+      "id": "spawn",
+      "label": "East Angle (Spawn Point)",
+      "imagePath": "map-views/spawn.png",
+      "camera": {
+        "position": [
+          -29.5,
+          23.1,
+          -21.0
+        ],
+        "target": [
+          -21.4,
+          15.4,
+          -15.6
+        ],
+        "fov": 45.0
+      },
+      "captured": false
+    },
+    {
+      "id": "water",
+      "label": "Lake Overview (Water)",
+      "imagePath": "map-views/water.png",
+      "camera": {
+        "position": [
+          -85.2,
+          34.9,
+          81.9
+        ],
+        "target": [
+          -67.3,
+          13.1,
+          64.0
+        ],
+        "fov": 45.0
+      },
+      "captured": false
+    },
+    {
+      "id": "biome_transition",
+      "label": "South Angle (Biome Transition)",
+      "imagePath": "map-views/biome_transition.png",
+      "camera": {
+        "position": [
+          -64.8,
+          38.2,
+          -34.5
+        ],
+        "target": [
+          -45.1,
+          18.1,
+          -24.0
+        ],
+        "fov": 45.0
+      },
+      "captured": false
+    },
+    {
+      "id": "ecosystem",
+      "label": "Cavern Close-Up (Ecosystem)",
+      "imagePath": "map-views/ecosystem.png",
+      "camera": {
+        "position": [
+          -52.5,
+          22.6,
+          -1.7
+        ],
+        "target": [
+          -38.3,
+          10.9,
+          -1.7
+        ],
+        "fov": 45.0
+      },
+      "captured": false
+    }
+  ],
+  "modelAsset": {
+    "path": "assets/blender_map/ecosystem_map.glb",
+    "format": "gltf-binary",
+    "checksum": "sha256:4967e070538763135507dcabe30c341b3b27ed6b00544c42f585d3b887ef8caa",
+    "bytes": 8773452
+  },
+  "mapId": "genesis_primordial_abiotic",
+  "version": "2.0.0",
+  "biomes": [],
+  "spawnPoint": [
+    31.64,
+    5.04,
+    5.86
+  ],
+  "navMesh": {
+    "reachabilityCoverage": 1.0,
+    "reachCount": 65535,
+    "totalLand": 65535,
+    "targetCoverage": 0.8,
+    "spawnCell": [
+      135,
+      168
+    ],
+    "walkableSlopeLimitDeg": 35.0,
+    "isValid": true
+  }
+}
