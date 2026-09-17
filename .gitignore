@@ -29,3 +29,14 @@ venv/
 
 # Symlink to local gguf models folder
 web/models
+
+# Scratch, test run logs & ephemeral artifacts
+scratch/
+*.log
+.coverage
+archive/
+.agents/
+.project.json
+implementation_plan.md
+run_dossier_check.ps1
+
