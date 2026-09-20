@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from genesis.lawdsl import EffectKind
 
@@ -27,17 +29,29 @@ def sanitize_outcome(text: str) -> str:
     return _FORBIDDEN_PATTERN.sub("[ẩn]", text)
 
 
-def _format_ctx(ctx: tuple[tuple[str, str], ...]) -> str:
+def _format_ctx(ctx: tuple[tuple[str, str], ...] | dict[str, str] | Sequence[Any]) -> str:
     items: list[str] = []
-    for k, v in ctx:
-        k_str = k.strip() if k else ""
-        v_str = v.strip() if v else ""
-        if k_str and v_str:
-            items.append(f"{k_str} {v_str}")
-        elif v_str:
-            items.append(v_str)
-        elif k_str:
-            items.append(k_str)
+    if isinstance(ctx, dict):
+        ctx_seq: Sequence[Any] = tuple(ctx.items())
+    else:
+        ctx_seq = ctx
+    for item in ctx_seq:
+        if isinstance(item, (tuple, list)) and len(item) >= 2:
+            k, v = item[0], item[1]
+            k_str = str(k).strip() if k else ""
+            v_str = str(v).strip() if v else ""
+            if k_str and v_str:
+                items.append(f"{k_str} {v_str}")
+            elif v_str:
+                items.append(v_str)
+            elif k_str:
+                items.append(k_str)
+        elif isinstance(item, (tuple, list)) and len(item) == 1:
+            v_str = str(item[0]).strip() if item[0] else ""
+            if v_str:
+                items.append(v_str)
+        elif isinstance(item, str) and item.strip():
+            items.append(item.strip())
     return f"[{', '.join(items)}]"
 
 
@@ -47,7 +61,7 @@ class Note:
     who: str            # "TÔI" hoặc "THẤY <creature_id>"
     action: str         # định tính, tiếng Việt
     outcome: str        # định tính; "không thấy gì" nếu không có gì
-    ctx: tuple[tuple[str, str], ...]   # LUÔN đầy đủ, ví dụ (("pha","đêm"),("địa hình","đồng cỏ"))
+    ctx: tuple[tuple[str, str], ...] | dict[str, str] | Sequence[Any]   # LUÔN đầy đủ, ví dụ (("pha","đêm"),("địa hình","đồng cỏ"))
 
     def __post_init__(self) -> None:
         norm_ctx: list[tuple[str, str]] = []
@@ -102,7 +116,7 @@ class FieldNotes:
         # cond của luật hỏi. Nên giữ lại một phần tư chỗ cho đối chứng.
         quota = max(1, int(self.cap * self.NORMAL_QUOTA_RATIO))
         normals = [i for i, (_, note) in enumerate(self._items) if self._is_normal(note)]
-        pool = range(len(self._items))
+        pool: Sequence[int] = range(len(self._items))
         if 0 < len(normals) <= quota:
             abnormals = [i for i in pool if i not in set(normals)]
             if abnormals:

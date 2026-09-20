@@ -5,10 +5,10 @@ Builds 12 realistic understory shrubs with clean BMesh topology & PBR materials.
 """
 
 import math
-import os
 import random
 import sys
 from pathlib import Path
+
 import bpy
 from mathutils import Vector
 
@@ -16,15 +16,16 @@ ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")
 sys.path.insert(0, str(ROOT / "assets" / "flora" / "generators"))
 
 from flora_builder import (
+    add_channeled_blade,
+    add_cupped_petal,
+    add_curved_tube,
+    add_foliage_clump,
     clean_scene,
     create_pbr_bark_material,
     create_pbr_foliage_material,
-    add_curved_tube,
-    add_cupped_petal,
-    add_channeled_blade,
-    add_foliage_clump,
-    save_and_export
+    save_and_export,
 )
+
 
 def apply_smooth_and_materials(mesh, materials, mat_idx):
     for p in mesh.polygons:
@@ -60,7 +61,7 @@ def build_shrub_wild_berry():
 
         # Clustered scarlet berries at branch tip
         tip = pts[-1]
-        for f_i, (bx, by, bz) in enumerate([(0.015, 0.01, -0.01), (-0.015, 0.015, -0.015), (0.01, -0.02, -0.02), (0, 0.02, -0.025)]):
+        for _f_i, (bx, by, bz) in enumerate([(0.015, 0.01, -0.01), (-0.015, 0.015, -0.015), (0.01, -0.02, -0.02), (0, 0.02, -0.025)]):
             add_foliage_clump(verts, faces, mat_idx, tip + Vector((bx, by, bz)), 0.018, 0.018, 0.018, lat_steps=3, lon_steps=6, mat_id=2)
 
     mesh.from_pydata(verts, [], faces)
@@ -163,7 +164,7 @@ def build_shrub_stinging_nettle():
     mesh = bpy.data.meshes.new("Flora_Stinging_Nettle_Mesh")
     verts, faces, mat_idx = [], [], []
 
-    for s_i, (dx, dy, h) in enumerate([(0, 0, 1.1), (0.12, -0.08, 0.95), (-0.1, 0.09, 0.88)]):
+    for _s_i, (dx, dy, h) in enumerate([(0, 0, 1.1), (0.12, -0.08, 0.95), (-0.1, 0.09, 0.88)]):
         pts = [Vector((dx*0.2, dy*0.2, 0)), Vector((dx*0.5, dy*0.5, h*0.5)), Vector((dx, dy, h))]
         add_curved_tube(verts, faces, mat_idx, pts, [0.015, 0.011, 0.007], rad_segs=4, mat_id=0)
 
@@ -351,7 +352,7 @@ def build_shrub_bay_laurel():
 
         # Dense glossy leathery leaves
         for lv in range(8):
-            z_l = h * (0.3 + 0.6 * (lv / 7.0))
+            h * (0.3 + 0.6 * (lv / 7.0))
             l_ang = lv * 2.4 + b_i
             fwd = Vector((math.cos(l_ang), math.sin(l_ang), 0.2)).normalized()
             p_st = pts[1].lerp(pts[2], (lv+1)/9.0)

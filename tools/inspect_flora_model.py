@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
 
 BLENDER_BIN = "/Applications/Blender.app/Contents/MacOS/Blender"

@@ -37,16 +37,13 @@ High-Fidelity "Small Open World" map inspired by Anima-Engine & Fantasy Cartogra
 """
 
 import math
-import os
-import random
-import sys
 from pathlib import Path
 from typing import List, Tuple
 
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Euler, Matrix, Quaternion, Vector
+from mathutils import Euler, Matrix, Vector
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = PROJECT_ROOT / "models"
@@ -75,7 +72,7 @@ def smooth_noise(x: float, y: float, seed: int = 42) -> float:
     n00 = pseudo_noise(ix, iy, seed)
     n10 = pseudo_noise(ix + 1, iy, seed)
     n01 = pseudo_noise(ix, iy + 1, seed)
-    n11 = pseudo_noise(ix + 1, iy + 1, seed)
+    pseudo_noise(ix + 1, iy + 1, seed)
 
     nx0 = n00 * (1.0 - wx) + n10 * wx
     nx1 = n01 * (1.0 - wx) + n10 * wx
@@ -233,7 +230,7 @@ def calculate_world_height(x: float, y: float) -> float:
 # 2. Material Library & Shader Helpers
 # =============================================================================
 
-def get_or_create_mat(name: str, color: Tuple[float, float, float, float], roughness: float = 0.6, emission: Tuple[float, float, float, float] = None, metallic: float = 0.0) -> bpy.types.Material:
+def get_or_create_mat(name: str, color: Tuple[float, float, float, float], roughness: float = 0.6, emission: Tuple[float, float, float, float] | None = None, metallic: float = 0.0) -> bpy.types.Material:
     mat = bpy.data.materials.get(name)
     if mat:
         return mat
@@ -988,8 +985,8 @@ def build_village_props(village_center: Vector):
 # =============================================================================
 
 def build_botanical_prototypes():
-    mat_pine_trunk = get_or_create_mat("M_Pine_Bark", (0.22, 0.15, 0.10, 1.0), roughness=0.9)
-    mat_birch_trunk = get_or_create_mat("M_Birch_Bark", (0.85, 0.85, 0.82, 1.0), roughness=0.7)
+    get_or_create_mat("M_Pine_Bark", (0.22, 0.15, 0.10, 1.0), roughness=0.9)
+    get_or_create_mat("M_Birch_Bark", (0.85, 0.85, 0.82, 1.0), roughness=0.7)
     mat_oak_foliage = get_or_create_mat("M_Oak_Leaves", (0.26, 0.54, 0.18, 1.0), roughness=0.7)
     mat_pine_foliage = get_or_create_mat("M_Pine_Needles", (0.15, 0.35, 0.16, 1.0), roughness=0.75)
     mat_birch_foliage = get_or_create_mat("M_Birch_Leaves", (0.44, 0.66, 0.18, 1.0), roughness=0.65)
@@ -1328,23 +1325,23 @@ def build_entire_world():
     water_mat = create_water_shader()
 
     # 3. Terrain (with painted dirt road & biomes)
-    terrain_obj = build_open_world_terrain()
+    build_open_world_terrain()
 
     # 4. Hydrology (Lake, River, Waterfall, Pier, Boat)
-    water_objs = build_water_bodies(water_mat)
+    build_water_bodies(water_mat)
 
     # 5. Infrastructure (Rustic Wooden Truss Bridge)
-    bridge_obj = build_bridge()
+    build_bridge()
 
     # 6. Landmarks
     # Landmark 1: Hilltop Windmill
-    windmill_obj = build_hilltop_windmill(Vector((70.0, 36.0, 24.5)))
+    build_hilltop_windmill(Vector((70.0, 36.0, 24.5)))
     # Landmark 2: Ancient Stone Watchtower Ruin
-    watchtower_obj = build_ancient_watchtower(Vector((110.0, 22.0, 39.0)))
+    build_ancient_watchtower(Vector((110.0, 22.0, 39.0)))
 
     # 7. Medieval Fantasy Village (10 Buildings & Props)
     village_center = Vector((20.0, -10.0, 9.0))
-    cottages = [
+    [
         build_cottage("Village_Hall_Inn", village_center + Vector((0.0, 8.0, 0.0)), math.radians(10), scale_xy=1.35, is_inn=True, roof_style=0),
         build_cottage("Cottage_Blacksmith", village_center + Vector((14.0, -12.0, 0.2)), math.radians(35), scale_xy=1.1, roof_style=1),
         build_cottage("Cottage_Bakery", village_center + Vector((-10.0, -12.0, -0.4)), math.radians(-30), scale_xy=0.95, roof_style=0),

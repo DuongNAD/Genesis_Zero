@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")

@@ -4,7 +4,6 @@ generate_100_flora.py - Generates 100 Hyper-Realistic Scan-Quality Botanical Spe
 Genesis Zero - Ultra-Realistic Botanical Asset Ecosystem
 """
 
-import os
 from pathlib import Path
 
 ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")
@@ -978,10 +977,10 @@ def generate_catalog_md(species_list):
         "Thực Vật Ăn Thịt, Ký Sinh & Hang Động Phát Quang (Carnivorous, Vines & Cave)": [s for s in species_list if s["id"].startswith("EX")],
     }
 
-    doc = f"""# Danh Mục Thực Vật Toàn Diện (Master Botanical Catalog) — Genesis Zero
+    doc = """# Danh Mục Thực Vật Toàn Diện (Master Botanical Catalog) — Genesis Zero
 
 > [!IMPORTANT]
-> **Quy Chuẩn Thẩm Mỹ**: **Hyper-Realistic Scan-Quality**  
+> **Quy Chuẩn Thẩm Mỹ**: **Hyper-Realistic Scan-Quality**
 > Toàn bộ 100 loài thực vật được phân loại khoa học theo chuẩn thực vật học quốc tế (APG IV), tích hợp đầy đủ thông số giải phẫu hình thái, độ cong Fibonacci, vi mô mô tế bào, lưới Quads Manifold 100% Smooth Shading và hệ thống vật liệu sinh học PBR (Subsurface Scattering, Procedural Bark Displacement, Transmission & Bioluminescence).
 
 ---
@@ -1057,13 +1056,13 @@ def generate_spec_md(sp):
     return f"""# Đặc Tả Thực Vật 3D: {sp['vn']} ({sp['latin']})
 
 > [!NOTE]
-> **Mã Định Danh**: `{sp['id']}`  
-> **Nhóm Hình Thái**: {sp['cat'].replace('_', ' ').title()}  
-> **Họ Thực Vật (Family)**: *{sp['family']}*  
-> **Danh Pháp Khoa Học**: *{sp['latin']}*  
-> **Tên Tiếng Anh**: **{sp['en']}**  
-> **Sinh Cảnh Tự Nhiên**: {sp['biome']}  
-> **Kích Thước Không Gian**: {sp['dims']}  
+> **Mã Định Danh**: `{sp['id']}`
+> **Nhóm Hình Thái**: {sp['cat'].replace('_', ' ').title()}
+> **Họ Thực Vật (Family)**: *{sp['family']}*
+> **Danh Pháp Khoa Học**: *{sp['latin']}*
+> **Tên Tiếng Anh**: **{sp['en']}**
+> **Sinh Cảnh Tự Nhiên**: {sp['biome']}
+> **Kích Thước Không Gian**: {sp['dims']}
 > **Tiêu Chuẩn Đồ Họa**: **Hyper-Realistic Scan-Quality**
 
 ---
@@ -1129,12 +1128,12 @@ else:
 """
 
 def main():
-    print(f">>> Đang khởi tạo Master Catalog 100 loài thực vật...")
+    print(">>> Đang khởi tạo Master Catalog 100 loài thực vật...")
     catalog_content = generate_catalog_md(DATA)
     (DOCS_DIR / "README.md").write_text(catalog_content, encoding="utf-8")
     print(f"✓ Đã ghi thành công Master Catalog vào {DOCS_DIR / 'README.md'}")
 
-    print(f">>> Đang khởi tạo 100 file đặc tả thực vật chi tiết...")
+    print(">>> Đang khởi tạo 100 file đặc tả thực vật chi tiết...")
     count = 0
     for sp in DATA:
         spec_content = generate_spec_md(sp)

@@ -86,7 +86,7 @@ def test_mau_hsl_dung_ca_ba_kenh():
     import sys
 
     sys.path.insert(0, str(_get_x07_path().parent))
-    from x07_pygame import hash_species_hue, hsl_to_rgb
+    from scripts.x07_pygame import hash_species_hue, hsl_to_rgb
 
     assert hsl_to_rgb(0, 70, 50)[0] > 150, "hue 0 phải ĐỎ"
     assert hsl_to_rgb(120, 70, 50)[1] > 150, "hue 120 phải LỤC"
@@ -110,9 +110,8 @@ def test_kich_thuoc_suy_tu_trait_hien_tai():
     sys.path.insert(0, str(_get_x07_path().parent))
     import dataclasses
 
-    from x07_pygame import get_creature_visuals
-
     from genesis.tick import build_match
+    from scripts.x07_pygame import get_creature_visuals
 
     _, creatures, _, _ = build_match(seed=9)
     c = creatures[0]

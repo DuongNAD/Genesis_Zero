@@ -224,13 +224,10 @@ def _greedy_path_towards(
         passable_neighbors = [p for p in world.neighbors(curr) if world.passable(p, who)]
         if not passable_neighbors:
             break
-        min_d = min(world.dist(p, target_pos) for p in passable_neighbors)
-        if min_d >= curr_dist:
+        scored = [(world.dist(p, target_pos), p) for p in passable_neighbors]
+        best_d, best = min(scored, key=lambda item: (item[0], item[1][0], item[1][1]))
+        if best_d >= curr_dist:
             break
-        best = min(
-            (p for p in passable_neighbors if world.dist(p, target_pos) == min_d),
-            key=lambda pos: (pos[0], pos[1]),
-        )
         path.append(best)
         curr = best
     return tuple(path)
@@ -251,13 +248,10 @@ def _greedy_path_away(
         passable_neighbors = [p for p in world.neighbors(curr) if world.passable(p, who)]
         if not passable_neighbors:
             break
-        max_d = max(world.dist(p, target_pos) for p in passable_neighbors)
-        if max_d <= curr_dist:
+        scored = [(world.dist(p, target_pos), p) for p in passable_neighbors]
+        best_d, best = min(scored, key=lambda item: (-item[0], item[1][0], item[1][1]))
+        if best_d <= curr_dist:
             break
-        best = min(
-            (p for p in passable_neighbors if world.dist(p, target_pos) == max_d),
-            key=lambda pos: (pos[0], pos[1]),
-        )
         path.append(best)
         curr = best
     return tuple(path)

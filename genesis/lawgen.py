@@ -67,6 +67,8 @@ def _check_cond_direct(
     if ck == CondKind.ENERGY:
         return energy_band == c.arg
     if ck == CondKind.RECENT:
+        if c.arg is None:
+            return False
         return rec_dict.get(c.arg, 10**9) <= (c.k if c.k is not None else 0)
     if ck == CondKind.COUNT:
         r = c.r if c.r is not None else 1
@@ -78,6 +80,8 @@ def _check_cond_direct(
     if ck == CondKind.WIND:
         return wind_rel == c.arg
     if ck == CondKind.SUBJECT:
+        if c.arg is None:
+            return False
         return subj_dict.get(c.arg, False)
     if ck == CondKind.ALONE:
         return alone
@@ -243,10 +247,7 @@ def gate_c(s: SolveStats, law: Law) -> bool:
     """
     if not law.conds:
         return True
-    for i in range(len(law.conds)):
-        if s.n_near_miss.get(i, 0.0) < lc.IDENT_MIN_NEAR_MISS:
-            return False
-    return True
+    return all(s.n_near_miss.get(i, 0.0) >= lc.IDENT_MIN_NEAR_MISS for i in range(len(law.conds)))
 
 
 def observable(law: Law, min_sense: int) -> bool:
@@ -466,10 +467,7 @@ def generate(
     for _ in range(lc.LAWGEN_MAX_RETRY):
         laws: list[Law] = []
         for tier_spec in plan:
-            if "|" in tier_spec:
-                target_tier = rng.choice(tier_spec.split("|"))
-            else:
-                target_tier = tier_spec
+            target_tier = rng.choice(tier_spec.split("|")) if "|" in tier_spec else tier_spec
             law = _generate_law_for_tier(rng, target_tier, min_sense)
             laws.append(law)
 
@@ -501,7 +499,7 @@ def generate(
             fixed = _statable_law_for_tier(rng, laws[i].tier(), min_sense, min_brain)
             if fixed is None:
                 continue
-            laws = laws[:i] + [fixed] + laws[i + 1:]
+            laws = [*laws[:i], fixed, *laws[i + 1:]]
             if len(set(laws)) != len(laws):
                 continue
             if sum(statable(l, min_brain) for l in laws) < lc.LAWSET_MIN_STATABLE:
@@ -529,7 +527,7 @@ def generate(
                 fixed = _fruit_law_for_tier(rng, laws[0].tier(), min_sense)
                 if fixed is None:
                     continue
-                laws = [fixed] + laws[1:]
+                laws = [fixed, *laws[1:]]
                 if len(set(laws)) != len(laws):
                     continue
 

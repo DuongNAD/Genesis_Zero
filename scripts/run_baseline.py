@@ -14,6 +14,7 @@ import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPENDENCIES = {
@@ -105,8 +106,13 @@ def main(argv: list[str] | None = None) -> int:
     output = args.output.resolve() / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     output.mkdir(parents=True)
     write_summary(output, {"completed": False, "state": "starting", "exit_code": None})
-    environment = {"python": platform.python_version(), "executable": sys.executable,
-                   "platform": platform.platform(), "packages": {}, "import_errors": {}}
+    environment: dict[str, Any] = {
+        "python": platform.python_version(),
+        "executable": sys.executable,
+        "platform": platform.platform(),
+        "packages": {},
+        "import_errors": {},
+    }
     for distribution, module in DEPENDENCIES.items():
         try:
             importlib.import_module(module)
@@ -151,7 +157,10 @@ def main(argv: list[str] | None = None) -> int:
                 log.write(f"taskkill exit code: {killed.returncode}\n".encode("utf-8"))
             else:
                 import signal
-                os.killpg(process.pid, signal.SIGKILL)
+                killpg = getattr(os, "killpg", None)
+                sigkill = getattr(signal, "SIGKILL", signal.SIGTERM)
+                if killpg is not None:
+                    killpg(process.pid, sigkill)
             process.wait()
             code = 124
     raw_log = (output / "pytest.log").read_bytes()

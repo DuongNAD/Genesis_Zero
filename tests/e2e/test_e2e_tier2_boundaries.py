@@ -404,7 +404,8 @@ def test_f2_2_boundary_missing_optional_dependency_detection():
 def test_f2_2_boundary_python_version_below_3_11_rejection(monkeypatch: pytest.MonkeyPatch):
     """F2.2.B2: Preflight check_python fails on Python < 3.11."""
     from scripts import preflight
-    fake_version = collections.namedtuple("sys_version", ["major", "minor", "micro"])(3, 10, 0)
+    SysVersion = collections.namedtuple("SysVersion", ["major", "minor", "micro"])
+    fake_version = SysVersion(3, 10, 0)
     monkeypatch.setattr(sys, "version_info", fake_version)
     preflight._rows.clear()
     preflight.check_python()

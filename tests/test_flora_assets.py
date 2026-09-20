@@ -17,6 +17,7 @@ import re
 import struct
 import subprocess
 from pathlib import Path
+
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -366,7 +367,8 @@ class TestWebViewerSynchronization:
 
         for gf in glb_files:
             slug = Path(gf).stem
-            disk_bytes = open(gf, "rb").read()
+            disk_bytes = Path(gf).read_bytes()
+
             disk_b64 = base64.b64encode(disk_bytes).decode("ascii")
 
             m = re.search(r"\"" + slug + r"\":\s*\"([^\"]+)\"", js_text)
@@ -380,9 +382,25 @@ class TestBlenderMeshTopologyRemediation:
     """Test Suite 6: Headless Blender BMesh Mesh Topology Verification"""
 
     def test_all_103_blend_files_clean_bmesh_topology(self):
-        blender_bin = "/Applications/Blender.app/Contents/MacOS/Blender"
-        if not os.path.exists(blender_bin):
-            pytest.skip("Blender binary not found at /Applications/Blender.app/Contents/MacOS/Blender")
+        import shutil
+
+        blender_bin = shutil.which("blender")
+        if not blender_bin:
+            candidates = [
+                Path("/Applications/Blender.app/Contents/MacOS/Blender"),
+                Path("/usr/bin/blender"),
+                Path("/usr/local/bin/blender"),
+            ]
+            pf = Path("C:/Program Files/Blender Foundation")
+            if pf.exists():
+                candidates.extend(sorted(pf.glob("**/blender.exe"), reverse=True))
+            for c in candidates:
+                if c.is_file():
+                    blender_bin = str(c)
+                    break
+
+        if not blender_bin or not os.path.exists(blender_bin):
+            pytest.skip("Blender binary not available in standard paths or PATH")
 
         cmd = [
             blender_bin,
@@ -431,6 +449,13 @@ else:
 """
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=str(PROJECT_ROOT),
+        )
         assert result.returncode == 0, f"Blender BMesh verification failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         assert "MODELS 100% CLEAN" in result.stdout

@@ -155,6 +155,19 @@ _TROI_TOUCH: frozenset[Terrain] = frozenset({
 })
 
 
+_SPECIES_DOMAIN_CACHE: dict[str, Domain] = {
+    sp: Domain(dom) for sp, dom in config.SPECIES_DOMAIN.items()
+}
+
+
 def domain_of(species_id: str) -> Domain:
     """Tầng của một loài. Loài lạ (người chơi qua mạng) mặc định là CẠN."""
-    return Domain(config.SPECIES_DOMAIN.get(species_id, Domain.CAN.value))
+    dom = _SPECIES_DOMAIN_CACHE.get(species_id)
+    if dom is not None:
+        return dom
+    raw = config.SPECIES_DOMAIN.get(species_id)
+    if raw is not None:
+        dom = Domain(raw)
+        _SPECIES_DOMAIN_CACHE[species_id] = dom
+        return dom
+    return Domain.CAN

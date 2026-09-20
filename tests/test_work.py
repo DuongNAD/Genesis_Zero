@@ -214,3 +214,46 @@ def test_work_auth_required(client):
     assert resp.status_code == 401
     resp_bad = c.get("/v1/work", headers={"Authorization": "Bearer bad"})
     assert resp_bad.status_code == 401
+
+
+def test_prune_old_works():
+    """Pruning removes entries older than 200 ticks from _issued_works and _fetched_work_keys."""
+    from net.routes_work import WorkRecord, _fetched_work_keys, _issued_works, prune_old_works
+    clear_work_state()
+
+    _issued_works["old_work"] = WorkRecord(
+        work_id="old_work", kind="decide", creature_id="c1", client_id="cl1",
+        issued_tick=50, deadline_tick=53,
+    )
+    _issued_works["new_work"] = WorkRecord(
+        work_id="new_work", kind="decide", creature_id="c1", client_id="cl1",
+        issued_tick=260, deadline_tick=263,
+    )
+    _fetched_work_keys.add(("m1", 50, "c1"))
+    _fetched_work_keys.add(("m1", 260, "c1"))
+
+    prune_old_works(current_tick=300, max_age=200)
+
+    assert "old_work" not in _issued_works
+    assert "new_work" in _issued_works
+    assert ("m1", 50, "c1") not in _fetched_work_keys
+    assert ("m1", 260, "c1") in _fetched_work_keys
+
+
+def test_match_seeding_clears_work_state():
+    """Seeding a new match clears _issued_works and _fetched_work_keys to prevent memory accumulation."""
+    from net.routes_work import WorkRecord, _fetched_work_keys, _issued_works
+    clear_work_state()
+
+    _issued_works["leak_work"] = WorkRecord(
+        work_id="leak_work", kind="decide", creature_id="c1", client_id="cl1",
+        issued_tick=10, deadline_tick=13,
+    )
+    _fetched_work_keys.add(("m1", 10, "c1"))
+
+    runner = MatchRunner(seed=42, ticks=10, tick_ms=1000, log_dir=None)
+    gen = runner._seed_steps()
+    next(gen)
+
+    assert len(_issued_works) == 0
+    assert len(_fetched_work_keys) == 0

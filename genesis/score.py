@@ -115,25 +115,23 @@ def _exploit_lag(rows: list[dict], cid: str, law: Law, t_i: int | None, ticks: i
     return round(rate_after - rate_before, 4)
 
 
-def score_match(log: Path, truth: Path) -> list[dict]:
-    """Một dòng cho mỗi (ván, cá thể, luật)."""
-    rows = _read_jsonl(log)
-    tr = json.loads(Path(truth).read_text(encoding="utf-8"))
-    laws = [from_json(d) for d in tr["laws"]]
-    seed = int(tr["seed"])
-    match_id = next((r.get("match_id") for r in rows if r.get("match_id")), f"m_{seed}")
+def score_records(records: list[dict[str, Any]], truth: dict[str, Any]) -> list[dict[str, Any]]:
+    """Tính điểm thuần trên bộ nhớ từ danh sách bản ghi telemetry và ground truth."""
+    laws = [from_json(d) for d in truth["laws"]]
+    seed = int(truth["seed"])
+    match_id = next((r.get("match_id") for r in records if r.get("match_id")), f"m_{seed}")
 
-    start = next((r for r in rows if r.get("kind") == "RUN_START"), {})
-    ticks = int(start.get("ticks") or max((r["t"] for r in rows), default=1))
+    start = next((r for r in records if r.get("kind") == "RUN_START"), {})
+    ticks = int(start.get("ticks") or max((r["t"] for r in records), default=1))
     ticks = max(1, ticks)
 
-    timelines = _codex_timeline(rows)
+    timelines = _codex_timeline(records)
     sits = [_situations_for(law, seed, i) for i, law in enumerate(laws)]
 
     # tỉ lệ tick còn sống: mọi cá thể xuất hiện trong log, kể cả con không ghi sổ
     alive_deficit: dict[str, int] = {}
     dead_since: dict[str, int] = {}
-    for r in rows:
+    for r in records:
         cid = r.get("creature_id")
         if r.get("kind") == "DEATH" and cid:
             dead_since[cid] = int(r["t"])
@@ -143,17 +141,17 @@ def score_match(log: Path, truth: Path) -> list[dict]:
         alive_deficit[cid] = alive_deficit.get(cid, 0) + ticks - t
 
     creatures = sorted({
-        r["creature_id"] for r in rows
+        r["creature_id"] for r in records
         if r.get("creature_id") and r.get("kind") in
         ("CODEX_OP", "LLM_CALL", "EAT", "DRINK", "ATTACK", "DEATH", "RESPAWN")
     })
 
     oracle: dict[str, float] = {
         r["creature_id"]: float(r["pred_acc"])
-        for r in rows if r.get("kind") == "ORACLE" and r.get("pred_acc") is not None
+        for r in records if r.get("kind") == "ORACLE" and r.get("pred_acc") is not None
     }
 
-    out: list[dict] = []
+    out: list[dict[str, Any]] = []
     for cid in creatures:
         timeline = timelines.get(cid, [])
         final = _final_codex(timeline)
@@ -169,8 +167,6 @@ def score_match(log: Path, truth: Path) -> list[dict]:
             t_i: int | None = None
             for slot, (t_written, entry_law) in final.items():
                 if match(entry_law, law, sits[i]) >= law_config.MATCH_THETA:
-                    # Ô này còn tới cuối ván; mốc là lần ghi ĐẦU TIÊN vào ô đó một
-                    # luật đủ đúng, miễn là nó không bị ngắt quãng bởi lần ghi khác.
                     first = t_written
                     for t, sl, lw in timeline:
                         if sl != slot or lw is None or t > t_written:
@@ -178,22 +174,9 @@ def score_match(log: Path, truth: Path) -> list[dict]:
                         if match(lw, law, sits[i]) >= law_config.MATCH_THETA:
                             first = min(first, t)
                         else:
-                            first = t_written   # bị ghi đè bằng luật sai -> mốc lùi lại
+                            first = t_written
                     t_i = first if t_i is None else min(t_i, first)
 
-            # ── CHẨN ĐOÁN, KHÔNG PHẢI ĐIỂM ────────────────────────────────
-            # Đã có LÚC NÀO nói đúng luật này chưa, kể cả rồi xoá đi?
-            #
-            # Không dùng để tính `R_i` và không được dùng: bất biến 2 nói rõ ô
-            # bị xoá thì không tính, và Sổ Luật **là** tờ đáp án. Nhưng hai
-            # chuyện "chưa bao giờ tìm ra" và "tìm ra rồi đánh mất" là hai bài
-            # toán khác hẳn nhau, mà cột `found` gộp chúng làm một.
-            #
-            # Ca thật: Qwen-14B, seed 55, `L5:1` ghi `WHEN DRINK THEN DAMAGE`
-            # vào ô 0 ở tick 99 — **đúng nguyên văn luật thật** — rồi tick 148
-            # ghi đè bằng một giả thuyết về quả. L5 là brain 0, nó có đúng MỘT
-            # ô. `found = False` là đúng; nhưng đọc CSV thì nó trông y hệt một
-            # model chưa bao giờ hiểu gì, và kết luận sẽ sai hoàn toàn.
             t_ever: int | None = None
             for t, _sl, lw in timeline:
                 if lw is not None and match(lw, law, sits[i]) >= law_config.MATCH_THETA:
@@ -213,24 +196,24 @@ def score_match(log: Path, truth: Path) -> list[dict]:
                 "tier": law.tier(),
                 "w": w_i,
                 "match": round(m_final, 4),
-                # `T+1` nếu không tìm ra (03 §9), để cột này không bao giờ trống
-                # và các phép hồi quy ở §10 không phải đoán ý nghĩa của ô rỗng.
                 "t_discover": ticks + 1 if t_i is None else t_i,
-                # Nói THẲNG ra thay vì để người đọc suy từ `t_discover > T`:
-                # `T` không có trong CSV, nên bên đọc sẽ phải đoán, và bản đầu
-                # của `analyze.py` đã đoán bằng một chuỗi heuristic có hằng số
-                # 400 viết cứng. Bên SINH ra dữ liệu là bên biết câu trả lời.
                 "found": t_i is not None,
-                # Chẩn đoán, KHÔNG vào điểm. Xem ghi chú ở trên.
                 "ever_stated": t_ever is not None,
                 "t_ever": ticks + 1 if t_ever is None else t_ever,
                 "speed": round(speed, 4),
                 "R_i": round(r_i, 4),
-                "exploit_lag": _exploit_lag(rows, cid, law, t_i, ticks),
+                "exploit_lag": _exploit_lag(records, cid, law, t_i, ticks),
                 "pred_acc": oracle.get(cid, NA),
                 "R_survive": round(r_survive, 4),
             })
     return out
+
+
+def score_match(log: Path, truth: Path) -> list[dict]:
+    """Một dòng cho mỗi (ván, cá thể, luật)."""
+    rows = _read_jsonl(log)
+    tr = json.loads(Path(truth).read_text(encoding="utf-8"))
+    return score_records(rows, tr)
 
 
 def total_reward(rows: list[dict]) -> dict[str, float]:

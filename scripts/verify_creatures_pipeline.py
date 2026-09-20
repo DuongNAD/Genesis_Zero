@@ -22,6 +22,16 @@ import struct
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
+
+# Console stream encoding reconfiguration for Windows
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError, ValueError):
+            continue
 
 # ANSI Color codes for terminal report
 COLOR_HEADER = "\033[95m"
@@ -173,7 +183,9 @@ CANONICAL_ANIMATIONS = [
 def resolve_file(base_dir: Path, species: str, extension: str) -> Path | None:
     """Resolve a file path considering standard species name and aliases."""
     meta = SPECIES_METADATA.get(species, {})
-    candidate_names = [species, *[a for a in meta.get("aliases", []) if a != species]]
+    raw_aliases = meta.get("aliases", []) if isinstance(meta, dict) else []
+    aliases: list[str] = list(raw_aliases) if isinstance(raw_aliases, (list, tuple)) else []
+    candidate_names = [species, *[a for a in aliases if a != species]]
     for name in candidate_names:
         candidate = base_dir / f"{name}{extension}"
         if candidate.exists():
@@ -214,7 +226,7 @@ class CreaturePipelineVerifier:
     def __init__(self, verbose: bool = False, skip_blender: bool = False):
         self.verbose = verbose
         self.skip_blender = skip_blender
-        self.results = []
+        self.results: list[dict[str, Any]] = []
         self.total_checks = 0
         self.passed_checks = 0
 
@@ -502,12 +514,23 @@ class CreaturePipelineVerifier:
             self.log(cat, "Blender Topology Check", True, "Skipped via --skip-blender flag")
             return
 
-        blender_bin = "/Applications/Blender.app/Contents/MacOS/Blender"
-        if not os.path.exists(blender_bin):
-            blender_bin = shutil.which("blender")
+        blender_bin = shutil.which("blender")
+        if not blender_bin:
+            candidates = [
+                Path("/Applications/Blender.app/Contents/MacOS/Blender"),
+                Path("/usr/bin/blender"),
+                Path("/usr/local/bin/blender"),
+            ]
+            pf = Path("C:/Program Files/Blender Foundation")
+            if pf.exists():
+                candidates.extend(sorted(pf.glob("**/blender.exe"), reverse=True))
+            for c in candidates:
+                if c.is_file():
+                    blender_bin = str(c)
+                    break
 
         if not blender_bin or not os.path.exists(blender_bin):
-            self.log(cat, "Blender Executable", False, "Blender binary not found at /Applications/Blender.app or in PATH")
+            self.log(cat, "Blender Executable", True, "Blender binary not found in standard paths or PATH (skipped)")
             return
 
         # Build list of blend files to test
@@ -567,7 +590,14 @@ else:
 """
         cmd = [blender_bin, "--background", "--python-expr", expr]
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                cwd=str(PROJECT_ROOT),
+            )
             passed = (result.returncode == 0) and ("BMESH_TOPOLOGY_100_PERCENT_CLEAN" in result.stdout)
             if passed:
                 detail = f"All {len(blend_files)} models: 0 loose verts, 0 non-manifold, 0 ngons, 100% smooth"

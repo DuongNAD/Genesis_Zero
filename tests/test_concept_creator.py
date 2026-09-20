@@ -1,11 +1,11 @@
 """Kiểm thử cho quy trình tạo Concept Art và Dựng 3D Blender (Động vật, Thực vật, Nấm)."""
 
 from fastapi.testclient import TestClient
-from net.server import app
+
 from genesis.concept_creator import (
     build_master_concept_prompt,
-    generate_creature_concept_and_3d,
 )
+from net.server import app
 
 
 def test_build_master_concept_prompt_fauna() -> None:

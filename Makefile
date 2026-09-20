@@ -1,4 +1,4 @@
-.PHONY: test baseline run serve expose preflight preflight-full demo model-check hostile lint lint-fix lock clean site
+.PHONY: test baseline run serve expose preflight preflight-full demo model-check hostile lint lint-fix typecheck lock clean site
 
 test:
 	pytest
@@ -60,8 +60,11 @@ hostile:
 # Ghim lại phiên bản đang chạy. Chạy khi môi trường đo đã ổn định, không phải
 # mỗi lần cài thêm gói.
 lock:
-	@python -m pip freeze | grep -iE "^(rich|httpx|fastapi|uvicorn|pydantic|starlette|anyio|h11|httpcore|certifi|idna|sniffio|annotated-types|pydantic-core|typing-extensions|markdown-it-py|mdurl|pygments|click|typing-inspection)==" | sort > /tmp/gz.lock
-	@echo "xem /tmp/gz.lock rồi chép phần thân vào requirements.lock"
+	uv pip compile pyproject.toml --all-extras --universal -o requirements.lock
+
+typecheck:
+	@command -v mypy >/dev/null 2>&1 || { echo "mypy chưa được cài đặt: pip install mypy"; exit 1; }
+	mypy genesis net client
 
 lint:
 	@command -v ruff >/dev/null 2>&1 || { echo "ruff chưa cài: pip install ruff"; exit 1; }

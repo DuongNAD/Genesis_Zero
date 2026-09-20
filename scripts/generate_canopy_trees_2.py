@@ -5,10 +5,9 @@ Builds 10 photorealistic master canopy trees with clean BMesh topology & PBR mat
 """
 
 import math
-import os
-import random
 import sys
 from pathlib import Path
+
 import bpy
 from mathutils import Vector
 
@@ -16,15 +15,15 @@ ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")
 sys.path.insert(0, str(ROOT / "assets" / "flora" / "generators"))
 
 from flora_builder import (
+    add_channeled_blade,
+    add_curved_tube,
+    add_foliage_clump,
     clean_scene,
     create_pbr_bark_material,
     create_pbr_foliage_material,
-    add_curved_tube,
-    add_cupped_petal,
-    add_channeled_blade,
-    add_foliage_clump,
-    save_and_export
+    save_and_export,
 )
+
 
 def apply_smooth_and_materials(mesh, materials, mat_idx):
     for p in mesh.polygons:
@@ -88,7 +87,7 @@ def build_tree_oriental_arborvitae():
     add_curved_tube(verts, faces, mat_idx, trunk_pts, [0.20, 0.15, 0.10], rad_segs=6, mat_id=0)
 
     # Teardrop ovoid-conical shape with vertical spray lobes
-    for s_i, (zc, rx, rz) in enumerate([
+    for _s_i, (zc, rx, rz) in enumerate([
         (2.0, 1.20, 0.90),
         (3.4, 1.35, 1.05),
         (4.8, 1.10, 0.95),

@@ -116,9 +116,12 @@ def test_no_from_random_import(pkg_dir: Path) -> None:
     bad: list[str] = []
     for path in sorted(pkg_dir.rglob("*.py")):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module == "random":
-                bad.append(f"{path.name}:{node.lineno}")
+        bad.extend(
+            f"{path.name}:{node.lineno}"
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module == "random"
+        )
+
     assert not bad, f"dùng `import random` rồi truyền rng xuống, đừng from-import: {bad}"
 
 

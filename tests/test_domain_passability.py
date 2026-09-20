@@ -220,12 +220,15 @@ def test_match_runner_spawn_registered_respects_domain() -> None:
     assert len(bird_creatures) >= 2
     assert len(land_creatures) >= 2
 
+    assert runner.world is not None
+    world = runner.world
+
     for fc in fish_creatures:
-        assert runner.world.passable(fc.pos, fc) is True
-        assert runner.world.grid[fc.pos[1]][fc.pos[0]] in (Terrain.WATER, Terrain.DEEP)
+        assert world.passable(fc.pos, fc) is True
+        assert world.grid[fc.pos[1]][fc.pos[0]] in (Terrain.WATER, Terrain.DEEP)
 
     for lc in land_creatures:
-        assert runner.world.passable(lc.pos, lc) is True
+        assert world.passable(lc.pos, lc) is True
 
     for bc in bird_creatures:
-        assert runner.world.passable(bc.pos, bc) is True
+        assert world.passable(bc.pos, bc) is True

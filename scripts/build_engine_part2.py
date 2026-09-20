@@ -1,7 +1,32 @@
 
+"""Procedural 3D Botanical Engine - Part 2 (Ancient Royal Oak)."""
+
+import math
+import sys
+from pathlib import Path
+
+import bpy
+from mathutils import Vector
+
+# Ensure repository root is in sys.path for importing build_engine_part1
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.build_engine_part1 import (
+    add_curved_tube,
+    add_foliage_clump,
+    apply_smooth_and_materials,
+    clean_scene,
+    create_pbr_bark_material,
+    create_pbr_foliage_material,
+    save_and_export,
+)
+
 # -----------------------------------------------------------------------------
 # 1. Ancient Royal Oak (Sồi Cổ Thụ Hoàng Gia - canopy_ancient_oak)
 # -----------------------------------------------------------------------------
+
 
 def build_ancient_oak():
     clean_scene()

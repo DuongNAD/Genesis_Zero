@@ -32,7 +32,7 @@ def discover(root: Path) -> dict:
     if not total or int(total[1]) != len(nodes) or not nodes:
         raise RuntimeError("Discovery output incomplete: node IDs do not match the collected total")
     files = Counter(node.split("::", 1)[0] for node in nodes)
-    directories = Counter()
+    directories: Counter[str] = Counter()
     for path, count in files.items():
         directories[str(Path(path).parent).replace("\\", "/")] += count
     return {"total": len(nodes), "files": dict(sorted(files.items())),

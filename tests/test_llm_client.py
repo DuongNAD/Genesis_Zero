@@ -121,3 +121,143 @@ async def test_client_dung_chung_khong_bi_dong_som():
         assert await ask("http://x", 0, "s", "u", 8, {}, client=client) is not None
         assert not client.is_closed
         assert await ask("http://x", 0, "s", "u", 8, {}, client=client) is not None
+
+
+def test_detect_backend():
+    from genesis.llm_client import detect_backend
+
+    assert detect_backend("http://localhost:11434") == "ollama"
+    assert detect_backend("http://localhost:11434/api/chat") == "ollama"
+    assert detect_backend("http://localhost:8000/v1") == "vllm"
+    assert detect_backend("http://localhost:8001/chat/completions") == "vllm"
+    assert detect_backend("http://localhost:8099") == "mock"
+    assert detect_backend("http://localhost:8080") == "llama.cpp"
+
+
+@pytest.mark.asyncio
+async def test_ask_reflex_returns_none():
+    assert await ask(backend="reflex") is None
+
+
+@pytest.mark.asyncio
+async def test_ask_ollama_backend_success_and_errors():
+    # 1. Non-200 HTTP error
+    resp_500 = httpx.Response(500, text="Ollama internal error")
+    res_err = await ask(
+        "http://localhost:11434", backend="ollama",
+        transport=httpx.MockTransport(lambda r: resp_500),
+    )
+    assert res_err is None
+
+    # 2. Invalid content structure
+    resp_invalid = httpx.Response(200, json={"message": {"content": 12345}})
+    res_inv = await ask(
+        "http://localhost:11434", backend="ollama",
+        transport=httpx.MockTransport(lambda r: resp_invalid),
+    )
+    assert res_inv is None
+
+    # 3. Successful call
+    resp_ok = httpx.Response(200, json={
+        "message": {"content": '{"goal": "FORAGE"}'},
+        "eval_count": 42,
+        "eval_duration": 123456,
+    })
+    res_ok = await ask(
+        "http://localhost:11434", backend="ollama", system="sys", user="usr",
+        schema={"type": "object"},
+        transport=httpx.MockTransport(lambda r: resp_ok),
+    )
+    assert res_ok is not None
+    assert res_ok["json"]["goal"] == "FORAGE"
+    assert res_ok["n"] == 42
+    assert res_ok["timings"]["eval_duration"] == 123456
+
+
+@pytest.mark.asyncio
+async def test_ask_vllm_backend_errors_and_truncation():
+    # 1. Non-200 HTTP error
+    resp_404 = httpx.Response(404, text="vLLM endpoint not found")
+    res_404 = await ask(
+        "http://localhost:8000/v1", backend="vllm",
+        transport=httpx.MockTransport(lambda r: resp_404),
+    )
+    assert res_404 is None
+
+    # 2. Invalid content structure
+    resp_no_content = httpx.Response(200, json={"choices": [{"message": {"content": None}}]})
+    res_no_cnt = await ask(
+        "http://localhost:8000/v1", backend="vllm",
+        transport=httpx.MockTransport(lambda r: resp_no_content),
+    )
+    assert res_no_cnt is None
+
+    # 3. Truncation due to length
+    resp_length = httpx.Response(200, json={
+        "choices": [{
+            "message": {"content": '{"goal": "REST"}'},
+            "finish_reason": "length",
+        }],
+    })
+    res_length = await ask(
+        "http://localhost:8000/v1", backend="vllm",
+        transport=httpx.MockTransport(lambda r: resp_length),
+    )
+    assert res_length is None
+
+    # 4. Truncation due to content_filter
+    resp_filter = httpx.Response(200, json={
+        "choices": [{
+            "message": {"content": '{"goal": "REST"}'},
+            "finish_reason": "content_filter",
+        }],
+    })
+    res_filter = await ask(
+        "http://localhost:8000/v1", backend="vllm",
+        transport=httpx.MockTransport(lambda r: resp_filter),
+    )
+    assert res_filter is None
+
+
+@pytest.mark.asyncio
+async def test_ask_frontier_markdown_and_think_stripping():
+    # 1. Strip <think>...</think> and ```json\n...\n```
+    content_raw = (
+        "<think>Let me decide the best goal.</think>\n"
+        "```json\n"
+        '{"goal": "REST", "ttl": 5}\n'
+        "```"
+    )
+    resp_frontier = httpx.Response(200, json={
+        "choices": [{
+            "message": {"content": content_raw},
+            "finish_reason": "stop",
+        }],
+        "usage": {
+            "completion_tokens": 50,
+            "completion_tokens_details": {"reasoning_tokens": 30},
+        },
+    })
+    res_frontier = await ask(
+        "http://localhost:8000/v1", backend="frontier",
+        api_key="sk-test",
+        transport=httpx.MockTransport(lambda r: resp_frontier),
+    )
+    assert res_frontier is not None
+    assert res_frontier["json"]["goal"] == "REST"
+    assert res_frontier["thinking_tokens"] == 30
+    assert res_frontier["answer_tokens"] == 20
+
+    # 2. Unclosed <think> tag -> returns None
+    resp_unclosed = httpx.Response(200, json={
+        "choices": [{
+            "message": {"content": "<think>incomplete reasoning..."},
+            "finish_reason": "stop",
+        }],
+    })
+    res_unclosed = await ask(
+        "http://localhost:8000/v1", backend="frontier",
+        transport=httpx.MockTransport(lambda r: resp_unclosed),
+    )
+    assert res_unclosed is None
+

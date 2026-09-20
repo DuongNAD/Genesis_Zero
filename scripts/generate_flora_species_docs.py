@@ -4,7 +4,6 @@ generate_flora_species_docs.py - Generates 56 Hyper-Realistic Scan-Quality Botan
 Genesis Zero - Ultra-Realistic Botanical Asset Ecosystem
 """
 
-import os
 from pathlib import Path
 
 ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")
@@ -553,11 +552,11 @@ def generate_spec_md(sp):
     return f"""# Đặc Tả Thực Vật 3D: {sp['vn']} ({sp['latin']})
 
 > [!NOTE]
-> **Nhóm Hình Thái**: {sp['cat'].replace('_', ' ').title()}  
-> **Họ Thực Vật**: *{sp['family']}*  
-> **Danh Pháp Khoa Học**: *{sp['latin']}* (Tên Tiếng Anh: **{sp['en']}**)  
-> **Sinh Cảnh Tự Nhiên**: {sp['biome']}  
-> **Kích Thước Hình Học**: {sp['dims']}  
+> **Nhóm Hình Thái**: {sp['cat'].replace('_', ' ').title()}
+> **Họ Thực Vật**: *{sp['family']}*
+> **Danh Pháp Khoa Học**: *{sp['latin']}* (Tên Tiếng Anh: **{sp['en']}**)
+> **Sinh Cảnh Tự Nhiên**: {sp['biome']}
+> **Kích Thước Hình Học**: {sp['dims']}
 > **Quy Chuẩn 3D**: **Hyper-Realistic Scan-Quality**
 
 ---
@@ -620,7 +619,7 @@ print(f"Đã nạp thành công {{imported_obj.name}} vào thế giới!")
 """
 
 def main():
-    print(f">>> Đang khởi tạo 56 file đặc tả thực vật Hyper-Realistic Scan-Quality...")
+    print(">>> Đang khởi tạo 56 file đặc tả thực vật Hyper-Realistic Scan-Quality...")
     created_count = 0
     for sp in SPECIES_DATA:
         filename = f"{sp['slug']}.md"

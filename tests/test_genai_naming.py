@@ -1,6 +1,5 @@
 """Genesis Zero — tests/test_genai_naming.py: kiểm thử ma trận 27 Archetypes sinh thái và đặt tên sinh học."""
 
-import pytest
 from genesis.genai import ECOLOGICAL_ARCHETYPES_27, generate_ecological_name
 
 

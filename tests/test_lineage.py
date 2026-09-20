@@ -140,7 +140,7 @@ def test_forget_chiu_duoc_None():
 
 
 def test_moi_nhom_nguyen_nhan_deu_co_dich_hop_le():
-    for cause, targets in CAUSE_BIAS.items():
+    for targets in CAUSE_BIAS.values():
         assert targets
         for t in targets:
             assert t in config.TRAIT_NAMES

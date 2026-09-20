@@ -282,3 +282,77 @@ def test_decision_auth_required(client):
         json={"work_id": item["work_id"], "tokens_used": 10, "payload": {}},
     )
     assert resp_bad.status_code == 401
+
+
+def test_decision_invalid_payload_422(client):
+    c, r = client
+    token, item = _setup_running_work(c, r)
+
+    # Missing payload or payload not a dict
+    resp1 = c.post(
+        "/v1/decision",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"work_id": item["work_id"]},
+    )
+    assert resp1.status_code == 422
+    assert resp1.json()["detail"] == "INVALID_PAYLOAD"
+
+    resp2 = c.post(
+        "/v1/decision",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"work_id": item["work_id"], "payload": "not-a-dict"},
+    )
+    assert resp2.status_code == 422
+    assert resp2.json()["detail"] == "INVALID_PAYLOAD"
+
+
+def test_decision_creature_dead_rejection(client):
+    c, r = client
+    token, item = _setup_running_work(c, r)
+
+    creature = next(x for x in r.creatures if x.id == item["creature_id"])
+    creature.alive = False
+
+    resp = c.post(
+        "/v1/decision",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"work_id": item["work_id"], "payload": {"goal": "REST", "ttl": 3}},
+    )
+    assert resp.status_code == 200
+    assert resp.json() == {"accepted": False, "reason": "CREATURE_DEAD"}
+
+
+def test_decision_codex_malformed_law_exception(client):
+    from net.routes_work import WorkRecord, _issued_works
+
+    c, r = client
+    token, item = _setup_running_work(c, r)
+
+    creature = next(x for x in r.creatures if x.id == item["creature_id"])
+    codex_work_id = f"{item['work_id']}:codex"
+    reg = next(v for v in r.registrations.values() if creature.id in v.creature_ids)
+
+    _issued_works[codex_work_id] = WorkRecord(
+        work_id=codex_work_id,
+        kind="codex",
+        creature_id=creature.id,
+        client_id=reg.client_id,
+        issued_tick=r.tick_no,
+        deadline_tick=r.tick_no + 10,
+    )
+
+    malformed_payload = {
+        "op": "SET",
+        "slot": 0,
+        "law": {"trigger": {"kind": "UNKNOWN_TRIGGER"}},
+    }
+    resp = c.post(
+        "/v1/decision",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"work_id": codex_work_id, "payload": malformed_payload},
+    )
+    assert resp.status_code == 200
+    res_data = resp.json()
+    assert res_data["accepted"] is False
+    assert "CODEX_MALFORMED_LAW:" in res_data["reason"]
+

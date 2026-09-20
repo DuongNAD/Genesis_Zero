@@ -255,13 +255,15 @@ def test_launch_py_reflex_precedence_over_llm_flag():
 def test_launch_py_conflicting_render_and_web_flags():
     """Adversarial combination: Verify CLI parser accepts --no-render with --web without conflict."""
     # We test argument parsing logic directly without launching the long-running web server
-    import argparse
     from scripts.launch import main
-    with patch("sys.argv", ["launch.py", "--web", "--no-render", "--port", "8014"]):
-        with patch("scripts.launch.run_web_server", return_value=0) as mock_web:
-            ret = main()
-            assert ret == 0
-            mock_web.assert_called_once_with(host="127.0.0.1", port=8014, open_browser=True)
+    with (
+        patch("sys.argv", ["launch.py", "--web", "--no-render", "--port", "8014"]),
+        patch("scripts.launch.run_web_server", return_value=0) as mock_web,
+    ):
+        ret = main()
+        assert ret == 0
+        mock_web.assert_called_once_with(host="127.0.0.1", port=8014, open_browser=True)
+
 
 
 # ==============================================================================
@@ -285,14 +287,17 @@ def test_launch_py_non_interactive_closed_stdin():
 def test_launch_py_web_headless_browser_suppression():
     """Adversarial headless test: In headless environments where webbrowser fails, error is suppressed without crashing server."""
     from scripts.launch import run_web_server
-    with patch("webbrowser.open", side_effect=Exception("No DISPLAY or browser available in headless container")):
-        with patch("scripts.launch.threading.Thread") as mock_thread:
-            mock_thread.side_effect = lambda target, daemon=False: type("MockThread", (), {"start": lambda self: target()})()
-            with patch("time.sleep"):
-                with patch("subprocess.run") as mock_subproc:
-                    mock_subproc.return_value.returncode = 0
-                    ret = run_web_server(port=8015, open_browser=True)
-                    assert ret == 0
+    with (
+        patch("webbrowser.open", side_effect=Exception("No DISPLAY or browser available in headless container")),
+        patch("scripts.launch.threading.Thread") as mock_thread,
+        patch("time.sleep"),
+        patch("subprocess.run") as mock_subproc,
+    ):
+        mock_thread.side_effect = lambda target, daemon=False: type("MockThread", (), {"start": lambda self: target()})()
+        mock_subproc.return_value.returncode = 0
+        ret = run_web_server(port=8015, open_browser=True)
+        assert ret == 0
+
 
 
 

@@ -91,7 +91,7 @@ def species_factory():
             species=species_id,
             traits=traits,
             pos=pos,
-            hp=config.HP_BASE,
+            hp=config.HP_MAX,
             energy=traits.energy_max,
         )
     return _create

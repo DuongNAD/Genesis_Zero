@@ -128,9 +128,12 @@ def generate_terrain(spec: MapSpec, w: int, h: int, rng: random.Random) -> list[
     # `SEEDED_TERRAINS`, không phải một tuple chép tay. Bản chép tay ở đây đã
     # lặng lẽ bỏ qua `Terrain.TREE` dù cả năm bản đồ đều khai số hạt cho nó —
     # không lỗi, không cảnh báo, chỉ là không có cây nào mọc.
-    for terrain in SEEDED_TERRAINS:
-        for _ in range(spec.seeds.get(terrain, 0)):
-            walkers.append((rng.randrange(w), rng.randrange(h), terrain))
+    walkers.extend(
+        (rng.randrange(w), rng.randrange(h), terrain)
+        for terrain in SEEDED_TERRAINS
+        for _ in range(spec.seeds.get(terrain, 0))
+    )
+
     for x, y, terrain in walkers:
         grid[y][x] = terrain
 

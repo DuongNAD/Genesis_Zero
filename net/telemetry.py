@@ -44,7 +44,7 @@ def creature_telemetry(runner: MatchRunner, creature: Creature) -> CreatureTelem
     if not features and runner.world is not None:
         kit = runner.world.kits.get(creature.species)
         if kit is not None:
-            features = list(kit.keys)
+            features = list(getattr(kit, "keys", ()))
     return {
         "id": creature.id,
         "species": creature.species,

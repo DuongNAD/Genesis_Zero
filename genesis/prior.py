@@ -116,6 +116,6 @@ def prior_surface_map(laws: list[Law], arm: str, rng: random.Random) -> SurfaceM
         mapping[c] = ranked[tail]; tail -= 1
     leftover = ranked[head:tail + 1]
     rng.shuffle(leftover)
-    for c, s in zip(rest, leftover):
-        mapping[c] = s
+    mapping.update(zip(rest, leftover))
     return SurfaceMap(cls_to_surface=mapping)
+

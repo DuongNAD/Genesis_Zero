@@ -241,7 +241,8 @@ def validate_hunch(
         c, sm, tick, tick - law_config.CLAIM_COOLDOWN,
     )
     if not borrowed.ok:
-        return Verdict(ok=False, reason=borrowed.reason.replace("CODEX_", "HUNCH_", 1))
+        reason = borrowed.reason.replace("CODEX_", "HUNCH_", 1) if borrowed.reason else None
+        return Verdict(ok=False, reason=reason)
     return Verdict(ok=True)
 
 

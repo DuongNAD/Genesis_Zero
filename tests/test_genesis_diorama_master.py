@@ -23,6 +23,7 @@ import shutil
 import struct
 import subprocess
 from pathlib import Path
+
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

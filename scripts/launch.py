@@ -20,32 +20,43 @@ import webbrowser
 from pathlib import Path
 from typing import Any
 
-# Vá họ lỗi UnicodeEncodeError (cp1252) trên Windows: khi stdout/stderr bị
-# pipe (pytest capture, CI, redirect), Rich với legacy console vẫn mã hoá
-# theo cp1252 và nổ ngay ký tự đầu tiên có dấu. Reconfigure UTF-8/replace
-# NGAY TRƯỚC khi dựng `Console` để Rich kế thừa đúng stream đã vá.
-for _stream_name in ("stdout", "stderr"):
-    _stream = getattr(sys, _stream_name, None)
-    if _stream is not None and hasattr(_stream, "reconfigure"):
-        try:
-            _stream.reconfigure(encoding="utf-8", errors="replace")
-        except (AttributeError, OSError, ValueError):
-            continue
-
 # Ensure project root is in sys.path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 try:
+    from genesis.platform import configure_console_encoding, utf8_subprocess_env
+    configure_console_encoding()
+except ImportError:
+    for _stream_name in ("stdout", "stderr"):
+        _stream = getattr(sys, _stream_name, None)
+        if _stream is not None and hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, OSError, ValueError):
+                continue
+
+    def utf8_subprocess_env(base_env: dict[str, str] | None = None) -> dict[str, str]:
+        env = dict(os.environ if base_env is None else base_env)
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+        return env
+
+try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
-    console = Console()
+    console: Any = Console()
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
-    console = None
+    class _FallbackConsole:
+        def print(self, *args: Any, **kwargs: Any) -> None:
+            pass
+        def input(self, prompt: str = "") -> str:
+            return input(prompt)
+    console = _FallbackConsole()
 
 
 KNOWN_PORTS = {
@@ -67,11 +78,43 @@ def is_port_open(host: str, port: int, timeout: float = 0.3) -> bool:
         return False
 
 
+def probe_llm_endpoint(url: str, backend_type: str, timeout: float = 0.5) -> bool:
+    """Active application-layer HTTP probe checking if the backend is genuinely responding.
+
+    Prevents false-positive detection of non-LLM services (e.g. Windows AgentService on 8080).
+    Returns True only if the endpoint returns a valid HTTP status (200 or 204).
+    """
+    import urllib.request
+    endpoints: list[str] = []
+    if backend_type in ("vllm", "llama.cpp"):
+        endpoints = [f"{url}/health", f"{url}/v1/models"]
+    elif backend_type == "ollama":
+        endpoints = [f"{url}/api/tags", f"{url}/"]
+    elif backend_type == "mock":
+        endpoints = [f"{url}/health"]
+    else:
+        endpoints = [f"{url}/health", f"{url}/v1/models"]
+
+    for endpoint in endpoints:
+        try:
+            req = urllib.request.Request(
+                endpoint,
+                headers={"User-Agent": "GenesisZero-Launcher"},
+                method="GET",
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                if resp.status in (200, 204):
+                    return True
+        except Exception:
+            continue
+    return False
+
+
 def scan_backends() -> dict[str, dict[str, Any]]:
-    """Quét các cổng LLM phổ biến trên localhost."""
+    """Quét các cổng LLM phổ biến trên localhost và xác thực qua probe HTTP thực tế."""
     detected = {}
     for port, (name, url, backend_type) in KNOWN_PORTS.items():
-        if is_port_open("127.0.0.1", port):
+        if is_port_open("127.0.0.1", port) and probe_llm_endpoint(url, backend_type, timeout=0.5):
             detected[backend_type] = {
                 "name": name,
                 "port": port,
@@ -160,9 +203,7 @@ def run_simulation(
         console.print(f"[bold green]▶ Khởi chạy mô phỏng:[/bold green] Seed={seed}, Ticks={ticks}, Mode={controller} ({backend})")
 
     try:
-        # Cặp cài đặt đã cô lập và kiểm chứng (scratch/verify_encoding_pair.py):
-        # child phát UTF-8 qua env, không bao giờ crash cp1252 khi output bị pipe.
-        proc = subprocess.run(cmd, cwd=ROOT, env=dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1"))
+        proc = subprocess.run(cmd, cwd=ROOT, env=utf8_subprocess_env())
         return proc.returncode
     except KeyboardInterrupt:
         if HAS_RICH:
@@ -185,7 +226,7 @@ def run_demo_pipeline(seed: int = 9, ticks: int = 200) -> int:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             cwd=ROOT,
-            env=dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1"),
+            env=utf8_subprocess_env(),
         )
         time.sleep(0.8)
 
@@ -204,7 +245,11 @@ def run_demo_pipeline(seed: int = 9, ticks: int = 200) -> int:
             "http://127.0.0.1:8099",
             "--no-render",
         ]
-        res = subprocess.run(run_cmd, cwd=ROOT)
+        res = subprocess.run(
+            run_cmd,
+            cwd=ROOT,
+            env=utf8_subprocess_env(),
+        )
         return res.returncode
     finally:
         if server_proc:
@@ -242,7 +287,7 @@ def run_web_server(host: str = "127.0.0.1", port: int = 8000, open_browser: bool
     ]
     # Inherit the console process group so keyboard Ctrl+C reaches the child.
     # Closed stdin is not a shutdown request: headless servers must stay alive.
-    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    env = utf8_subprocess_env()
     try:
         proc = subprocess.run(cmd, cwd=ROOT, env=env)
         return proc.returncode
@@ -366,6 +411,7 @@ def main() -> int:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 cwd=ROOT,
+                env=utf8_subprocess_env(),
             )
             time.sleep(0.5)
     elif args.llm != "auto":

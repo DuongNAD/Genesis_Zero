@@ -61,5 +61,7 @@ THI CÔNG       01-STATUS       ── ★ hôm nay đang ở đâu
 `⬜ chưa bắt đầu` · `🟨 đang làm` · `✅ xong và đã nghiệm thu` · `🚫 bị chặn`
 
 > "Xong" nghĩa là **lệnh nghiệm thu ở mục 7 đã chạy và đã pass**. Không có nghĩa là "code viết xong rồi". Phân biệt này là toàn bộ giá trị của cột trạng thái.
+- [Kiến trúc hệ thống](ARCHITECTURE.md) — Tổng quan kiến trúc, vòng lặp 6 pha, scoring zero-I/O
+- [Hướng dẫn triển khai Docker](DEPLOYMENT.md) — Docker multi-stage, docker-compose, cấu hình môi trường
 - [Chạy trên Windows](CHAY-TREN-WINDOWS.md) — PowerShell, VRAM, thay cho make
 - [Hướng dẫn sử dụng](HUONG-DAN.md) — cài, chạy, mở cho người khác vào

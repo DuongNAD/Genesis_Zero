@@ -154,3 +154,165 @@ def test_fleet_moi_client_mot_loai_khac_nhau():
     # là thế giới có nhiều thứ KHÁC nhau trong đó.
     assert len(set(tiers)) >= 4, tiers
     assert min(tiers) == 0 and max(tiers) == 5
+
+
+def test_run_fleet_cli_invalid_n(capsys):
+    import run_fleet
+
+    ret_zero = run_fleet.main(["--n", "0"])
+    assert ret_zero == 2
+    captured = capsys.readouterr()
+    assert "--n phải trong" in captured.err
+
+    ret_too_large = run_fleet.main(["--n", "99"])
+    assert ret_too_large == 2
+
+
+def test_run_fleet_cli_valid_and_keyboard_interrupt(monkeypatch):
+    import run_fleet
+
+    calls = []
+
+    async def mock_fleet(a):
+        calls.append(a.n)
+
+    monkeypatch.setattr(run_fleet, "_fleet", mock_fleet)
+    ret = run_fleet.main(["--n", "2", "--rounds", "1"])
+    assert ret == 0
+    assert calls == [2]
+
+    async def mock_fleet_interrupt(a):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(run_fleet, "_fleet", mock_fleet_interrupt)
+    ret_interrupt = run_fleet.main(["--n", "1"])
+    assert ret_interrupt == 0
+
+
+def test_genesis_client_cli_and_toml_config(tmp_path, monkeypatch):
+    import genesis_client
+
+    toml_file = tmp_path / "client_config.toml"
+    toml_file.write_text(
+        'server = "http://config-server"\nname = "FromToml"\npop = 3\n',
+        encoding="utf-8",
+    )
+
+    captured_kwargs = {}
+
+    async def mock_run(**kwargs):
+        captured_kwargs.update(kwargs)
+
+    monkeypatch.setattr(genesis_client, "run", mock_run)
+
+    # CLI flag overrides config.toml
+    ret = genesis_client.main([
+        "--config", str(toml_file),
+        "--name", "FromCLI",
+        "--brain-tier", "4",
+    ])
+    assert ret == 0
+    assert captured_kwargs["server"] == "http://config-server"
+    assert captured_kwargs["name"] == "FromCLI"
+    assert captured_kwargs["pop"] == 3
+    assert captured_kwargs["brain_tier"] == 4
+
+
+@pytest.mark.asyncio
+async def test_genesis_client_decision_http_error_and_pause(monkeypatch):
+    import genesis_client
+
+    # Monkeypatch pause timings for fast test execution
+    monkeypatch.setattr(genesis_client, "FAILURES_BEFORE_PAUSE", 1)
+    monkeypatch.setattr(genesis_client, "PAUSE_SECONDS", 0.01)
+
+    async def server_handler(request: httpx.Request) -> httpx.Response:
+        p = request.url.path
+        if p == "/v1/join":
+            return httpx.Response(200, json={
+                "token": "tok1", "species_id": "sp1", "creature_ids": ["c1"], "queued": False,
+            })
+        if p == "/v1/heartbeat":
+            return httpx.Response(200, json={"ok": True})
+        if p == "/v1/state":
+            return httpx.Response(200, json={"match_id": "m1", "phase": "RUNNING"})
+        if p == "/v1/match/brief":
+            return httpx.Response(200, json={
+                "match_id": "m1",
+                "creatures": {"c1": {"system_prompt": "sys", "id_slot_hint": 0}},
+            })
+        if p == "/v1/work":
+            return httpx.Response(200, json={
+                "items": [{
+                    "creature_id": "c1",
+                    "work_id": "w1",
+                    "user_block": "user",
+                    "max_tokens": 50,
+                    "json_schema": {},
+                }],
+            })
+        if p == "/v1/decision":
+            raise httpx.ConnectError("Connection refused on decision", request=request)
+        return httpx.Response(404)
+
+    model_calls = 0
+
+    async def model_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal model_calls
+        model_calls += 1
+        if model_calls == 1:
+            return httpx.Response(200, json={
+                "content": json.dumps({"goal": "FORAGE"}),
+                "tokens_predicted": 10,
+            })
+        return httpx.Response(500, text="Internal Model Error")
+
+    srv_tp = httpx.MockTransport(server_handler)
+    mdl_tp = httpx.MockTransport(model_handler)
+
+    await genesis_client.run(
+        server="http://test-server",
+        model_url="http://test-model",
+        name="TestBot",
+        max_rounds=2,
+        poll_interval=0.01,
+        server_transport=srv_tp,
+        model_transport=mdl_tp,
+    )
+    assert model_calls >= 2
+
+
+@pytest.mark.asyncio
+async def test_genesis_client_cancelled_shutdown():
+    import genesis_client
+
+    async def server_handler(request: httpx.Request) -> httpx.Response:
+        p = request.url.path
+        if p == "/v1/join":
+            return httpx.Response(200, json={
+                "token": "tok1", "species_id": "sp1", "creature_ids": ["c1"], "queued": False,
+            })
+        if p == "/v1/heartbeat":
+            return httpx.Response(200, json={"ok": True})
+        if p == "/v1/state":
+            await asyncio.sleep(1.0)
+            return httpx.Response(200, json={"match_id": "m1", "phase": "RUNNING"})
+        return httpx.Response(404)
+
+    srv_tp = httpx.MockTransport(server_handler)
+    mdl_tp = httpx.MockTransport(lambda r: httpx.Response(200))
+
+    task = asyncio.create_task(genesis_client.run(
+        server="http://test-server",
+        model_url="http://test-model",
+        name="CancelBot",
+        poll_interval=0.01,
+        server_transport=srv_tp,
+        model_transport=mdl_tp,
+    ))
+
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+

@@ -6,6 +6,8 @@ lúc rớt mạng là một tính năng, không phải một trường hợp l�
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import net_config
 from net.match import MatchRunner, Phase, Registration
 
@@ -38,7 +40,7 @@ def _running(ticks: int = 500) -> tuple[MatchRunner, FakeClock, MemLog]:
     r = MatchRunner(seed=1, ticks=ticks, tick_ms=4000, clock=clock, log_dir=None)
     r.advance_phase()
     r.advance_phase()
-    r.log = log
+    r.log = cast(Any, log)
     assert r.phase is Phase.RUNNING
     return r, clock, log
 

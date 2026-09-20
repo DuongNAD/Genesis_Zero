@@ -123,9 +123,10 @@ async def ask(
     resolved_backend = detect_backend(base_url) if backend == "auto" else backend.lower()
     root = base_url.rstrip("/")
 
-    owns_client = client is None
-    if owns_client:
+    owns_client = False
+    if client is None:
         client = httpx.AsyncClient(timeout=timeout, transport=transport)
+        owns_client = True
     try:
         if resolved_backend == "ollama":
             url = root if root.endswith("/api/chat") else f"{root}/api/chat"
@@ -284,5 +285,5 @@ async def ask(
         logger.warning("lỗi mạng khi gọi %s (slot %d): %s", base_url, slot_id, exc)
         return None
     finally:
-        if owns_client:
+        if owns_client and client is not None:
             await client.aclose()

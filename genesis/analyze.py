@@ -19,16 +19,18 @@ Các quy tắc bắt buộc:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import statistics
 from pathlib import Path
 from typing import Any
 
 import matplotlib
+import matplotlib.pyplot as plt
 
 matplotlib.use("Agg")
 matplotlib.rcParams["svg.hashsalt"] = "genesis"
-import matplotlib.pyplot as plt
+
 
 
 def load_scores(paths: list[Path]) -> list[dict]:
@@ -86,6 +88,8 @@ def _is_found_row(r: dict, default_ticks: int = 400) -> tuple[bool, int | None]:
     Với ván 200 tick, cách đoán ấy tính `t_discover = 201` thành "tìm ra".
     """
     t_disc = r.get("t_discover")
+    if t_disc is None:
+        return False, None
     try:
         t_val = int(float(t_disc))
     except (TypeError, ValueError):
@@ -213,10 +217,8 @@ def chart_match_by_species(rows: list[dict], out: Path) -> Path:
             sp = str(r.get("species_id", "unknown"))
             m = r.get("match")
             if m is not None and m != "NA":
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     by_sp.setdefault(sp, []).append(float(m))
-                except (ValueError, TypeError):
-                    pass
 
         species_list = sorted(by_sp.keys())
         means = [statistics.fmean(by_sp[sp]) if by_sp[sp] else 0.0 for sp in species_list]
@@ -310,10 +312,8 @@ def chart_law_tier(rows: list[dict], out: Path) -> Path:
             tier = str(r.get("tier", "unknown"))
             m = r.get("match")
             if m is not None and m != "NA":
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     by_tier.setdefault(tier, []).append(float(m))
-                except (ValueError, TypeError):
-                    pass
 
         # Sắp xếp ưu tiên D1, D2, D3, D4
         def tier_sort_key(t: str) -> tuple[int, str]:

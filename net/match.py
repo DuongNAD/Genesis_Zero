@@ -45,9 +45,11 @@ from genesis.lawgen import generate_cached
 from genesis.logio import LogWriter
 from genesis.minds import Minds
 from genesis.strategist import RemoteClientStrategist
-from genesis.tick import build_match
+from genesis.tick import SimState, build_match
 from genesis.tick import tick as run_tick
+from genesis.victory import Victory
 from genesis.weather import weather_at
+from genesis.world import World
 from net.telemetry import creature_telemetry, envelope
 
 
@@ -59,12 +61,15 @@ class _FrameCollector:
     không bao giờ đổi hình dạng.
     """
 
-    def __init__(self, inner) -> None:
+    def __init__(self, inner, on_record=None) -> None:
         self.inner = inner
+        self.on_record = on_record
         self.events: list[dict] = []
 
     def write(self, t: int, kind: str, **fields) -> None:
         self.events.append({"kind": kind, **fields})
+        if self.on_record is not None:
+            self.on_record(t, kind, **fields)
         if self.inner is not None:
             self.inner.write(t, kind, **fields)
 
@@ -193,7 +198,7 @@ class MatchRunner:
         )
         self.handbooks: dict[str, Handbook] = {}
 
-        self.log = None
+        self.log: LogWriter | None = None
         self.latencies: collections.deque[int] = collections.deque(
             maxlen=net_config.LATENCY_WINDOW
         )
@@ -210,9 +215,9 @@ class MatchRunner:
         # Sự kiện THÔ của từng khung, giữ lại để dựng bản REVEAL. Không bao giờ
         # gửi đi: nó mang `law_id`.
         self._frame_raw: list[list[dict]] = []
-        self.world = None
+        self.world: World | None = None
         self.creatures: list[Creature] = []
-        self.state = None
+        self.state: SimState | None = None
         self.rng = random.Random(0)
         self._laws: list = []          # RIÊNG TƯ. Xem bất biến 5.
         self.seed = 0
@@ -221,15 +226,37 @@ class MatchRunner:
         self._recent_law_sigs: collections.deque = collections.deque(
             maxlen=net_config.LAW_NOVELTY_WINDOW
         )
-        self.victory = None          # điền ở REVEAL, xem `_close_log`
+        self._event_records: list[dict[str, Any]] = []
+        self._last_truth: dict[str, Any] | None = None
+        self.victory: Victory | None = None          # điền ở REVEAL, xem `_close_log`
         self.stopped = False
         self.preparing = False
         self.preparation_failed = False
 
+    def _record_event(self, t: int, kind: str, **fields: Any) -> None:
+        row: dict[str, Any] = {
+            "t": t,
+            "kind": kind,
+            "match_id": self.match_id,
+            "creature_id": fields.get("creature_id"),
+            "species_id": fields.get("species_id"),
+            "client_id": fields.get("client_id"),
+            "model_name": fields.get("model_name"),
+        }
+        row.update(fields)
+        self._event_records.append(row)
+
     # ── ranh giới tin cậy ────────────────────────────────────────────────
     def compute_victory(self) -> None:
         """Ba bảng danh hiệu, tính MỘT lần khi ván kết thúc (W-14)."""
-        from genesis.victory import from_files
+        from genesis.victory import from_files, victory_standings_from_data
+
+        if self._event_records and self._last_truth is not None:
+            try:
+                self.victory = victory_standings_from_data(self._event_records, self._last_truth)
+                return
+            except Exception:
+                self.victory = None
 
         log_p = self.log_dir / f"{self.match_id}.jsonl" if self.log_dir else None
         truth_p = self.log_dir / f"{self.match_id}.truth.json" if self.log_dir else None
@@ -312,18 +339,22 @@ class MatchRunner:
         nên không có cửa sổ thời gian nào mà nó vừa tồn tại vừa còn hữu ích cho
         kẻ đọc trộm.
         """
+        self._record_event(self.tick_no, "RUN_END", ticks=self.tick_no)
+        if self.world is not None and self._laws:
+            self._last_truth = {
+                "seed": self.seed,
+                "arm": "STANDARD",
+                "laws": [to_json(l) for l in self._laws],
+                "surface_map": self.world.surface_map.cls_to_surface,
+            }
         if self.log is None or self.log_dir is None:
             return
         self.log.write(self.tick_no, "RUN_END", ticks=self.tick_no)
         self.log.close()
         self.log = None
-        if self.world is not None and self._laws:
+        if self._last_truth is not None and self.log_dir is not None:
             (self.log_dir / f"{self.match_id}.truth.json").write_text(
-                json.dumps({
-                    "seed": self.seed, "arm": "STANDARD",
-                    "laws": [to_json(l) for l in self._laws],
-                    "surface_map": self.world.surface_map.cls_to_surface,
-                }, ensure_ascii=False),
+                json.dumps(self._last_truth, ensure_ascii=False),
                 encoding="utf-8",
             )
 
@@ -387,6 +418,11 @@ class MatchRunner:
         # không gian luật của một bản đồ hẹp hơn cửa sổ, và một ván trùng đề tệ
         # hơn nhiều so với một ván không bao giờ bắt đầu.
         rerolls: list[int] = []
+        try:
+            from net.routes_work import clear_work_state
+            clear_work_state()
+        except Exception:
+            pass
         for _attempt in range(net_config.LAW_NOVELTY_TRIES):
             laws = yield (self.seed, f"STANDARD@{self.map_name}")
             sig = self._law_signature(laws)
@@ -407,6 +443,17 @@ class MatchRunner:
         self.decisions.clear()
         self.applied.clear()
         self.latencies.clear()
+        try:
+            from net.routes_work import clear_work_state
+            clear_work_state()
+        except Exception:
+            pass
+        self._event_records = []
+        self._record_event(0, "RUN_START", seed=self.seed, ticks=self.ticks_total,
+                           arm="STANDARD", n_laws=len(self._laws))
+        for i, dropped in enumerate(rerolls):
+            self._record_event(0, "LAW_REPEAT", seed=dropped,
+                               map=self.map_name, attempt=i + 1)
         if self.log_dir is not None:
             self.log = LogWriter(self.log_dir / f"{self.match_id}.jsonl", self.match_id)
             self.log.write(0, "RUN_START", seed=self.seed, ticks=self.ticks_total,
@@ -502,7 +549,7 @@ class MatchRunner:
                 hp=1.0,
                 energy=1.0,
             )
-            cells = [
+            cells: list[tuple[int, int]] = [
                 (x, y)
                 for y in range(self.world.h)
                 for x in range(self.world.w)
@@ -527,9 +574,9 @@ class MatchRunner:
 
     def step(self) -> None:
         """Một tick sim. Chỉ hợp lệ ở RUNNING."""
-        if self.phase is not Phase.RUNNING or self.world is None:
+        if self.phase is not Phase.RUNNING or self.world is None or self.state is None:
             return
-        frame_log = _FrameCollector(self.log)
+        frame_log = _FrameCollector(self.log, on_record=self._record_event)
         run_tick(
             self.world, self.creatures, self.tick_no, self.rng, self.state,
             laws=self._laws, strategist=self.strategist, log=frame_log,
@@ -566,7 +613,9 @@ class MatchRunner:
         """
         for ev in events:
             if ev.get("kind") == "DEATH":
-                self.minds.on_death(ev.get("creature_id"))
+                cid = ev.get("creature_id")
+                if isinstance(cid, str):
+                    self.minds.on_death(cid)
 
     def _publish(self, tick_no: int, events: list[dict]) -> None:
         frame = self.frame(tick_no, events)
@@ -642,6 +691,7 @@ class MatchRunner:
 
     # ── N-08: tick không chờ ai ──────────────────────────────────────────
     def _write(self, kind: str, **fields: Any) -> None:
+        self._record_event(self.tick_no, kind, **fields)
         if self.log is not None:
             self.log.write(self.tick_no, kind, **fields)
 

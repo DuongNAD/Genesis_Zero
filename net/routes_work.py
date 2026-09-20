@@ -67,10 +67,33 @@ def _minds():
 
 
 def clear_work_state() -> None:
-    """Xoá trạng thái phát việc (dùng cho test)."""
+    """Xoá trạng thái phát việc (dùng cho test và chuyển giao ván)."""
     _issued_works.clear()
     _fetched_work_keys.clear()
-    _minds().clear()
+    try:
+        m = _minds()
+        if m is not None:
+            m.clear()
+    except Exception:
+        pass
+
+
+def prune_old_works(current_tick: int, max_age: int = 200) -> None:
+    """Loại bỏ các công việc cũ hơn max_age ticks để tránh rò rỉ bộ nhớ."""
+    cutoff = current_tick - max_age
+    old_work_ids = [
+        wid for wid, rec in _issued_works.items()
+        if rec.issued_tick < cutoff
+    ]
+    for wid in old_work_ids:
+        _issued_works.pop(wid, None)
+
+    old_keys = [
+        k for k in _fetched_work_keys
+        if len(k) > 1 and isinstance(k[1], int) and k[1] < cutoff
+    ]
+    for k in old_keys:
+        _fetched_work_keys.discard(k)
 
 
 def get_bearer_token(authorization: str | None) -> str:
@@ -143,6 +166,7 @@ def generate_work_items(reg: Registration) -> list[dict[str, Any]]:
         return []
 
     current_tick = state.runner.tick_no
+    prune_old_works(current_tick, max_age=200)
     match_id = state.runner.match_id
     creatures = creatures_of(reg)
 

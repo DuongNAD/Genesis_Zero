@@ -69,17 +69,19 @@ def test_pure_functions() -> None:
     law = random_law(random.Random(3))
     ss = sample_situations(law, 10, random.Random(1))
     s0 = ss[0]
+    assert s0.ctx is not None
+    ctx0 = s0.ctx
     before_ctx = (
-        s0.ctx.phase,
-        s0.ctx.terrain,
-        s0.ctx.hp_band,
-        s0.ctx.energy_band,
-        s0.ctx.age_band,
-        s0.ctx.wind_rel,
-        s0.ctx.alone,
-        dict(s0.ctx.recent),
-        {k: dict(v) for k, v in s0.ctx.counts.items()},
-        dict(s0.ctx.subject),
+        ctx0.phase,
+        ctx0.terrain,
+        ctx0.hp_band,
+        ctx0.energy_band,
+        ctx0.age_band,
+        ctx0.wind_rel,
+        ctx0.alone,
+        dict(ctx0.recent),
+        {k: dict(v) for k, v in ctx0.counts.items()},
+        dict(ctx0.subject),
     )
     before_event = (s0.kind, s0.arg, s0.n, s0.k, s0.r, s0.meta)
 
@@ -90,16 +92,16 @@ def test_pure_functions() -> None:
             _ = cond_holds(law.conds[0], s0.ctx)
 
     after_ctx = (
-        s0.ctx.phase,
-        s0.ctx.terrain,
-        s0.ctx.hp_band,
-        s0.ctx.energy_band,
-        s0.ctx.age_band,
-        s0.ctx.wind_rel,
-        s0.ctx.alone,
-        dict(s0.ctx.recent),
-        {k: dict(v) for k, v in s0.ctx.counts.items()},
-        dict(s0.ctx.subject),
+        ctx0.phase,
+        ctx0.terrain,
+        ctx0.hp_band,
+        ctx0.energy_band,
+        ctx0.age_band,
+        ctx0.wind_rel,
+        ctx0.alone,
+        dict(ctx0.recent),
+        {k: dict(v) for k, v in ctx0.counts.items()},
+        dict(ctx0.subject),
     )
     after_event = (s0.kind, s0.arg, s0.n, s0.k, s0.r, s0.meta)
 

@@ -16,8 +16,6 @@ from __future__ import annotations
 import random
 from dataclasses import astuple
 
-import pytest
-
 from genesis import config
 from genesis.creature import Creature, creature_sort_key
 from genesis.evolution import mutate_traits, trait_variance

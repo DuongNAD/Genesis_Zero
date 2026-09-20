@@ -178,11 +178,13 @@ def test_scenario_4_law_discovery_and_referee_scoring(temp_workspace: Path):
         written_at=10,
         source="self",
     )
-    assert codex._entries[0].conf == 3
+    entry0 = codex._entries[0]
+    assert entry0 is not None and entry0.conf == 3
 
     # 3. Simulate generation turnover decay
     codex.decay_confidence(1)
-    assert codex._entries[0].conf == 2
+    entry0_after = codex._entries[0]
+    assert entry0_after is not None and entry0_after.conf == 2
 
     # 4. Write simulation log and truth file for referee
     log_file = temp_workspace / "runs" / "match_sc4.jsonl"
@@ -213,10 +215,10 @@ def test_scenario_4_law_discovery_and_referee_scoring(temp_workspace: Path):
     assert len(score_rows) >= 1
     assert score_rows[0]["species_id"] == "L1"
 
-    # 6. Victory determination
     totals = {"L1:0": 95.0}
     vic = decide_victory(score_rows, totals, match_id="m_sc4", seed=2026, ticks=100)
-    assert vic.winner("NHA_KHOA_HOC").creature_id == "L1:0"
+    w = vic.winner("NHA_KHOA_HOC")
+    assert w is not None and w.creature_id == "L1:0"
 
 
 # ============================================================================

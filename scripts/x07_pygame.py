@@ -242,8 +242,8 @@ def draw_grid_and_terrain(surface: Any, world: World, cell_px: int, header_h: in
     """Vẽ nền địa hình lưới và viền ô."""
     import pygame
 
-    terrain_colors = {
-        Terrain.PLAIN: ((38, 61, 30), (34, 56, 27)),
+    plain_colors = ((38, 61, 30), (34, 56, 27))
+    other_colors = {
         Terrain.WATER: (30, 144, 255),
         Terrain.BUSH: (46, 139, 87),
         Terrain.ROCK: (80, 80, 80),
@@ -254,10 +254,11 @@ def draw_grid_and_terrain(surface: Any, world: World, cell_px: int, header_h: in
         for x in range(world.w):
             t = world.grid[y][x]
             rect = pygame.Rect(x * cell_px, y * cell_px + header_h, cell_px, cell_px)
-            if t == Terrain.PLAIN:
-                color = terrain_colors[Terrain.PLAIN][(x + y) % 2]
-            else:
-                color = terrain_colors.get(t, (34, 56, 27))
+            color: tuple[int, int, int] = (
+                plain_colors[(x + y) % 2]
+                if t == Terrain.PLAIN
+                else other_colors.get(t, (34, 56, 27))
+            )
 
             pygame.draw.rect(surface, color, rect)
             pygame.draw.rect(surface, (27, 44, 21), rect, width=1)
@@ -417,17 +418,22 @@ def run_gui(seed: int, total_ticks: int, fps: int = 10, no_laws: bool = False) -
             )
 
             now_ms = pygame.time.get_ticks()
-            for sp_ev in collector.speak_events:
-                speak_flashes.append({
+            speak_flashes.extend(
+                {
                     "speaker_id": sp_ev["speaker_id"],
                     "hearer_ids": sp_ev["hearer_ids"],
                     "start_time": now_ms,
-                })
-            for lw_ev in collector.law_events:
-                law_flashes.append({
+                }
+                for sp_ev in collector.speak_events
+            )
+            law_flashes.extend(
+                {
                     "pos": lw_ev["pos"],
                     "start_time": now_ms,
-                })
+                }
+                for lw_ev in collector.law_events
+            )
+
 
             current_tick += 1
 
@@ -498,14 +504,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
-    try:
-        import pygame
-    except ImportError:
+    import importlib.util
+
+    if importlib.util.find_spec("pygame") is None:
         print(
             "Pygame chưa được cài đặt. Vui lòng cài đặt bằng: pip install pygame",
             file=sys.stderr,
         )
         return 2
+
 
     args = parse_args(argv)
     run_gui(args.seed, args.ticks, fps=args.fps, no_laws=args.no_laws)

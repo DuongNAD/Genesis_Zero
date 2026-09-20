@@ -1,8 +1,10 @@
-import bpy
-import bmesh
 import math
 import os
-from mathutils import Vector, Matrix, Euler
+
+import bmesh
+import bpy
+from mathutils import Euler, Matrix, Vector
+
 
 def clear_collection(col_name="Genesis_Lizard"):
     col = bpy.data.collections.get(col_name)
@@ -121,7 +123,7 @@ def create_creature(collection, mats, offset=(0, 0, 0)):
     MAT_DARK_GREEN = 3
 
     ring_verts = []
-    for r_idx, r in enumerate(rings_data):
+    for _r_idx, r in enumerate(rings_data):
         y = r["y"]
         zc = r["zc"] + r.get("tilt_z", 0.0)
         w = r["w"]
@@ -408,7 +410,7 @@ def create_creature(collection, mats, offset=(0, 0, 0)):
         rim_b0 = bm_e.verts.new(eye_center + right * 0.21 - up * 0.12 - forward * 0.04)
         rim_b1 = bm_e.verts.new(eye_center + right * 0.06 - up * 0.22 + forward * 0.05)
         rim_b2 = bm_e.verts.new(eye_center - right * 0.18 - up * 0.17 + forward * 0.03)
-        rim_b3 = bm_e.verts.new(eye_center - right * 0.22 - up * 0.05 - forward * 0.05)
+        bm_e.verts.new(eye_center - right * 0.22 - up * 0.05 - forward * 0.05)
 
         rim_out0 = bm_e.verts.new(eye_center + right * 0.28 - up * 0.26 - forward * 0.10)
         rim_out1 = bm_e.verts.new(eye_center + right * 0.09 - up * 0.34 + forward * 0.02)
@@ -555,7 +557,7 @@ def create_creature(collection, mats, offset=(0, 0, 0)):
         toe_bot_tips = []
         claw_tips = []
 
-        for tidx, (rel_ang, tlen) in enumerate(zip(toe_angles, toe_lengths)):
+        for _tidx, (rel_ang, tlen) in enumerate(zip(toe_angles, toe_lengths)):
             ang = heading + rel_ang * side_sign
             dir_toe = Vector((math.cos(ang), math.sin(ang), 0.0)).normalized()
 

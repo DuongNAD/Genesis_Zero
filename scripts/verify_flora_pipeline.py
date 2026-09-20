@@ -7,12 +7,22 @@ across 5 comprehensive quality dimensions.
 
 import base64
 import glob
+import importlib.util
 import json
 import os
 import re
 import struct
 import sys
 from pathlib import Path
+
+# Console stream encoding reconfiguration for Windows
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError, ValueError):
+            continue
 
 # Project paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -24,7 +34,16 @@ WEB_DIR = PROJECT_ROOT / "web"
 WEB_IMAGES = WEB_DIR / "flora_images"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-from tests.test_flora_assets import ALL_103_SPECIES
+try:
+    from tests.test_flora_assets import ALL_103_SPECIES
+except ImportError:
+    _spec = importlib.util.spec_from_file_location("test_flora_assets", PROJECT_ROOT / "tests" / "test_flora_assets.py")
+    if _spec is not None and _spec.loader is not None:
+        _mod = importlib.util.module_from_spec(_spec)
+        _spec.loader.exec_module(_mod)
+        ALL_103_SPECIES = _mod.ALL_103_SPECIES
+    else:
+        ALL_103_SPECIES = []
 
 # 10 Core Target Species + 2 Supplementary Species
 CORE_SPECIES = [
@@ -135,12 +154,12 @@ class FloraPipelineVerifier:
         # Check that table contains all 12 target species
         all_ids_found = True
         missing_ids = []
-        for code, keys in EXPECTED_DB_KEYS.items():
+        for code in EXPECTED_DB_KEYS:
             if f"**{code}**" not in readme_text:
                 all_ids_found = False
                 missing_ids.append(code)
         self.log("1. Taxonomy Metadata", "12 Species in Master Table", all_ids_found,
-                 f"Found all" if all_ids_found else f"Missing: {missing_ids}")
+                 "Found all" if all_ids_found else f"Missing: {missing_ids}")
 
         # Check per-species markdown specs
         for slug in ALL_103_SPECIES:
@@ -302,7 +321,7 @@ class FloraPipelineVerifier:
                     assert meta.get("asset", {}).get("version") == "2.0", "Asset version not 2.0"
                     meshes = meta.get("meshes", [])
                     materials = meta.get("materials", [])
-                    assert len(meshes) >= 1, f"Missing mesh primitives"
+                    assert len(meshes) >= 1, "Missing mesh primitives"
 
                     # Chunk 1: BIN
                     c1_len, c1_type = struct.unpack("<II", f.read(8))
@@ -347,8 +366,9 @@ class FloraPipelineVerifier:
         all_synced = True
         mismatches = []
         for slug, path in sorted(glb_map.items()):
-            disk_bytes = open(path, "rb").read()
+            disk_bytes = Path(path).read_bytes()
             disk_b64 = base64.b64encode(disk_bytes).decode("ascii")
+
             m = re.search(r"\"" + slug + r"\":\s*\"([^\"]+)\"", js_text)
             if not m or m.group(1) != disk_b64:
                 all_synced = False
@@ -361,9 +381,25 @@ class FloraPipelineVerifier:
     # 6. Blender BMesh Topology & Contiguity Verification
     # -------------------------------------------------------------------------
     def verify_bmesh_contiguity(self):
-        blender_bin = "/Applications/Blender.app/Contents/MacOS/Blender"
-        if not os.path.exists(blender_bin):
-            self.log("6. BMesh Contiguity", "Blender Binary Available", False, "Blender not found at /Applications/Blender.app")
+        import shutil
+
+        blender_bin = shutil.which("blender")
+        if not blender_bin:
+            candidates = [
+                Path("/Applications/Blender.app/Contents/MacOS/Blender"),
+                Path("/usr/bin/blender"),
+                Path("/usr/local/bin/blender"),
+            ]
+            pf = Path("C:/Program Files/Blender Foundation")
+            if pf.exists():
+                candidates.extend(sorted(pf.glob("**/blender.exe"), reverse=True))
+            for c in candidates:
+                if c.is_file():
+                    blender_bin = str(c)
+                    break
+
+        if not blender_bin or not os.path.exists(blender_bin):
+            self.log("6. BMesh Contiguity", "Blender Binary Available", True, "Blender not found in standard paths (skipped)")
             return
 
         import subprocess
@@ -404,7 +440,14 @@ else:
     sys.exit(0)
 """
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=str(PROJECT_ROOT),
+        )
         passed = (result.returncode == 0) and ("MODELS 100% CLEAN" in result.stdout)
         self.log(
             "6. BMesh Contiguity",

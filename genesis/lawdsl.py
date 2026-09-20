@@ -588,10 +588,13 @@ _UNKNOWN = "?"
 
 def _num(v: object, default: int) -> str:
     """Ép về int rồi mới đưa vào câu — chặn chuỗi lạ lọt qua trường số."""
-    try:
-        return str(int(v))  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return str(default)
+    if isinstance(v, (int, float, str, bytes, bytearray)):
+        try:
+            return str(int(v))
+        except (TypeError, ValueError, OverflowError):
+            return str(default)
+    return str(default)
+
 
 
 def _resolve_item(arg: str | None, sm: SurfaceMap) -> str:
@@ -680,7 +683,7 @@ def _cond_to_vn(c: Cond, sm: SurfaceMap) -> str:
 
 def _effect_to_vn(e: Effect, sm: SurfaceMap) -> str:
     mag_str = _MAG_VN.get(e.mag, "") if e.mag else ""
-    dur_str = _DUR_LOOKUP.get(e.dur.value if e.dur else "", "") if e.dur else ""
+    dur_str = _DUR_LOOKUP.get(e.dur.value if isinstance(e.dur, Dur) else (e.dur or ""), "") if e.dur else ""
     mag_dur = ""
     if mag_str and dur_str:
         mag_dur = " (mức " + mag_str + ", " + dur_str + ")"
@@ -727,7 +730,7 @@ def _effect_to_vn(e: Effect, sm: SurfaceMap) -> str:
 
 def to_vietnamese(law: Law, sm: SurfaceMap) -> str:
     parts = ["KHI " + trigger_to_vn(law.trigger, sm)]
-    for c in law.conds:
-        parts.append("VÀ " + _cond_to_vn(c, sm))
+    parts.extend("VÀ " + _cond_to_vn(c, sm) for c in law.conds)
     parts.append("THÌ " + _effect_to_vn(law.effect, sm))
+
     return " ".join(parts)

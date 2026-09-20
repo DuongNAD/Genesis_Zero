@@ -4,15 +4,18 @@ Renders 4 standardized camera views (Hero 3/4, Front, Side, Top-Down) in Blender
 and creates a composite 2x2 verification contact sheet for quality inspection.
 """
 
+import math
 import os
 import sys
-import math
 from pathlib import Path
+
 import bpy
 import mathutils
+
 try:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
     HAS_PIL = True
+
 except ImportError:
     HAS_PIL = False
 
@@ -198,10 +201,7 @@ def compose_contact_sheet(rendered_files, output_path, title):
 if __name__ == "__main__":
     # If run inside Blender: python render_inspector.py <blend_path> <output_dir> <name>
     argv = sys.argv
-    if "--" in argv:
-        args = argv[argv.index("--") + 1:]
-    else:
-        args = argv[1:]
+    args = argv[argv.index("--") + 1:] if "--" in argv else argv[1:]
 
     blend_file = args[0] if len(args) > 0 else bpy.data.filepath
     output_dir = args[1] if len(args) > 1 else "/tmp/flora_inspection"

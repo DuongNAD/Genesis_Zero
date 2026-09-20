@@ -19,6 +19,7 @@ import hashlib
 import json
 import random
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
 
 GOALS = ("FORAGE", "REST", "WANDER", "FLEE")
 
@@ -64,7 +65,7 @@ class Handler(BaseHTTPRequestHandler):
             # mà model giả chỉ nhìn thấy chuỗi câu hỏi — nó không có `Situation`
             # để `evaluate`. Nên phép kiểm ấy thuộc về bài test, không thuộc về
             # server giả: xem `tests/test_oracle.py::test_dap_an_hoan_hao_an_1`.
-            out = {"answers": []}
+            out: dict[str, Any] = {"answers": []}
         elif "[GHI SỔ LUẬT]" in prompt:
             if self.cheat_law is None:
                 out = {"op": "SET", "slot": 0, "conf": 2, "law": {
@@ -96,12 +97,26 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(resp)
 
+    def do_GET(self) -> None:
+        resp = b'{"status": "ok"}'
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(resp)))
+        self.end_headers()
+        self.wfile.write(resp)
+
     def log_message(self, *_a) -> None:
         pass
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Địa chỉ bind máy chủ (mặc định 127.0.0.1; dùng 0.0.0.0 trong container)",
+    )
     ap.add_argument("--port", type=int, default=8099)
     ap.add_argument("--hunch-rate", type=float, default=0.35,
                     help="xác suất model giả xin nêu linh cảm; 0.0 = nhánh đối chứng")
@@ -120,8 +135,8 @@ def main(argv: list[str] | None = None) -> int:
             generate_cached(a.cheat_seed)[0], world.surface_map
         )
 
-    srv = HTTPServer(("127.0.0.1", a.port), Handler)
-    print(f"model giả nghe ở http://127.0.0.1:{a.port}", flush=True)
+    srv = HTTPServer((a.host, a.port), Handler)
+    print(f"model giả nghe ở http://{a.host}:{a.port}", flush=True)
     srv.serve_forever()
     return 0
 

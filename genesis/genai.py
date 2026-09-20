@@ -36,9 +36,9 @@ import os
 import re
 import threading
 import time
-from typing import Any
 import urllib.error
 import urllib.request
+from typing import Any
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 FALLBACK_MODELS = [

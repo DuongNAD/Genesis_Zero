@@ -7,38 +7,35 @@ information leak prevention, extreme trait morphologies, and catastrophic networ
 from __future__ import annotations
 
 import asyncio
-import collections
-import copy
 import json
-import math
 import random
 from pathlib import Path
-from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
-from genesis import config, law_config
 from genesis.codex import Codex, CodexEntry
-from genesis.combat import Attack, resolve_combat
-from genesis.creature import Creature, kill, random_step, try_respawn, upkeep_and_check_death
-from genesis.domain import Domain, can_enter, can_touch, domain_of
-from genesis.features import BY_KEY, Feature, Kit, kit_of
-from genesis.lawdsl import Cond, CondKind, Dur, Effect, EffectKind, Law, Mag, Trigger, TriggerKind, random_law, to_json
-from genesis.lawgen import generate
-from genesis.lawhook import apply_creature_effect
-from genesis.llm_client import CircuitBreaker, ask, detect_backend
+from genesis.creature import Creature, kill, random_step, upkeep_and_check_death
+from genesis.domain import Domain, can_enter
+from genesis.features import BY_KEY, Kit, kit_of
+from genesis.lawdsl import (
+    Cond,
+    CondKind,
+    Dur,
+    Effect,
+    EffectKind,
+    Law,
+    Mag,
+    Trigger,
+    TriggerKind,
+    random_law,
+    to_json,
+)
+from genesis.llm_client import CircuitBreaker
 from genesis.mesh_prompts import creature_prompt
-from genesis.reflex import choose_goal, ActiveGoal
-from genesis.score import score_match
-from genesis.tick import build_match, tick as run_tick
 from genesis.traits import Traits, founder_traits
-from genesis.verify import agree
-from genesis.victory import Standing, Victory, decide as decide_victory
 from genesis.world import Terrain, World
-from net import server, state
-from net.match import MatchRunner, Phase, Registration
-from net.ratelimit import RateLimiter, reset as reset_ratelimit
+from net.match import MatchRunner
+from net.ratelimit import reset as reset_ratelimit
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -157,7 +154,7 @@ def test_adv_07_spectator_telemetry_leak_adversarial_inspection():
     runner.advance_phase()  # to SEEDING
     runner.advance_phase()  # to LOBBY
     runner.advance_phase()  # to RUNNING
-    
+
     frame = runner.frame(tick_no=1, events=[])
     frame_str = json.dumps(frame)
     for law in runner._laws:
@@ -225,7 +222,7 @@ def test_adv_10_high_concurrency_race_condition_simulation():
             if c.alive:
                 random_step(c, world, rng=rng)
                 upkeep_and_check_death(c, tick=t)
-    
+
     # Verify simulation state remains internally consistent
     alive_count = sum(1 for c in creatures if c.alive)
     dead_count = sum(1 for c in creatures if not c.alive)
@@ -252,7 +249,7 @@ def test_adv_11_hallucinated_law_hypothesis_rejection():
         random_law(random.Random(1)),
         random_law(random.Random(2)),
     ]
-    
+
     # Ground truth comparison: fake law must not match any genuine law if seeds differ
     matches = 0
     for true_law in world_laws:

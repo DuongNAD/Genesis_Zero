@@ -1,19 +1,11 @@
-# CI cho Genesis Zero.
-#
-# Vì sao nó tồn tại, nói thẳng: kho này có 640 bài kiểm và **đã có hai bài rung**
-# (`test_work.py` đỏ ngẫu nhiên khi máy bận, xanh khi chạy lại). Một bài rung mà
-# không có CI thì không ai phát hiện — nó chỉ đỏ trên máy người khác, và người ấy
-# sẽ học được rằng "chạy lại là được". CI biến chuyện đó thành một tín hiệu thấy
-# được thay vì một thói quen.
-#
-# Ba việc, theo đúng thứ tự đắt dần: lint (giây), test (phút), demo đầu-cuối.
-name: test
+# Legacy standalone test workflow for Genesis Zero.
+# Primary multi-stage CI is defined in .github/workflows/ci.yml.
+# This workflow is preserved for manual, single-job fast test runs.
+name: test-legacy
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
+
 
 jobs:
   kiem-tra:

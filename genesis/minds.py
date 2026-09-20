@@ -146,9 +146,12 @@ class Minds:
             if say.teach is None:
                 continue
             entries = self.codex_of(speaker).entries()
-            if not (0 <= say.teach < len(entries)) or entries[say.teach] is None:
+            if not (0 <= say.teach < len(entries)):
                 continue
-            law = entries[say.teach].law
+            entry = entries[say.teach]
+            if entry is None:
+                continue
+            law = entry.law
             self.teach_events.extend(
                 apply_teach(speaker, law, full, sig, tick_no, self.ledger)
             )

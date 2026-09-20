@@ -62,8 +62,8 @@ async def decision(
 
     try:
         data = json.loads(raw_body.decode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=422, detail="INVALID_PAYLOAD")
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail="INVALID_PAYLOAD") from exc
 
     if not isinstance(data, dict):
         raise HTTPException(status_code=422, detail="INVALID_PAYLOAD")
@@ -121,6 +121,10 @@ async def decision(
     if payload is None or not isinstance(payload, dict):
         raise HTTPException(status_code=422, detail="INVALID_PAYLOAD")
 
+    world = state.runner.world
+    if world is None:
+        raise HTTPException(status_code=400, detail="MATCH_NOT_ACTIVE")
+
     creature = next(
         (c for c in state.runner.creatures if c.id == work_record.creature_id),
         None,
@@ -133,8 +137,8 @@ async def decision(
 
     # 7. Xử lý theo từng loại công việc
     if work_record.kind == "decide":
-        seen = visible(creature, state.runner.world, state.runner.creatures)
-        verdict = validate_decide(payload, creature, state.runner.world, seen)
+        seen = visible(creature, world, state.runner.creatures)
+        verdict = validate_decide(payload, creature, world, seen)
         if not verdict.ok:
             resp = {"accepted": False, "reason": verdict.reason}
             work_record.processed = True
@@ -191,7 +195,7 @@ async def decision(
         verdict = validate_codex(
             payload,
             creature,
-            state.runner.world.surface_map,
+            world.surface_map,
             current_tick,
             cx.last_claim,
         )
@@ -200,7 +204,7 @@ async def decision(
             try:
                 law = law_from_surface_dict(
                     payload["law"],
-                    state.runner.world.surface_map,
+                    world.surface_map,
                 )
             except (KeyError, ValueError, TypeError) as exc:
                 verdict = Verdict(
@@ -246,13 +250,13 @@ async def decision(
         # chấm — bất biến 1 của B-14 vỡ bằng đúng một chữ.
         hb = state.runner.minds.hunch_of(creature)
         verdict = validate_hunch(
-            payload, creature, state.runner.world.surface_map, current_tick, hb.last_write,
+            payload, creature, world.surface_map, current_tick, hb.last_write,
         )
         law = None
         if verdict.ok and payload.get("law") is not None:
             try:
                 law = law_from_surface_dict(
-                    payload["law"], state.runner.world.surface_map,
+                    payload["law"], world.surface_map,
                 )
             except (KeyError, ValueError, TypeError) as exc:
                 verdict = Verdict(

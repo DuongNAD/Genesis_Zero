@@ -12,24 +12,12 @@ Khởi động:  `uvicorn net.server:app --port 8000`
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
 import os
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-
-# Tải cấu hình từ .env nếu có (file bị .gitignore, không chứa khoá trong repo)
-_env_file = Path(__file__).resolve().parent.parent / ".env"
-if _env_file.is_file():
-    try:
-        for _line in _env_file.read_text(encoding="utf-8").splitlines():
-            _line = _line.strip()
-            if _line and not _line.startswith("#") and "=" in _line:
-                _k, _v = _line.split("=", 1)
-                os.environ.setdefault(_k.strip(), _v.strip())
-    except Exception:
-        pass
 
 from net import state
 from net.ratelimit import middleware as ratelimit_middleware
@@ -38,6 +26,17 @@ from net.routes_health import router as router_health
 from net.routes_join import router as router_join
 from net.routes_spectate import router as router_spectate
 from net.routes_work import router as router_work
+
+# Tải cấu hình từ .env nếu có (file bị .gitignore, không chứa khoá trong repo)
+_env_file = Path(__file__).resolve().parent.parent / ".env"
+if _env_file.is_file():
+    with suppress(Exception):
+        for _line in _env_file.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 
 
 @asynccontextmanager
@@ -48,10 +47,8 @@ async def lifespan(app: FastAPI):
     finally:
         state.runner.stopped = True
         task.cancel()
-        try:
+        with suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
 
 app = FastAPI(title="Genesis Zero", version="1", lifespan=lifespan)

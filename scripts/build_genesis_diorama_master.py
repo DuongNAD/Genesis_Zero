@@ -32,12 +32,12 @@ import os
 import random
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Euler, Matrix, Quaternion, Vector
+from mathutils import Matrix, Vector
 from mathutils.bvhtree import BVHTree
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -47,14 +47,15 @@ BLEND_OUTPUT = MODELS_DIR / "genesis_diorama_master.blend"
 GLB_OUTPUT = MODELS_DIR / "genesis_diorama.glb"
 
 sys.path.insert(0, str(ASSETS_DIR))
-import fauna_generator
+import contextlib
 
+import fauna_generator
 
 # =============================================================================
 # 1. Analytical Mathematical Models (Topography, River Spline & Bathymetry)
 # =============================================================================
 
-def evaluate_river_spline(t: np.ndarray | float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def evaluate_river_spline(t: np.ndarray | float) -> Tuple[Any, Any, Any, Any]:
     """
     Evaluates continuous 4-tier river spline (rx, ry, rz, rw) for parameter t in [0.0, 1.0].
     Stage 1 (0.00 -> 0.32): Mountain cascades from (-8.0, 48.0, 21.5) to (0.0, 26.0, 8.0)
@@ -637,7 +638,7 @@ def build_diorama_island_block(collection: bpy.types.Collection) -> bpy.types.Ob
     x_lin = np.linspace(-80.0, 80.0, nx)
     y_lin = np.linspace(-80.0, 80.0, ny)
     X, Y = np.meshgrid(x_lin, y_lin)
-    Z = compute_terrain_elevation(X, Y)
+    Z = np.asarray(compute_terrain_elevation(X, Y))
 
     mesh = bpy.data.meshes.new("Diorama_Island_Block_Mesh")
     obj = bpy.data.objects.new("Diorama_Island_Block", mesh)
@@ -694,15 +695,11 @@ def build_diorama_island_block(collection: bpy.types.Collection) -> bpy.types.Ob
     n_slices = 24
     z_base = -16.0
 
-    perimeter_coords = []
-    # South wall: (i, 0) for i in 0..nx-1
-    for i in range(nx): perimeter_coords.append((i, 0))
-    # East wall: (nx-1, j) for j in 1..ny-1
-    for j in range(1, ny): perimeter_coords.append((nx - 1, j))
-    # North wall: (i, ny-1) for i in nx-2 down to 0
-    for i in range(nx - 2, -1, -1): perimeter_coords.append((i, ny - 1))
-    # West wall: (0, j) for j in ny-2 down to 1
-    for j in range(ny - 2, 0, -1): perimeter_coords.append((0, j))
+    perimeter_coords = [(i, 0) for i in range(nx)]
+    perimeter_coords.extend((nx - 1, j) for j in range(1, ny))
+    perimeter_coords.extend((i, ny - 1) for i in range(nx - 2, -1, -1))
+    perimeter_coords.extend((0, j) for j in range(ny - 2, 0, -1))
+
 
     wall_layers: List[List[int]] = []
     # Layer 0: top perimeter vertices
@@ -715,10 +712,7 @@ def build_diorama_island_block(collection: bpy.types.Collection) -> bpy.types.Ob
             x_val = float(X[j, i])
             y_val = float(Y[j, i])
             z_surf = float(Z[j, i])
-            if s < n_slices:
-                z_cur = z_surf * (1.0 - frac) + (-15.0) * frac
-            else:
-                z_cur = z_base
+            z_cur = z_surf * (1.0 - frac) + -15.0 * frac if s < n_slices else z_base
             depth = z_surf - z_cur
 
             verts.append((x_val, y_val, z_cur))
@@ -764,10 +758,8 @@ def build_diorama_island_block(collection: bpy.types.Collection) -> bpy.types.Ob
     bm = bmesh.new()
     bm_verts = [bm.verts.new(v) for v in verts]
     for f_inds in faces:
-        try:
+        with contextlib.suppress(ValueError):
             bm.faces.new([bm_verts[k] for k in f_inds])
-        except ValueError:
-            pass
 
     bm.to_mesh(mesh)
     bm.free()
@@ -805,7 +797,7 @@ def build_hydrology(collection: bpy.types.Collection) -> Dict[str, bpy.types.Obj
     m_lake.materials.append(mat_water)
 
     bm_lake = bmesh.new()
-    lcx, lcy, lcz, lr = -20.0, -8.0, 4.50, 23.5
+    lcx, lcy, lcz, _lr = -20.0, -8.0, 4.50, 23.5
     N_lake = 48
     rings = [0.0, 6.0, 12.0, 17.5, 23.5]
     v_rings = []
@@ -937,10 +929,7 @@ def build_hydrology(collection: bpy.types.Collection) -> Dict[str, bpy.types.Obj
                 hit, _, _, _ = diorama_bvh.ray_cast(Vector((px, py, 50.0)), Vector((0, 0, -1)))
                 if hit:
                     actual_tz = float(hit.z)
-            if col_idx == 2:
-                pz = cz
-            else:
-                pz = float(np.clip(cz, actual_tz + 0.02, actual_tz + 0.85))
+            pz = cz if col_idx == 2 else float(np.clip(cz, actual_tz + 0.02, actual_tz + 0.85))
             row.append(bm_riv.verts.new((px, py, pz)))
         riv_rows.append(row)
 
@@ -1018,16 +1007,16 @@ def build_hydrology(collection: bpy.types.Collection) -> Dict[str, bpy.types.Obj
         r = rng.uniform(22.0, 26.5)
         px = lcx + r * math.cos(ang)
         py = lcy + r * math.sin(ang)
-        pz = compute_terrain_elevation(px, py)
+        pz = float(compute_terrain_elevation(px, py))
         pebble_centers.append((px, py, pz, rng.uniform(0.25, 0.65)))
 
     for _ in range(20):
         t = rng.uniform(0.35, 0.90)
         rx_val, ry_val, rz_val, rw_val = evaluate_river_spline(t)
         side = rng.choice([-1.0, 1.0])
-        px = rx_val + side * (rw_val * 0.5 + rng.uniform(0.2, 1.5))
-        py = ry_val + rng.uniform(-0.5, 0.5)
-        pz = compute_terrain_elevation(px, py)
+        px = float(rx_val + side * (rw_val * 0.5 + rng.uniform(0.2, 1.5)))
+        py = float(ry_val + rng.uniform(-0.5, 0.5))
+        pz = float(compute_terrain_elevation(px, py))
         pebble_centers.append((px, py, pz, rng.uniform(0.20, 0.50)))
 
     for px, py, pz, s in pebble_centers:
@@ -1231,11 +1220,10 @@ def build_karst_cave_system(collection: bpy.types.Collection) -> Dict[str, bpy.t
     # Sculpted Exterior Portal Arch Facade & Keystone Rim at Entrance (s = 0)
     r0 = tunnel_rings[0]
     facade_thickness = 0.85
-    r0_front = []
     # Project outwards along cliff face normal
     front_dir = Vector((-0.45, -0.89, 0.0)).normalized()
-    for v in r0:
-        r0_front.append(bm_p.verts.new(v.co + front_dir * facade_thickness))
+    r0_front = [bm_p.verts.new(v.co + front_dir * facade_thickness) for v in r0]
+
 
     for v_i in range(7):
         bm_p.faces.new((r0[v_i + 1], r0[v_i], r0_front[v_i], r0_front[v_i + 1]))
@@ -1878,22 +1866,22 @@ def build_genesis_diorama_master():
 
     # 3. Build 4-Tier Continuous Hydrology Network
     print("\n[3/7] Generating continuous 4-tier hydrology network...")
-    hydro_objs = build_hydrology(cols["Hydrology"])
+    build_hydrology(cols["Hydrology"])
 
     # 4. Build Subterranean Karst Cave System
     print("\n[4/7] Generating subterranean karst cave system (clearance >= 12.0m)...")
-    cave_objs = build_karst_cave_system(cols["Caves"])
+    build_karst_cave_system(cols["Caves"])
 
     # 5. Build Botanical Prototypes and Geometry Nodes Scatter
     print("\n[5/7] Constructing 13 botanical prototypes and procedural Geometry Nodes scatter...")
-    prototypes = build_botanical_prototypes(cols)
-    scatter_objs = setup_biome_scatter(cols, diorama_block)
+    build_botanical_prototypes(cols)
+    setup_biome_scatter(cols, diorama_block)
 
     # 6. Rigged Fauna and Lighting
     print("\n[6/7] Instantiating rigged fauna and lighting systems...")
-    fauna_pairs = setup_fauna(cols["Fauna"])
-    lights = build_lighting(cols["Lighting"])
-    cam_rig = build_24_camera_rig(cols["Camera_Rig_24"])
+    setup_fauna(cols["Fauna"])
+    build_lighting(cols["Lighting"])
+    build_24_camera_rig(cols["Camera_Rig_24"])
 
     # 7. Save .blend File
     print(f"\n[7/7] Saving master project to {BLEND_OUTPUT}...")

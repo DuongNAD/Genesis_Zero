@@ -283,8 +283,7 @@ def sample_situations(law: Law, n: int, rng: random.Random) -> list[Situation]:
                 _apply_cond_hold(ctx_dict, law.conds[1], rng)
                 _apply_cond_break(ctx_dict, law.conds[0], rng)
                 ctx = _dict_to_ctx(ctx_dict)
-                meta = (("broken_cond", (0,)),)
-                s = _make_matching_event(law, ctx, rng, meta=meta)
+                s = _make_matching_event(law, ctx, rng, meta=(("broken_cond", (0,)),))
                 situations.append(s)
 
             # Trường hợp 1: hỏng cond 1 riêng (cond 0 đúng)
@@ -293,8 +292,7 @@ def sample_situations(law: Law, n: int, rng: random.Random) -> list[Situation]:
                 _apply_cond_hold(ctx_dict, law.conds[0], rng)
                 _apply_cond_break(ctx_dict, law.conds[1], rng)
                 ctx = _dict_to_ctx(ctx_dict)
-                meta = (("broken_cond", (1,)),)
-                s = _make_matching_event(law, ctx, rng, meta=meta)
+                s = _make_matching_event(law, ctx, rng, meta=(("broken_cond", (1,)),))
                 situations.append(s)
 
             # Trường hợp 2: hỏng cả hai
@@ -303,8 +301,7 @@ def sample_situations(law: Law, n: int, rng: random.Random) -> list[Situation]:
                 _apply_cond_break(ctx_dict, law.conds[0], rng)
                 _apply_cond_break(ctx_dict, law.conds[1], rng)
                 ctx = _dict_to_ctx(ctx_dict)
-                meta = (("broken_cond", (0, 1)),)
-                s = _make_matching_event(law, ctx, rng, meta=meta)
+                s = _make_matching_event(law, ctx, rng, meta=(("broken_cond", (0, 1)),))
                 situations.append(s)
 
         # 3. Tầng unrelated: trigger không khớp

@@ -5,10 +5,9 @@ Builds 10 realistic desert succulents with clean BMesh topology & PBR materials.
 """
 
 import math
-import os
-import random
 import sys
 from pathlib import Path
+
 import bpy
 from mathutils import Vector
 
@@ -16,15 +15,16 @@ ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")
 sys.path.insert(0, str(ROOT / "assets" / "flora" / "generators"))
 
 from flora_builder import (
+    add_channeled_blade,
+    add_cupped_petal,
+    add_curved_tube,
+    add_foliage_clump,
     clean_scene,
     create_pbr_bark_material,
     create_pbr_foliage_material,
-    add_curved_tube,
-    add_cupped_petal,
-    add_channeled_blade,
-    add_foliage_clump,
-    save_and_export
+    save_and_export,
 )
+
 
 def apply_smooth_and_materials(mesh, materials, mat_idx):
     for p in mesh.polygons:
@@ -68,7 +68,7 @@ def build_succulent_cape_aloe():
 
     # Candelabra 3-pronged orange-red flower spike
     sp_st = apex + Vector((0, 0, 0.12))
-    for f_i, (fx, fy) in enumerate([(0, 0), (0.15, 0.10), (-0.14, 0.12)]):
+    for _f_i, (fx, fy) in enumerate([(0, 0), (0.15, 0.10), (-0.14, 0.12)]):
         fl_pts = [sp_st, sp_st + Vector((fx*0.5, fy*0.5, 0.3)), sp_st + Vector((fx, fy, 0.85))]
         add_curved_tube(verts, faces, mat_idx, fl_pts, [0.015, 0.012, 0.006], rad_segs=4, mat_id=0)
         # Dense cylindrical flower raceme
@@ -352,7 +352,7 @@ def build_succulent_joshua_tree():
 
     # 4 Angular crooked branches
     b_st = trunk_pts[-1]
-    for b_i, (bx, by, bz) in enumerate([(0.7, 0.4, 0.6), (-0.6, 0.5, 0.7), (0.5, -0.6, 0.5), (-0.4, -0.5, 0.8)]):
+    for _b_i, (bx, by, bz) in enumerate([(0.7, 0.4, 0.6), (-0.6, 0.5, 0.7), (0.5, -0.6, 0.5), (-0.4, -0.5, 0.8)]):
         elbow = b_st + Vector((bx*0.5, by*0.5, bz*0.3))
         tip = b_st + Vector((bx, by, bz))
         add_curved_tube(verts, faces, mat_idx, [b_st, elbow, tip], [0.050, 0.038, 0.025], rad_segs=4, mat_id=0)

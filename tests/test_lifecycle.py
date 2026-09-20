@@ -57,7 +57,7 @@ def test_resolve_eat_basic() -> None:
     assert c.energy == 50.0
 
     # Đặt cây tại ô của c
-    w.plants[(5, 5)] = 0
+    w.plants[(5, 5)] = "FRUIT_A"
     gained = resolve_eat(c, w)
     assert gained == float(config.PLANT_ENERGY)
     assert c.energy == 50.0 + config.PLANT_ENERGY
@@ -80,7 +80,7 @@ def test_resolve_eat_dead_creature() -> None:
         energy=0.0,
         alive=False,
     )
-    w.plants[(5, 5)] = 0
+    w.plants[(5, 5)] = "FRUIT_A"
     assert resolve_eat(c, w) == 0.0
     assert c.energy == 0.0
     assert (5, 5) in w.plants
@@ -94,7 +94,7 @@ def test_food_conflict_determinism() -> None:
     assert creature_sort_key(a) < creature_sort_key(b)
     cell = a.pos
     w.plants.clear()
-    w.plants[cell] = 0
+    w.plants[cell] = "FRUIT_A"
     b.pos = cell
     # Phải rút bớt năng lượng: sinh vật mới sinh đã ở trần nên ăn không tăng gì.
     a.energy = b.energy = a.traits.energy_max / 2
@@ -106,7 +106,7 @@ def test_food_conflict_determinism() -> None:
 
     # Khôi phục và chạy thứ tự XUÔI
     a.energy, b.energy = e0
-    w.plants[cell] = 0
+    w.plants[cell] = "FRUIT_A"
     _resolve_eating(w, [a, b], None, 0)
 
     assert r1 == (a.energy, b.energy), (r1, (a.energy, b.energy))

@@ -163,10 +163,7 @@ class HunchBook:
             if h is None:
                 continue
             text = to_vietnamese(h.law, sm)
-            if h.tried == 0:
-                tally = "chưa thử lần nào"
-            else:
-                tally = f"đúng {h.hit} / thử {h.tried}"
+            tally = "chưa thử lần nào" if h.tried == 0 else f"đúng {h.hit} / thử {h.tried}"
             rows.append(f"{i}. {text} — {tally}")
         if not rows:
             return ""

@@ -63,7 +63,7 @@ def gate(seeds: int, ticks: int, workers: int) -> dict:
     out: dict = {"seeds": seeds, "ticks": ticks, "by_world": {}}
     for world in ("LAW", "FLAT"):
         sub = [r for r in rows if r["world"] == world]
-        by_sp = {}
+        by_sp: dict[str, list[float]] = {}
         for r in sub:
             by_sp.setdefault(r["species_id"], []).append(r["alive_ratio"])
         top = max(by_sp, key=lambda k: founder_brain_of(rows, k))

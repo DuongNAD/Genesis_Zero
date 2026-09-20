@@ -18,6 +18,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Dict
+
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -276,7 +277,7 @@ def test_river_water_ribbon_alignment_with_carved_riverbed(empirical_probe_resul
     floating ribbons, or unphysical uphill water flow.
     """
     river = empirical_probe_results["river_ribbon"]
-    
+
     # Assert zero submerged vertices (water buried underground)
     assert river["submerged_vertices_count"] == 0, (
         f"CRITICAL DEFECT: River water ribbon is submerged under solid rock at {river['submerged_vertices_count']} vertices! "

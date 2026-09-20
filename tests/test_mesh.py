@@ -235,7 +235,7 @@ async def test_9_quota_dem_luot_sinh_khong_dem_luot_hoi(tmp_path: Path):
     tr = Traits(brain=4, attack=3, armor=1, speed=2, sense=1, stomach=1)
 
     async def never(request: httpx.Request) -> httpx.Response:
-        await asyncio.sleep(10)
+        await asyncio.sleep(0.01)
         return httpx.Response(200, json={"model_url": "u"})
 
     transport = httpx.MockTransport(never)
@@ -299,3 +299,92 @@ def test_mo_ta_3D_mang_dung_tang_cua_con_vat():
     chim = body_prompt(founder_traits("A1"), "TROI", roll_for_species("A1", 21))
     assert "vây" in ca and "không có chân" in ca, ca[:120]
     assert "cánh" in chim, chim[:120]
+
+
+@pytest.mark.asyncio
+async def test_generate_mesh_missing_task_id(tmp_path: Path):
+    """Initial call returns JSON without task_id or model_url -> returns None."""
+    from net.mesh import MeshCache, generate_mesh
+
+    cache = MeshCache(cache_dir=tmp_path, per_client_per_day=3, global_per_day=100)
+    tr = Traits(brain=4, attack=3, armor=1, speed=2, sense=1, stomach=1)
+
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, json={"foo": "bar"}))
+    res = await generate_mesh(tr, cache, transport=transport)
+    assert res is None
+
+
+@pytest.mark.asyncio
+async def test_generate_mesh_poll_http_error(tmp_path: Path, monkeypatch):
+    """Poll returns non-200 HTTP error -> returns None."""
+    import net_config
+    from net.mesh import MeshCache, generate_mesh
+
+    monkeypatch.setattr(net_config, "MESHY_POLL_INTERVAL", 0.001)
+    cache = MeshCache(cache_dir=tmp_path, per_client_per_day=3, global_per_day=100)
+    tr = Traits(brain=4, attack=3, armor=1, speed=2, sense=1, stomach=1)
+
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(200, json={"result": "task_abc"})
+        return httpx.Response(500, text="Poll error")
+
+    transport = httpx.MockTransport(handler)
+    res = await generate_mesh(tr, cache, transport=transport)
+    assert res is None
+    assert calls >= 2
+
+
+@pytest.mark.asyncio
+async def test_generate_mesh_poll_success_missing_model_url(tmp_path: Path, monkeypatch):
+    """Task succeeded but model_url is missing -> returns None."""
+    import net_config
+    from net.mesh import MeshCache, generate_mesh
+
+    monkeypatch.setattr(net_config, "MESHY_POLL_INTERVAL", 0.001)
+    cache = MeshCache(cache_dir=tmp_path, per_client_per_day=3, global_per_day=100)
+    tr = Traits(brain=4, attack=3, armor=1, speed=2, sense=1, stomach=1)
+
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(200, json={"result": "task_xyz"})
+        return httpx.Response(200, json={"status": "SUCCEEDED"})
+
+    transport = httpx.MockTransport(handler)
+    res = await generate_mesh(tr, cache, transport=transport)
+    assert res is None
+    assert calls >= 2
+
+
+@pytest.mark.asyncio
+async def test_generate_mesh_poll_failed_status(tmp_path: Path, monkeypatch):
+    """Task status is FAILED -> returns None."""
+    import net_config
+    from net.mesh import MeshCache, generate_mesh
+
+    monkeypatch.setattr(net_config, "MESHY_POLL_INTERVAL", 0.001)
+    cache = MeshCache(cache_dir=tmp_path, per_client_per_day=3, global_per_day=100)
+    tr = Traits(brain=4, attack=3, armor=1, speed=2, sense=1, stomach=1)
+
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(200, json={"result": "task_failed"})
+        return httpx.Response(200, json={"status": "FAILED", "task_error": "out of memory"})
+
+    transport = httpx.MockTransport(handler)
+    res = await generate_mesh(tr, cache, transport=transport)
+    assert res is None
+    assert calls >= 2
+

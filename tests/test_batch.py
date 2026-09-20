@@ -23,8 +23,10 @@ def test_flat_va_law_khac_nhau_dung_mot_bien():
 
 def test_welch_dung_voi_ca_da_biet():
     """Hai nhóm khác phương sai — t gộp sẽ cho sai số chuẩn sai."""
+    import math
+
     t, df = _welch([1.0] * 10, [2.0] * 10)
-    assert t != t or True          # phương sai 0 -> nan, không được ném
+    assert math.isnan(t)  # phương sai 0 -> nan, không được ném
     a = [1.0, 2.0, 3.0, 4.0, 5.0]
     b = [3.0, 4.0, 5.0, 6.0, 7.0]
     t, df = _welch(a, b)

@@ -55,19 +55,18 @@ def test_phase_at_cycle() -> None:
 
 def test_drink_action_and_last_drink_tick() -> None:
     """Con đứng trên ô WATER được ghi nhận DRINK và cập nhật last_drink_tick."""
+    from genesis.traits import founder_traits
+
     world = World(10, 10, random.Random(1))
     world.grid[5][5] = Terrain.WATER
     c = Creature(
         id="L1:0",
         species="L1",
-        traits=world.__dict__.get("founder_traits", None) or world.grid,  # dummy
+        traits=founder_traits("L1"),
         pos=(5, 5),
         hp=50.0,
         energy=100.0,
     )
-    # Gán traits hợp lệ
-    from genesis.traits import founder_traits
-    c.traits = founder_traits("L1")
     assert c.last_drink_tick == -1
 
     creatures = [c]

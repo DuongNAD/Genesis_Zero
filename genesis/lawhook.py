@@ -38,19 +38,21 @@ def build_ctx(c: Creature, world: World, tick_no: int, creatures: list[Creature]
     với L-04 B1. Thiếu trường thì luật khác đánh giá thành None và ăn điểm oan.
     """
     x, y = world.wrap(*c.pos)
-    counts: dict[str, dict[int, int]] = {k: {} for k in ("SAME_SP", "OTHER_SP", "ANY")}
-    for r in (1, 2, 3):
-        same = other = 0
-        for o in creatures:
-            if o is c or not o.alive or world.dist(c.pos, o.pos) > r:
-                continue
-            if o.species == c.species:
-                same += 1
-            else:
-                other += 1
-        counts["SAME_SP"][r] = same
-        counts["OTHER_SP"][r] = other
-        counts["ANY"][r] = same + other
+    counts: dict[str, dict[int, int]] = {
+        "SAME_SP": {1: 0, 2: 0, 3: 0},
+        "OTHER_SP": {1: 0, 2: 0, 3: 0},
+        "ANY": {1: 0, 2: 0, 3: 0},
+    }
+    for o in creatures:
+        if o is c or not o.alive:
+            continue
+        d = world.dist(c.pos, o.pos)
+        if d > 3:
+            continue
+        key = "SAME_SP" if o.species == c.species else "OTHER_SP"
+        for r in range(max(1, d), 4):
+            counts[key][r] += 1
+            counts["ANY"][r] += 1
     return Ctx(
         phase=phase_at(tick_no),
         terrain=str(world.grid[y][x]),

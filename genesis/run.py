@@ -9,22 +9,10 @@ import argparse
 import asyncio
 import json
 import random
-import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
-
-
-def configure_console_encoding() -> None:
-    """Cấu hình stdout/stderr dùng UTF-8 errors=replace để tránh crash Unicode trên Windows (cp1252)."""
-    for stream_name in ("stdout", "stderr"):
-        stream = getattr(sys, stream_name, None)
-        if stream is not None and hasattr(stream, "reconfigure"):
-            try:
-                stream.reconfigure(encoding="utf-8", errors="replace")
-            except (AttributeError, OSError, ValueError):
-                # Captured/closed streams need not expose a reconfigurable buffer.
-                continue
+from typing import Any
 
 from rich.live import Live
 
@@ -36,6 +24,7 @@ from genesis.lawdsl import to_json
 from genesis.lawgen import generate_cached
 from genesis.logio import LogWriter
 from genesis.oracle_run import run_oracle
+from genesis.platform import configure_console_encoding
 from genesis.render import render_frame
 from genesis.replay import ReplayStrategist
 from genesis.strategist import LlmStrategist
@@ -52,7 +41,7 @@ DEBUG_RNG_SAMPLES = 20
 
 def parse(argv: list[str] | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(prog="genesis", description="Chạy một ván Genesis Zero")
-    ap.add_argument("--seed", type=int, required=True)
+    ap.add_argument("--seed", type=int, default=42, help="seed ngẫu nhiên cho thế giới (mặc định: 42)")
     ap.add_argument("--ticks", type=int, default=400)
     ap.add_argument("--fps", type=float, default=10.0, help="khung hình/giây khi render")
     ap.add_argument("--out", type=Path, default=None)
@@ -169,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
             encoding="utf-8",
         )
 
-    strategist = None
+    strategist: Any | None = None
     if args.replay is not None:
         # Dựng một "tâm trí" y hệt ván thật để replay so được prompt_hash.
         mind = LlmStrategist(args.llm_url, [c.id for c in creatures])

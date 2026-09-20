@@ -23,6 +23,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -72,7 +73,7 @@ def main() -> int:
     ap.add_argument("--agy", action="store_true", help="sử dụng AGY CLI để suy luận từ prompt và tinh chỉnh qua Blender MCP")
     args = ap.parse_args()
 
-    rows = all_static_prompts()
+    rows: list[dict[str, Any]] = list(all_static_prompts())
     if args.creatures:
         rows += creature_rows(args.creatures)
     if args.only:
@@ -96,8 +97,8 @@ def main() -> int:
         if not sel:
             continue
         lines.append(f"## {nhom}  ({len(sel)})\n")
-        for r in sel:
-            lines.append(f"### `{r['id']}`\n\n{r['prompt']}\n")
+        lines.extend(f"### `{r['id']}`\n\n{r['prompt']}\n" for r in sel)
+
     (OUT / "prompts.md").write_text("\n".join(lines), encoding="utf-8")
 
     print(f"đã ghi {len(rows)} mô tả → {OUT}/prompts.json và prompts.md")
@@ -111,13 +112,13 @@ def main() -> int:
             return 0
         print(f"\nBắt đầu dựng {len(c_rows)} mô hình 3D sinh học qua {'AGY CLI' if args.agy else 'Blender'}...")
         for r in c_rows:
-            sp = r["species_id"]
-            sd = r["seed"]
+            sp = str(r["species_id"])
+            sd = int(r["seed"])
             if args.agy:
                 run_with_agy(sp, sd)
             else:
                 build_single_creature(sp, sd, blender_bin)
-        print(f"✓ Đã xuất toàn bộ GLB + BLEND vào assets/creatures/")
+        print("✓ Đã xuất toàn bộ GLB + BLEND vào assets/creatures/")
         return 0
 
     if not args.send:

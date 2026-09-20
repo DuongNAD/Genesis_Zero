@@ -44,7 +44,7 @@ def test_acceptance_criteria() -> None:
     for yy in range(24):
         for xx in range(24):
             if full.grid[yy][xx] == Terrain.PLAIN:
-                full.plants[(xx, yy)] = 0
+                full.plants[(xx, yy)] = "FRUIT_A"
     assert spawn_plants(full, random.Random(1), 0) == 0
 
 
@@ -77,7 +77,7 @@ def test_plant_max_checked_each_spawn_step() -> None:
         if w.grid[y][x] == Terrain.PLAIN
     ]
     for i in range(config.PLANT_MAX - 1):
-        w.plants[plain_cells[i]] = 0
+        w.plants[plain_cells[i]] = "FRUIT_A"
 
     assert len(w.plants) == config.PLANT_MAX - 1
     # Một lần gọi chỉ được mọc đúng 1 cây để đạt trần, không được mọc config.PLANT_RESPAWN cây

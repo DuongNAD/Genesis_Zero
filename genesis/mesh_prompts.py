@@ -238,10 +238,11 @@ def all_static_prompts() -> list[dict[str, str]]:
     Sinh vật không có ở đây: chúng phụ thuộc vector trait, mà trait chỉ biết lúc
     `/join`. `net.mesh` lo phần đó theo quota.
     """
-    out: list[dict[str, str]] = []
-    for t in Terrain:
-        out.append({"id": f"terrain_{t.name.lower()}", "nhom": "dia_hinh",
-                    "prompt": terrain_prompt(t)})
+    out: list[dict[str, str]] = [
+        {"id": f"terrain_{t.name.lower()}", "nhom": "dia_hinh", "prompt": terrain_prompt(t)}
+        for t in Terrain
+    ]
+
     for color, shape in law_config.FRUIT_SURFACES:
         # id không dấu: nó thành tên file và một phần URL.
         out.append({"id": f"fruit_{_SLUG[color]}_{_SLUG[shape]}", "nhom": "vat_the",

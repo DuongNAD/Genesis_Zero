@@ -1,0 +1,84 @@
+# GitLab CI/CD Pipeline Configuration for Genesis Zero
+# Production-grade 5-stage automated testing, security audit, and container packaging
+
+stages:
+  - lint
+  - typecheck
+  - test
+  - security
+  - build
+
+variables:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+
+default:
+  image: python:3.11-slim
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    paths:
+      - .cache/pip/
+      - .cache/uv/
+  before_script:
+    - python -V
+    - pip install --upgrade pip
+    - pip install uv
+    - uv sync --extra dev
+
+# ── Stage 1: Linting ────────────────────────────────────────────────────────
+lint:ruff:
+  stage: lint
+  script:
+    - uv run ruff check genesis net tests scripts client tools
+
+# ── Stage 2: Type Checking ──────────────────────────────────────────────────
+typecheck:mypy:
+  stage: typecheck
+  needs: [lint:ruff]
+  script:
+    - uv run mypy genesis net client
+
+# ── Stage 3: Testing ────────────────────────────────────────────────────────
+test:quick:
+  stage: test
+  needs: [lint:ruff, typecheck:mypy]
+  script:
+    - uv run python scripts/ci_quick.py
+
+test:pytest:
+  stage: test
+  needs: [lint:ruff, typecheck:mypy]
+  script:
+    - uv run pytest -q --cov=genesis --cov=net --cov=client --cov-fail-under=90.0 --cov-report=term --cov-report=xml:coverage.xml
+  artifacts:
+    when: always
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    paths:
+      - coverage.xml
+
+# ── Stage 4: Security Audit ─────────────────────────────────────────────────
+security:audit:
+  stage: security
+  needs: [lint:ruff]
+  script:
+    - uv audit
+
+# ── Stage 5: Container Build ────────────────────────────────────────────────
+build:docker:
+  stage: build
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_TLS_CERTDIR: ""
+  before_script: []
+  script:
+    - docker build -t genesis-zero:$CI_COMMIT_SHORT_SHA -t genesis-zero:latest .
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

@@ -23,7 +23,7 @@ import random
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from genesis.prompt import prompt_hash
 from genesis.reflex import ActiveGoal
@@ -63,7 +63,7 @@ class ReplayStrategist:
         self,
         log_path: str | Path,
         prompt_fn: PromptFn | None = None,
-        mind: object | None = None,
+        mind: Any | None = None,
     ) -> None:
         # `mind` là một LlmStrategist chỉ dùng để DỰNG LẠI prompt: nó giữ sổ tay,
         # Sổ Luật, cache prefix — đúng thứ prompt phụ thuộc vào. Không có nó thì

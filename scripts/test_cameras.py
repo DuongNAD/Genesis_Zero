@@ -1,5 +1,5 @@
+
 from mathutils import Vector
-import math
 
 WILDERNESS_CAMERAS = [
     {

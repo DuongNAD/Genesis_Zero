@@ -23,17 +23,33 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Cùng bản vá họ cp1252 với genesis/run.py và launch.py: khi stdout/stderr bị
-# pipe (pytest capture, CI), bảng mã console là cp1252 và các ký tự tiếng
-# Việt/✓ làm crash ngay dòng báo cáo đầu tiên — đúng lúc "kiểm tra hệ thống"
-# cần in ra LỆNH SỬA nhất.
-for _stream_name in ("stdout", "stderr"):
-    _stream = getattr(sys, _stream_name, None)
-    if _stream is not None and hasattr(_stream, "reconfigure"):
-        try:
-            _stream.reconfigure(encoding="utf-8", errors="replace")
-        except (AttributeError, OSError, ValueError):
-            continue
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+try:
+    from genesis.platform import (
+        configure_console_encoding,
+        find_python_executable,
+        utf8_subprocess_env,
+    )
+    configure_console_encoding()
+except ImportError:
+    for _stream_name in ("stdout", "stderr"):
+        _stream = getattr(sys, _stream_name, None)
+        if _stream is not None and hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except (AttributeError, OSError, ValueError):
+                continue
+
+    def find_python_executable() -> str:
+        return sys.executable or "python"
+
+    def utf8_subprocess_env(base_env: dict[str, str] | None = None) -> dict[str, str]:
+        env = dict(os.environ if base_env is None else base_env)
+        env["PYTHONIOENCODING"] = "utf-8"
+        env["PYTHONUTF8"] = "1"
+        return env
 
 OK, WARN, FAIL = "OK  ", "CẢNH", "HỎNG"
 _rows: list[tuple[str, str, str, str]] = []
@@ -41,6 +57,10 @@ _rows: list[tuple[str, str, str, str]] = []
 
 def check(name: str, status: str, detail: str = "", fix: str = "") -> None:
     _rows.append((status, name, detail, fix))
+    mark = {OK: "✓", WARN: "!", FAIL: "✗"}.get(status, " ")
+    print(f"  {mark} {name:<22}  {detail}", flush=True)
+    if fix and status != OK:
+        print(f"    {'':<22}  → {fix}", flush=True)
 
 
 def _port_open(host: str, port: int, timeout: float = 0.6) -> bool:
@@ -89,7 +109,7 @@ def check_import() -> None:
     r = subprocess.run(
         [sys.executable, "-c",
          "from genesis.tick import build_match; build_match(1); print('ok')"],
-        capture_output=True, text=True, cwd=ROOT, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT, timeout=120,
     )
     if r.returncode == 0:
         check("Dựng được một ván", OK, "build_match(1)")
@@ -106,20 +126,36 @@ def check_llm(url: str) -> None:
     model không thể đoán trúng, nên trả đúng nghĩa là grammar đang chạy thật.
     """
     import urllib.error
+    import urllib.parse
     import urllib.request
+
+    # Construct request first to validate URL scheme/format (raises ValueError if malformed)
+    req = urllib.request.Request(
+        f"{url}/completion",
+        data=json.dumps({
+            "prompt": "Trả lời một JSON.", "n_predict": 24, "temperature": 0.1,
+            "json_schema": {"type": "object", "properties": {
+                "x": {"type": "string", "enum": ["XYZZY"]}},
+                "required": ["x"], "additionalProperties": False},
+        }).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+
     try:
-        req = urllib.request.Request(
-            f"{url}/completion",
-            data=json.dumps({
-                "prompt": "Trả lời một JSON.", "n_predict": 24, "temperature": 0.1,
-                "json_schema": {"type": "object", "properties": {
-                    "x": {"type": "string", "enum": ["XYZZY"]}},
-                    "required": ["x"], "additionalProperties": False},
-            }).encode(),
-            headers={"Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            body = json.loads(resp.read())
+        parsed = urllib.parse.urlparse(url)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    except Exception:
+        host, port = "127.0.0.1", 8080
+
+    if not _port_open(host, port, timeout=0.5):
+        check("Model server", WARN, f"{url} không trả lời (cổng {port} chưa mở)",
+              "bash scripts/serve_L2.sh   # hoặc bỏ qua nếu chỉ chạy --controller reflex")
+        return
+
+    try:
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
+            body = json.loads(resp.read().decode("utf-8", errors="replace"))
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         check("Model server", WARN, f"{url} không trả lời ({type(exc).__name__})",
               "bash scripts/serve_L2.sh   # hoặc bỏ qua nếu chỉ chạy --controller reflex")
@@ -148,7 +184,13 @@ def check_tunnel() -> None:
     if shutil.which("ngrok") is None:
         check("ngrok", WARN, "chưa cài", "brew install ngrok")
         return
-    r = subprocess.run(["ngrok", "config", "check"], capture_output=True, text=True)
+    r = subprocess.run(
+        ["ngrok", "config", "check"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     if r.returncode == 0:
         check("ngrok", OK, "đã có authtoken")
     else:
@@ -184,7 +226,7 @@ def check_tests(full: bool) -> None:
     r = subprocess.run(
         [sys.executable, "-m", "pytest", "tests/", "-q", "-p", "no:cacheprovider",
          "--tb=no"],
-        capture_output=True, text=True, cwd=ROOT, timeout=900,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=ROOT, timeout=900,
     )
     out = r.stdout + r.stderr
     n_fail = out.count("\nFAILED")
@@ -212,6 +254,8 @@ def auto_fix() -> list[str]:
                 [sys.executable, "-m", "pip", "install", *missing],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=ROOT,
             )
             if r.returncode == 0:
@@ -239,6 +283,7 @@ def main(argv: list[str] | None = None) -> int:
             for rem in remediations:
                 print(f"  [AUTO-FIX] {rem}")
 
+    print()
     check_python()
     check_deps()
     check_import()
@@ -249,13 +294,6 @@ def main(argv: list[str] | None = None) -> int:
     check_tunnel()
     check_tests(args.full)
 
-    w = max(len(n) for _, n, _, _ in _rows)
-    print()
-    for status, name, detail, fix in _rows:
-        mark = {OK: "✓", WARN: "!", FAIL: "✗"}[status]
-        print(f"  {mark} {name:<{w}}  {detail}")
-        if fix and status != OK:
-            print(f"    {'':<{w}}  → {fix}")
     n_fail = sum(1 for s, *_ in _rows if s == FAIL)
     n_warn = sum(1 for s, *_ in _rows if s == WARN)
     print()

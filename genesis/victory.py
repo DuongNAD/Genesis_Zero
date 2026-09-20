@@ -154,6 +154,23 @@ def _n_laws(rows: list[dict]) -> int:
     return len({r["law_idx"] for r in rows}) or 1
 
 
+def victory_standings_from_data(records: list[dict], truth: dict) -> Victory:
+    from genesis.score import score_records, total_reward
+
+    rows = score_records(records, truth)
+    ticks = max((int(r["t_discover"]) for r in rows), default=400) - 1
+    return decide(
+        rows,
+        total_reward(rows),
+        match_id=rows[0]["match_id"] if rows else "",
+        seed=int(truth["seed"]),
+        ticks=ticks,
+    )
+
+
+from_records = victory_standings_from_data
+
+
 def from_files(log: Path, truth: Path) -> Victory:
     from genesis.score import score_match, total_reward
 

@@ -1,6 +1,9 @@
 """Run the real viewer in the existing Node/Three.js harness."""
 
-from test_challenger_m4_scrubber import _run_node_script
+try:
+    from test_challenger_m4_scrubber import _run_node_script
+except ImportError:
+    from tests.test_challenger_m4_scrubber import _run_node_script
 
 
 def test_match_transition_does_not_overwrite_same_tick():

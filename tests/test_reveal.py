@@ -6,6 +6,7 @@ import ast
 import json
 import random
 from pathlib import Path
+from typing import Any
 
 from rich.table import Table
 
@@ -84,7 +85,7 @@ def test_reveal_with_scores_and_discoveries() -> None:
         Law(Trigger(TriggerKind.EAT, "FRUIT_A"), (), Effect(EffectKind.DAMAGE, Mag.MED, Dur.INSTANT)),
         Law(Trigger(TriggerKind.DRINK), (), Effect(EffectKind.ENERGY_GAIN, Mag.BIG, Dur.INSTANT)),
     ]
-    codices = {
+    codices: dict[str, list[Any]] = {
         "sp_kienlua:0": [],
         "sp_meo:1": [],
     }

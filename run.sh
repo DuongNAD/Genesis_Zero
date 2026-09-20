@@ -39,13 +39,22 @@ fi
 
 # 3. Kích hoạt .venv
 # shellcheck disable=SC1091
-source .venv/bin/activate
+if [ -f ".venv/bin/activate" ]; then
+    source .venv/bin/activate
+elif [ -f ".venv/Scripts/activate" ]; then
+    source .venv/Scripts/activate
+fi
 
 # 4. Kiểm tra dependencies cơ bản
 if ! python -c "import rich, httpx, fastapi, uvicorn, pydantic, numpy" >/dev/null 2>&1; then
     echo "📦 Đang cài đặt thư viện cần thiết từ requirements.txt..."
-    python -m pip install --quiet --upgrade pip || true
-    python -m pip install --quiet -r requirements.txt
+    if command -v uv >/dev/null 2>&1; then
+        echo "⚡ Phát hiện uv — đang cài đặt thư viện bằng uv pip install..."
+        uv pip install -r requirements.txt
+    else
+        python -m pip install --quiet --upgrade pip || true
+        python -m pip install --quiet -r requirements.txt
+    fi
 fi
 
 # 5. Khởi chạy bộ điều phối Python

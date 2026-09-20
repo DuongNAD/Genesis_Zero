@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import csv
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -79,7 +80,7 @@ def mediation(rows: list[dict]) -> dict:
     one = np.ones(ok.sum())
     b1, se1 = ols(np.column_stack([one, brain[ok]]), surv[ok])
 
-    out = {
+    out: dict[str, Any] = {
         "n": int(ok.sum()), "n_found": n_found,
         "beta_brain_alone": round(float(b1[1]), 5),
         "se_brain_alone": round(float(se1[1]), 5),

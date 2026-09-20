@@ -5,12 +5,11 @@ Generates standardized 4-angle turnaround sheets for all botanical species in Ge
 Renders 4 angles (Hero 3/4, Front, Side, Top) in Blender EEVEE and composites them with PIL.
 """
 
-import os
-import sys
-import glob
-import time
 import subprocess
+import sys
+import time
 from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")

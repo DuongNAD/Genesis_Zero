@@ -164,7 +164,9 @@ CANONICAL_ANIMATIONS = [
 def resolve_file(base_dir: Path, species: str, extension: str) -> Path | None:
     """Resolve file path with species name and aliases."""
     meta = SPECIES_METADATA.get(species, {})
-    candidate_names = [species, *[a for a in meta.get("aliases", []) if a != species]]
+    raw_aliases = meta.get("aliases")
+    alias_list = raw_aliases if isinstance(raw_aliases, list) else []
+    candidate_names = [species, *[a for a in alias_list if a != species]]
     for name in candidate_names:
         candidate = base_dir / f"{name}{extension}"
         if candidate.exists():
@@ -387,13 +389,23 @@ class TestCreatureGltfSkinningAnd8Animations:
 # =============================================================================
 class TestCreatureBlenderBMeshTopology:
     def test_creature_bmesh_manifold_topology(self):
-        """R5: Executes headless Blender script to check 0 loose vertices, 0 non-manifold edges, 0 ngons, 100% smooth shading."""
-        blender_bin = "/Applications/Blender.app/Contents/MacOS/Blender"
-        if not os.path.exists(blender_bin):
-            blender_bin = shutil.which("blender")
+        blender_bin = shutil.which("blender")
+        if not blender_bin:
+            candidates = [
+                Path("/Applications/Blender.app/Contents/MacOS/Blender"),
+                Path("/usr/bin/blender"),
+                Path("/usr/local/bin/blender"),
+            ]
+            pf = Path("C:/Program Files/Blender Foundation")
+            if pf.exists():
+                candidates.extend(sorted(pf.glob("**/blender.exe"), reverse=True))
+            for c in candidates:
+                if c.is_file():
+                    blender_bin = str(c)
+                    break
 
         if not blender_bin or not os.path.exists(blender_bin):
-            pytest.skip("Blender binary not available at /Applications/Blender.app or in PATH")
+            pytest.skip("Blender binary not available in standard paths or PATH")
 
         blend_files = []
         for sp in TARGET_SPECIES:
@@ -449,7 +461,14 @@ else:
 """
 
         cmd = [blender_bin, "--background", "--python-expr", expr]
-        res = subprocess.run(cmd, capture_output=True, text=True, cwd=str(PROJECT_ROOT))
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=str(PROJECT_ROOT),
+        )
         assert res.returncode == 0, f"Headless Blender BMesh manifold topology check failed:\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
         assert "BMESH_TOPOLOGY_100_PERCENT_CLEAN" in res.stdout
 

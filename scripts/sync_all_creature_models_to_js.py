@@ -6,11 +6,6 @@ and writes to web/creature_models_data.js for Zero-CORS offline viewing via file
 """
 
 import base64
-import glob
-import hashlib
-import json
-import os
-import re
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

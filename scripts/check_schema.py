@@ -13,10 +13,11 @@ import json
 import statistics
 import sys
 import time
+from typing import Any
 
 import httpx
 
-SCHEMA = {
+SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "note": {"type": "string", "maxLength": 90},

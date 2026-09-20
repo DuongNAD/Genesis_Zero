@@ -1,5 +1,6 @@
 import math
 
+
 def get_soil_factor(x, y, z, slope):
     # Forest Grove Centers
     groves = [

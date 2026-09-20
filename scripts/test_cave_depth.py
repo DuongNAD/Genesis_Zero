@@ -1,5 +1,6 @@
 import math
 
+
 def calculate_world_height(x: float, y: float) -> float:
     ny = (y + 210.0) / 420.0
     h_base = 12.0 + math.pow(ny, 2.4) * 98.0

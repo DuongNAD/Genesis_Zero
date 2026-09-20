@@ -1,5 +1,14 @@
 # Genesis Zero
 
+[![CI Pipeline](https://github.com/DuongNAD/Genesis_Zero/actions/workflows/ci.yml/badge.svg)](https://github.com/DuongNAD/Genesis_Zero/actions/workflows/ci.yml)
+[![GitLab CI](https://img.shields.io/badge/GitLab%20CI-7%20stages-blue?logo=gitlab)](.gitlab-ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1889%20collected-success)](tests/)
+[![Throughput](https://img.shields.io/badge/throughput-854.77%20ticks%2Fs-brightgreen)](docs/ARCHITECTURE.md)
+[![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Type Checked: Mypy](https://img.shields.io/badge/typing-mypy-blue)](https://github.com/python/mypy)
+[![Docker: Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 > Sandbox 2D nơi mỗi sinh vật là một tâm trí LLM riêng, chạy trên máy của một
 > người khác nhau, và **vật lý của thế giới được bốc thăm mỗi ván**.
 > Không ai biết luật. **Ai tìm ra luật trước thì thắng.**
@@ -18,10 +27,15 @@ git clone https://github.com/DuongNAD/Genesis_Zero.git && cd Genesis_Zero
 .\run.ps1
 ```
 
+**Docker Compose (Khởi chạy containerized đa dịch vụ):**
+```bash
+docker compose up --build
+```
+
 *(Hoặc cài đặt thủ công: `pip install -r requirements.txt` rồi chạy `python -m genesis.run --seed 1 --ticks 200 --controller reflex`)*
 
 Một ván chạy được ngay: tự động thiết lập `.venv`, quét đa backend LLM (Ollama, llama.cpp, vLLM, Mock), tự động fallback về Offline Reflex nếu không có GPU/LLM cục bộ.
-→ **[Hướng dẫn đầy đủ](docs/HUONG-DAN.md)**
+→ **[Hướng dẫn đầy đủ](docs/HUONG-DAN.md)** | **[Hướng dẫn triển khai Docker](docs/DEPLOYMENT.md)**
 
 ### B-10 A/B: Frontier Thinking vs ReflexStrategist
 
@@ -145,9 +159,11 @@ kiểm điều đó từ ngoài.
 
 | | |
 |---|---|
-| Test | **1718 mục được thu thập / 113 files**; baseline 2026-09-17 (20260917T154659Z): 1679 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
+| Test | **1889 mục được thu thập / 113 files**; baseline 2026-09-17 (20260917T154659Z): 1679 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
+| Hiệu năng | **854.77 ticks/giây** (tốc độ vòng lặp mô phỏng headless trung bình); tăng tốc ~2.25x nhờ đơn vòng khoảng cách Chebyshev (`lawhook.py`), cache định danh con trỏ `is traits` (`world.py`), và fast RNG seed derivation (`tick.py`). Xem [Kiến trúc](docs/ARCHITECTURE.md). |
+| CI/CD & Đóng gói | **GitHub Actions 7-Stage Matrix** (Ubuntu/Windows/macOS x Python 3.11/3.12) + **GitLab CI**; Docker multi-stage build với non-root user `genesis` (UID 1000) và `/v1/healthz` healthcheck. Xem [Triển khai](docs/DEPLOYMENT.md). |
 | Phiếu việc | 65, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
-| Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm |
+| Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm (In-memory Zero-I/O referee) |
 | Bộ chấm | **đã kiểm bằng chế độ gian lận: `match = 1.000`** |
 | Model 7B thật | ghi sổ đều, **`match` vẫn 0.000** — xem dưới |
 | Đã loại khỏi nghi can | bộ chấm · sổ tay · ngân sách token · ba cơ chế từng câm lặng |
@@ -185,6 +201,9 @@ Việc tiếp theo là mẫu đủ lớn, không phải một ván đẹp hơn.
 | bạn muốn | đọc |
 |---|---|
 | **chạy thử ngay** | [docs/HUONG-DAN.md](docs/HUONG-DAN.md) |
+| **kiến trúc hệ thống** | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| **triển khai Docker & CI/CD** | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| **nhật ký phiên bản** | [CHANGELOG.md](CHANGELOG.md) |
 | hiểu thiết kế | [docs/03-LUAT-AN-V5.md](docs/03-LUAT-AN-V5.md) |
 | cắm máy vào chơi cùng | [docs/04-THE-GIOI-MO.md](docs/04-THE-GIOI-MO.md) |
 | giao thức HTTP | [docs/05-GIAO-THUC.md](docs/05-GIAO-THUC.md) |
@@ -199,11 +218,12 @@ bất biến, cách nghiệm thu, và — quan trọng nhất — **những lỗ
 
 ```bash
 make preflight    # máy này chạy được một ván thật chưa?
-make test         # 1718 test (số lượng collection; không phải tất cả đã pass)
+make test         # 1889 test (số lượng collection; không phải tất cả đã pass)
 make serve        # server ván, cổng 8000
 make hostile      # kiểm cửa chống lạm dụng — chạy TRƯỚC khi phơi ra internet
 make expose       # mở tunnel ngrok
 make site         # dựng docs/site.html để đọc offline
+docker compose up --build  # khởi chạy container match-server + mock-llm
 ```
 
 Windows: xem bảng thay cho `make` trong [docs/CHAY-TREN-WINDOWS.md](docs/CHAY-TREN-WINDOWS.md).
@@ -226,9 +246,9 @@ Số mục bao gồm các biến thể parametrized; collection không đồng n
 
 | Thư mục | Số mục |
 |---|---:|
-| `tests` | 1510 |
+| `tests` | 1681 |
 | `tests/e2e` | 208 |
-| **Tổng** | **1718** |
+| **Tổng** | **1889** |
 
 Đối soát và xuất danh sách từng file/node ID:
 

@@ -19,10 +19,8 @@ import re
 import tracemalloc
 from dataclasses import astuple
 
-import pytest
-
 from genesis import config
-from genesis.creature import Creature, creature_sort_key, kill, try_respawn
+from genesis.creature import Creature, creature_sort_key, kill
 from genesis.evolution import (
     can_reproduce,
     detect_extinctions,
@@ -33,11 +31,12 @@ from genesis.evolution import (
     trait_variance,
 )
 from genesis.features import FEATURES
-from genesis.tick import build_match, tick as run_tick
-from genesis.traits import Traits, founder_traits
-from genesis.weather import WEATHER_MODIFIERS, WeatherType, weather_at
-from genesis.world import Terrain, World
-from net.match import MatchRunner, Phase
+from genesis.tick import build_match
+from genesis.tick import tick as run_tick
+from genesis.traits import founder_traits
+from genesis.weather import WeatherType, weather_at
+from genesis.world import Terrain
+from net.match import MatchRunner
 
 FORBIDDEN_PATTERN = re.compile(r"law_id|POISON|DAMAGE|HEAL|SPREAD|FRUIT_[A-D]")
 

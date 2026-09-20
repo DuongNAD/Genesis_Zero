@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-from genesis import config
 from genesis.creature_builder import build_creature_blender_code
 from genesis.domain import Domain
 from genesis.traits import Traits
-from genesis.features import roll_for_species
 
 
 def test_build_creature_code_syntax():

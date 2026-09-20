@@ -211,9 +211,13 @@ async def test_client_corrupted_model_json_handled_silently(monkeypatch):
         )
     )
 
-    await asyncio.sleep(0.03)
+    for _ in range(100):
+        if len(r.registrations) == 1:
+            break
+        await asyncio.sleep(0.01)
+    assert len(r.registrations) == 1
     r.advance_phase()  # -> SEEDING
-    await asyncio.sleep(0.03)
+    await asyncio.sleep(0.05)
     r.advance_phase()  # -> RUNNING
 
     await asyncio.wait_for(client_task, timeout=3.0)

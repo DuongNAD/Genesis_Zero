@@ -5,30 +5,27 @@ Generates unique, realistic 3D models (.blend + .glb) for all species in grasses
 """
 
 import math
-import os
 import random
 import sys
-import base64
 from pathlib import Path
+
 import bpy
-from mathutils import Vector, Euler, Matrix
+from mathutils import Vector
 
 ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")
 sys.path.insert(0, str(ROOT / "assets" / "flora" / "generators"))
 
 from flora_builder import (
+    add_channeled_blade,
+    add_cupped_petal,
+    add_curved_tube,
+    add_foliage_clump,
     clean_scene,
-    get_or_create_material,
     create_pbr_bark_material,
     create_pbr_foliage_material,
-    create_pbr_emissive_material,
-    add_curved_tube,
-    add_fluted_curved_tube,
-    add_cupped_petal,
-    add_channeled_blade,
-    add_foliage_clump,
-    save_and_export
+    save_and_export,
 )
+
 
 def apply_smooth_and_materials(mesh, materials):
     for p in mesh.polygons:
@@ -116,7 +113,7 @@ def build_flower_wild_sunflower():
     add_curved_tube(verts, faces, mat_idx, stem_pts, [0.035, 0.030, 0.025, 0.022, 0.020], rad_segs=6, mat_id=0)
 
     # Broad cordate leaves along stem
-    for l_idx, (sz, z_h, l_ang) in enumerate([(0.35, 0.4, 0.5), (0.32, 0.75, 2.6), (0.28, 1.15, 4.2), (0.22, 1.45, 1.2)]):
+    for _l_idx, (sz, z_h, l_ang) in enumerate([(0.35, 0.4, 0.5), (0.32, 0.75, 2.6), (0.28, 1.15, 4.2), (0.22, 1.45, 1.2)]):
         dx, dy = math.cos(l_ang), math.sin(l_ang)
         l_pts = [
             Vector((dx*0.03, dy*0.03, z_h)),
@@ -172,7 +169,7 @@ def build_flower_corn_poppy():
     verts, faces, mat_idx = [], [], []
 
     # 2 Slender arching flowering stems
-    for s_i, (dx, dy, h) in enumerate([(0, 0, 0.72), (0.15, -0.12, 0.58)]):
+    for _s_i, (dx, dy, h) in enumerate([(0, 0, 0.72), (0.15, -0.12, 0.58)]):
         pts = [
             Vector((dx*0.1, dy*0.1, 0)),
             Vector((dx*0.4 - 0.08, dy*0.4, h*0.4)),
@@ -226,7 +223,7 @@ def build_flower_bluebell():
     verts, faces, mat_idx = [], [], []
 
     # 3 Graceful arching stems that curl at top
-    for st_i, rot_z in enumerate([0.0, 1.8, 3.8]):
+    for _st_i, rot_z in enumerate([0.0, 1.8, 3.8]):
         cos_z, sin_z = math.cos(rot_z), math.sin(rot_z)
         stem_pts = [
             Vector((0, 0, 0)),
@@ -421,7 +418,7 @@ def build_grass_white_clover():
             add_cupped_petal(verts, faces, mat_idx, leaf_apex, fwd, up, length=0.048, width=0.042, cup_depth=0.006, mat_id=0)
 
     # 3 Spherical white clover flower heads
-    for fl_i, (fx, fy, fh) in enumerate([(0.05, 0.05, 0.18), (-0.08, 0.06, 0.16), (0.04, -0.09, 0.15)]):
+    for _fl_i, (fx, fy, fh) in enumerate([(0.05, 0.05, 0.18), (-0.08, 0.06, 0.16), (0.04, -0.09, 0.15)]):
         f_pts = [Vector((0, 0, 0.01)), Vector((fx*0.5, fy*0.5, fh*0.5)), Vector((fx, fy, fh))]
         add_curved_tube(verts, faces, mat_idx, f_pts, [0.005, 0.004, 0.003], rad_segs=3, mat_id=0)
         # Flower globe
@@ -457,7 +454,7 @@ def build_grass_velvet_moss():
     add_foliage_clump(verts, faces, mat_idx, Vector((0, 0, 0.08)), 0.65, 0.55, 0.14, lat_steps=5, lon_steps=10, bump_amp=0.20, mat_id=0)
 
     # Secondary puffy moss pillows clustering over the rock
-    for m_i, (mx, my, mz, rx, ry, rz) in enumerate([
+    for _m_i, (mx, my, mz, rx, ry, rz) in enumerate([
         (0.15, 0.10, 0.15, 0.28, 0.24, 0.09),
         (-0.20, -0.08, 0.14, 0.32, 0.28, 0.10),
         (0.05, -0.22, 0.12, 0.24, 0.22, 0.08),
@@ -812,7 +809,7 @@ def build_flower_snowdrop():
     verts, faces, mat_idx = [], [], []
 
     # 4 Linear upright green blades
-    for l_i, rot in enumerate([0.1, 0.9, 3.2, 4.0]):
+    for _l_i, rot in enumerate([0.1, 0.9, 3.2, 4.0]):
         dx, dy = math.cos(rot), math.sin(rot)
         l_pts = [Vector((0, 0, 0.01)), Vector((dx*0.06, dy*0.06, 0.10)), Vector((dx*0.12, dy*0.12, 0.16))]
         add_channeled_blade(verts, faces, mat_idx, l_pts, [0.01, 0.02, 0.004], [0.001, 0.003, 0.001], mat_id=0)
@@ -878,7 +875,7 @@ def build_flower_morning_glory():
         add_cupped_petal(verts, faces, mat_idx, pos, fwd, Vector((0, 0, 1)), length=0.10, width=0.085, cup_depth=0.008, mat_id=0)
 
     # 2 Flared trumpet/funnel flowers
-    for fl_i, t in enumerate([0.5, 0.85]):
+    for _fl_i, t in enumerate([0.5, 0.85]):
         idx_pt = int(t * 14)
         pos = vine_pts[idx_pt]
         fl_dir = Vector((math.cos(t*6.0), math.sin(t*6.0), 0.4)).normalized()
@@ -920,7 +917,7 @@ def build_flower_wild_geranium():
         add_channeled_blade(verts, faces, mat_idx, l_pts, [0.02, 0.065, 0.01], [0.002, 0.006, 0.001], mat_id=0)
 
     # 3 Slender flower scapes
-    for s_i, (dx, dy, h) in enumerate([(0, 0, 0.45), (0.10, 0.08, 0.38), (-0.08, -0.06, 0.36)]):
+    for _s_i, (dx, dy, h) in enumerate([(0, 0, 0.45), (0.10, 0.08, 0.38), (-0.08, -0.06, 0.36)]):
         pts = [Vector((0, 0, 0.02)), Vector((dx*0.5, dy*0.5, h*0.6)), Vector((dx, dy, h))]
         add_curved_tube(verts, faces, mat_idx, pts, [0.008, 0.006, 0.004], rad_segs=4, mat_id=0)
 
@@ -961,7 +958,7 @@ def build_flower_wild_mint():
     verts, faces, mat_idx = [], [], []
 
     # 4 Square upright stems
-    for s_i, (sx, sy, sh) in enumerate([(0, 0, 0.52), (0.08, -0.06, 0.46), (-0.06, 0.08, 0.42), (0.05, 0.07, 0.38)]):
+    for _s_i, (sx, sy, sh) in enumerate([(0, 0, 0.52), (0.08, -0.06, 0.46), (-0.06, 0.08, 0.42), (0.05, 0.07, 0.38)]):
         s_pts = [Vector((sx*0.2, sy*0.2, 0)), Vector((sx*0.7, sy*0.7, sh*0.5)), Vector((sx, sy, sh))]
         add_curved_tube(verts, faces, mat_idx, s_pts, [0.012, 0.009, 0.006], rad_segs=4, mat_id=0)
 
@@ -1130,7 +1127,7 @@ def build_grass_woolly_moss():
     add_foliage_clump(verts, faces, mat_idx, Vector((0, 0, 0.06)), 0.55, 0.45, 0.12, lat_steps=5, lon_steps=9, bump_amp=0.25, mat_id=0)
 
     # Silver-tipped woolly fringe cushions
-    for c_i, (cx, cy, cz) in enumerate([(0.12, 0.08, 0.14), (-0.15, -0.06, 0.12), (0.02, -0.18, 0.11), (-0.05, 0.18, 0.13)]):
+    for _c_i, (cx, cy, cz) in enumerate([(0.12, 0.08, 0.14), (-0.15, -0.06, 0.12), (0.02, -0.18, 0.11), (-0.05, 0.18, 0.13)]):
         add_foliage_clump(verts, faces, mat_idx, Vector((cx, cy, cz)), 0.24, 0.22, 0.08, lat_steps=4, lon_steps=8, bump_amp=0.18, mat_id=1)
 
     mesh.from_pydata(verts, [], faces)
@@ -1287,11 +1284,11 @@ def build_grass_liverwort():
     for th in range(12):
         ang = th * 2.0 * math.pi / 12 + random.uniform(-0.1, 0.1)
         dx, dy = math.cos(ang), math.sin(ang)
-        t_pts = [Vector((0, 0, 0.04)), Vector((dx*0.10, dy*0.10, 0.05)), Vector((dx*0.22, dy*0.22, 0.03))]
+        [Vector((0, 0, 0.04)), Vector((dx*0.10, dy*0.10, 0.05)), Vector((dx*0.22, dy*0.22, 0.03))]
         add_cupped_petal(verts, faces, mat_idx, Vector((dx*0.05, dy*0.05, 0.04)), Vector((dx, dy, -0.05)), Vector((0, 0, 1)), length=0.12, width=0.065, cup_depth=-0.005, mat_id=1)
 
     # 4 Miniature umbrella-like archegoniophores standing erect
-    for u_i, (ux, uy) in enumerate([(0.06, 0.04), (-0.08, 0.05), (0.04, -0.07), (-0.05, -0.06)]):
+    for _u_i, (ux, uy) in enumerate([(0.06, 0.04), (-0.08, 0.05), (0.04, -0.07), (-0.05, -0.06)]):
         stalk_pts = [Vector((ux, uy, 0.04)), Vector((ux, uy, 0.12))]
         add_curved_tube(verts, faces, mat_idx, stalk_pts, [0.004, 0.003], rad_segs=3, mat_id=1)
         # Umbrella cap with 8 finger lobes

@@ -13,7 +13,9 @@ from pydantic import BaseModel
 
 import net_config
 from genesis import config
+from genesis.prompt import PromptLeak, _check_no_leak
 from genesis.traits import Traits, register_founder
+from net import state
 from net.match import JOINABLE, Registration
 
 router = APIRouter(prefix="/v1", tags=["join"])
@@ -108,9 +110,6 @@ class JoinRequest(BaseModel):
     pop_request: int = 3
 
 
-from net import state
-
-
 @router.post("/join")
 async def join(req: JoinRequest, request: Request) -> dict:
     """Đăng ký một loài vào thế giới Genesis Zero."""
@@ -120,12 +119,10 @@ async def join(req: JoinRequest, request: Request) -> dict:
     # đúng chữ "POISON" được nhận vào, rồi làm gãy ván ở lần dựng prompt đầu
     # tiên — một đường DoS mở toang, và triệu chứng hiện ra cách nguyên nhân cả
     # một pha ván.
-    from genesis.prompt import PromptLeak, _check_no_leak
-
     try:
         _check_no_leak(req.persona or "", "persona")
     except PromptLeak as exc:
-        raise HTTPException(status_code=422, detail=f"PERSONA_FORBIDDEN: {exc}")
+        raise HTTPException(status_code=422, detail=f"PERSONA_FORBIDDEN: {exc}") from exc
 
     # 2. Validate brain_tier
     if (

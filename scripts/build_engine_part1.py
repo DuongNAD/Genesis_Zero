@@ -16,11 +16,9 @@ Features:
 
 import math
 import os
-import random
-import sys
-import base64
+
 import bpy
-from mathutils import Vector, Euler, Matrix
+from mathutils import Vector
 
 # -----------------------------------------------------------------------------
 # PBR Material Utility with Subsurface Scattering (SSS) & Procedural Micro-Bump

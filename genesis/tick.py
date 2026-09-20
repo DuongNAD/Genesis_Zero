@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import random
 from dataclasses import astuple, dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from genesis import config, law_config
 from genesis.adapt import award_adapt, maybe_shift, reset_body
@@ -51,7 +51,7 @@ from genesis.world import (
 )
 
 if TYPE_CHECKING:
-    from genesis.logio import LogWriter
+    pass
 
 
 @dataclass
@@ -68,8 +68,8 @@ class SimState:
 
 def creature_rng(match_seed: int, tick_no: int, creature_id: str) -> random.Random:
     """Luồng ngẫu nhiên RIÊNG cho một con ở một tick."""
-    h = hashlib.md5(f"{match_seed}:{tick_no}:{creature_id}".encode()).hexdigest()
-    return random.Random(int(h[:16], 16))
+    raw = hashlib.md5(f"{match_seed}:{tick_no}:{creature_id}".encode()).digest()
+    return random.Random(int.from_bytes(raw[:8], "big"))
 
 
 def build_match(
@@ -207,7 +207,7 @@ def _resolve_algae(
 def _resolve_eating(
     world: World,
     creatures: list[Creature],
-    log: LogWriter | None = None,
+    log: Any | None = None,
     tick: int = 0,
 ) -> list[dict]:
     """Giải quyết tranh chấp thức ăn tất định theo creature_sort_key."""
@@ -250,7 +250,7 @@ def tick(
     tick_no: int,
     rng: random.Random,
     state: SimState,
-    log: LogWriter | None = None,
+    log: Any | None = None,
     laws: list | None = None,
     strategist: Strategist | None = None,
 ) -> None:
@@ -322,20 +322,20 @@ def tick(
         pending = says()
         for cid in sorted(pending, key=lambda k: creature_sort_key(creatures_by_id[k])
                           if k in creatures_by_id else (k, 0)):
-            c = creatures_by_id.get(cid)
-            if c is None or not c.alive:
+            spk = creatures_by_id.get(cid)
+            if spk is None or not spk.alive:
                 continue
             say = pending[cid]
-            c.energy -= COST_SPEAK
-            full, sig = hearers(c, creatures, world)
+            spk.energy -= COST_SPEAK
+            full, sig_hearers = hearers(spk, creatures, world)
             speak_events.append({
-                "creature_id": c.id, "species_id": c.species,
+                "creature_id": spk.id, "species_id": spk.species,
                 "signal": say.signal, "text": say.text, "teach": say.teach,
                 # Hai danh sách này là bằng chứng cho bất biến 3 của B-11: tầm
                 # `signal` phải rộng hơn tầm `text`, và nghiệm thu đo đúng nó.
                 "hear_full": [x.id for x in full],
-                "hear_signal": [x.id for x in sig],
-                "pos": list(c.pos),
+                "hear_signal": [x.id for x in sig_hearers],
+                "pos": list(spk.pos),
             })
 
     eat_events = _resolve_eating(world, creatures, log=None, tick=tick_no)
@@ -399,7 +399,7 @@ def tick(
         # chữ ký hành vi của model — trộn lẫn với luật if-else của W-12.
         take = getattr(strat, "take_shift", None)
         owns = take is not None and c.id in getattr(strat, "slots", {})
-        if owns:
+        if owns and callable(take):
             choice = take(c) if c.adapt_points >= 1 else None
             shifted = maybe_shift(c, crng, choice=choice) if choice else None
         else:
@@ -479,8 +479,8 @@ def tick(
             # REST phải kèm SỐ LƯỢT đứng yên liên tiếp: trigger_matches so `ev.k >= t.k`.
             # Phát k=None thì mọi luật REST(k) không bao giờ khớp — im lặng không giải được.
             if any(e["creature_id"] == c.id for e in speak_events):
-                sig = next(e["signal"] for e in speak_events if e["creature_id"] == c.id)
-                fired.append((TriggerKind.SPEAK, sig))
+                sig_val = str(next(e["signal"] for e in speak_events if e["creature_id"] == c.id))
+                fired.append((TriggerKind.SPEAK, sig_val))
             if c.id in rested:
                 state.rest_streak[c.id] = state.rest_streak.get(c.id, 0) + 1
                 rest_k.append((c, state.rest_streak[c.id]))
@@ -528,7 +528,7 @@ def tick(
         # Đếm linh cảm SAU khi đã áp xong hết hệ quả, không phải trong lúc áp:
         # đếm giữa chừng thì con duyệt trước thấy một thế giới khác con duyệt
         # sau, và đó là đúng thứ tính đồng thời mà W-11 dựng cả pha 4 để giữ.
-        if _hunch_on:
+        if _hunch_on and _minds is not None:
             for c, ev in pairs:
                 hb = _minds.hunches.get(c.id)
                 if hb is not None:

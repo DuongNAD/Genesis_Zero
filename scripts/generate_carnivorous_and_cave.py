@@ -5,10 +5,9 @@ Builds 5 carnivorous plants and 4 cave bioluminescent species with clean BMesh t
 """
 
 import math
-import os
-import random
 import sys
 from pathlib import Path
+
 import bpy
 from mathutils import Vector
 
@@ -16,16 +15,17 @@ ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")
 sys.path.insert(0, str(ROOT / "assets" / "flora" / "generators"))
 
 from flora_builder import (
+    add_channeled_blade,
+    add_cupped_petal,
+    add_curved_tube,
+    add_foliage_clump,
     clean_scene,
     create_pbr_bark_material,
-    create_pbr_foliage_material,
     create_pbr_emissive_material,
-    add_curved_tube,
-    add_cupped_petal,
-    add_channeled_blade,
-    add_foliage_clump,
-    save_and_export
+    create_pbr_foliage_material,
+    save_and_export,
 )
+
 
 def apply_smooth_and_materials(mesh, materials, mat_idx):
     for p in mesh.polygons:
@@ -66,7 +66,7 @@ def build_carnivorous_sundew():
 
         # Glandular tentacles with glistening dewdrops
         tip = l_pts[3]
-        for t_i, (tx, ty, tz) in enumerate([(0.01, 0.01, 0.015), (-0.01, 0.015, 0.012), (0.015, -0.01, 0.018)]):
+        for _t_i, (tx, ty, tz) in enumerate([(0.01, 0.01, 0.015), (-0.01, 0.015, 0.012), (0.015, -0.01, 0.018)]):
             add_foliage_clump(verts, faces, mat_idx, tip + Vector((tx, ty, tz)), 0.008, 0.008, 0.008, lat_steps=3, lon_steps=5, mat_id=1)
 
     mesh.from_pydata(verts, [], faces)
@@ -130,7 +130,7 @@ def build_carnivorous_cobra_lily():
     verts, faces, mat_idx = [], [], []
 
     # 3 Curved tubular pitchers swelling into cobra hood
-    for c_i, (dx, dy, h) in enumerate([(0.08, 0.06, 0.72), (-0.09, 0.07, 0.65), (0.05, -0.08, 0.68)]):
+    for _c_i, (dx, dy, h) in enumerate([(0.08, 0.06, 0.72), (-0.09, 0.07, 0.65), (0.05, -0.08, 0.68)]):
         pts = [
             Vector((dx*0.1, dy*0.1, 0)),
             Vector((dx*0.4, dy*0.4, h*0.4)),
@@ -270,7 +270,7 @@ def build_cave_luminescent_moss():
     add_foliage_clump(verts, faces, mat_idx, Vector((0, 0, 0.05)), 0.55, 0.45, 0.10, lat_steps=4, lon_steps=8, bump_amp=0.20, mat_id=0)
 
     # 6 Glowing protonema retroreflective pads
-    for p_i, (px, py, rx, ry) in enumerate([
+    for _p_i, (px, py, rx, ry) in enumerate([
         (0.12, 0.08, 0.22, 0.18),
         (-0.15, 0.06, 0.24, 0.19),
         (0.04, -0.14, 0.20, 0.16),
@@ -332,7 +332,7 @@ def build_cave_jack_o_lantern():
     verts, faces, mat_idx = [], [], []
 
     # Dense cluster of 6 funnel-shaped mushrooms
-    for m_i, (mx, my, mz, cap_r) in enumerate([
+    for _m_i, (mx, my, mz, cap_r) in enumerate([
         (0, 0, 0.35, 0.12),
         (0.12, 0.08, 0.30, 0.10),
         (-0.10, 0.10, 0.28, 0.09),
@@ -379,7 +379,7 @@ def build_cave_ghost_pipe():
     add_foliage_clump(verts, faces, mat_idx, Vector((0, 0, 0.02)), 0.16, 0.15, 0.03, lat_steps=3, lon_steps=7, mat_id=0)
 
     # 5 Ghostly crystalline translucent white nodding stems
-    for s_i, (sx, sy, h) in enumerate([(0, 0, 0.22), (0.04, 0.03, 0.19), (-0.05, 0.02, 0.18), (0.02, -0.04, 0.17), (-0.03, -0.03, 0.15)]):
+    for _s_i, (sx, sy, h) in enumerate([(0, 0, 0.22), (0.04, 0.03, 0.19), (-0.05, 0.02, 0.18), (0.02, -0.04, 0.17), (-0.03, -0.03, 0.15)]):
         pts = [
             Vector((sx, sy, 0.02)),
             Vector((sx + 0.01, sy, h*0.6)),

@@ -7,20 +7,20 @@ Quy trình 2 bước Studio hoàn chỉnh:
 
 from __future__ import annotations
 
-import os
 import logging
-import shutil
-import uuid
+import os
 import re
+import shutil
 import subprocess
 import tempfile
+import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from genesis import config
 from genesis.creature_builder import build_creature_blender_code
 from genesis.domain import Domain
-from genesis.features import FEATURES, Feature
+from genesis.features import FEATURES
 from genesis.traits import Traits
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 def _find_blender() -> str | None:
     candidates = [os.environ.get("BLENDER_BIN"), shutil.which("blender"),
                   "/Applications/Blender.app/Contents/MacOS/Blender"]
-    base = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Blender Foundation"
+    base = Path(os.environ.get("PROGRAMFILES", "C:/Program Files")) / "Blender Foundation"
     candidates.extend(str(p) for p in sorted(base.glob("Blender*/blender.exe"), reverse=True))
     return next((p for p in candidates if p and os.path.isfile(p) and os.access(p, os.X_OK)), None)
 
@@ -113,19 +113,32 @@ def build_master_concept_prompt(
         br, at, ar, sp, se, st = traits
         t_descs = []
         if kingdom == "FLORA":
-            if br >= 3: t_descs.append("mạng rễ thần kinh dẫn truyền xung điện sinh học thông minh")
-            if at >= 3: t_descs.append("bẫy kẹp đớp mồi chớp nhoáng hoặc chùm dây leo gai quất roi mạnh mẽ")
-            if ar >= 3: t_descs.append("vỏ gỗ bần cổ thụ cứng cáp phủ rêu sáp kháng chấn")
-            if sp >= 3: t_descs.append("rễ cọc vươn dài linh hoạt búng thân tốc lực")
-            if se >= 3: t_descs.append("đài hoa bắt phấn và lông tơ cảm ứng chấn động địa chấn")
-            if st >= 3: t_descs.append("bọng dịch tiêu hóa phồng to chứa đầy enzym đậm đặc")
+            if br >= 3:
+                t_descs.append("mạng rễ thần kinh dẫn truyền xung điện sinh học thông minh")
+            if at >= 3:
+                t_descs.append("bẫy kẹp đớp mồi chớp nhoáng hoặc chùm dây leo gai quất roi mạnh mẽ")
+            if ar >= 3:
+                t_descs.append("vỏ gỗ bần cổ thụ cứng cáp phủ rêu sáp kháng chấn")
+            if sp >= 3:
+                t_descs.append("rễ cọc vươn dài linh hoạt búng thân tốc lực")
+            if se >= 3:
+                t_descs.append("đài hoa bắt phấn và lông tơ cảm ứng chấn động địa chấn")
+            if st >= 3:
+                t_descs.append("bọng dịch tiêu hóa phồng to chứa đầy enzym đậm đặc")
         else:
-            if br >= 3: t_descs.append("vòm sọ phồng cao thông minh")
-            if at >= 3: t_descs.append("cơ bắp cuồn cuộn kèm móng vuốt và nanh nhọn")
-            if ar >= 3: t_descs.append("vảy sừng cứng cáp xếp lớp bảo vệ lưng")
-            if sp >= 3: t_descs.append("chân dài gân guốc nhanh nhẹn")
-            if se >= 3: t_descs.append("đôi mắt to tròn hổ phách tinh tường")
-            if st >= 3: t_descs.append("bụng tròn đầy đặn chứa nhiều năng lượng")
+            if br >= 3:
+                t_descs.append("vòm sọ phồng cao thông minh")
+            if at >= 3:
+                t_descs.append("cơ bắp cuồn cuộn kèm móng vuốt và nanh nhọn")
+            if ar >= 3:
+                t_descs.append("vảy sừng cứng cáp xếp lớp bảo vệ lưng")
+            if sp >= 3:
+                t_descs.append("chân dài gân guốc nhanh nhẹn")
+            if se >= 3:
+                t_descs.append("đôi mắt to tròn hổ phách tinh tường")
+            if st >= 3:
+                t_descs.append("bụng tròn đầy đặn chứa nhiều năng lượng")
+
         if t_descs:
             parts.append(f"Đặc điểm giải phẫu: {', '.join(t_descs)}.")
 
@@ -286,7 +299,7 @@ def create_svg_concept_card(
   <!-- Right Attribute Panel -->
   <rect x="350" y="76" width="225" height="260" rx="10" fill="rgba(15, 23, 42, 0.7)" stroke="rgba(255,255,255,0.08)"/>
   <text x="365" y="102" font-family="system-ui, sans-serif" font-size="11" font-weight="bold" fill="#38bdf8">THUỘC TÍNH TIẾN HÓA</text>
-  
+
   <text x="365" y="128" font-family="system-ui, sans-serif" font-size="11" fill="#cbd5e1">Dinh dưỡng: <tspan fill="#4ade80" font-weight="bold">{diet}</tspan></text>
   <text x="365" y="150" font-family="system-ui, sans-serif" font-size="11" fill="#cbd5e1">Chiến lược: <tspan fill="#facc15" font-weight="bold">{strategy}</tspan></text>
 
@@ -361,24 +374,34 @@ def generate_creature_concept_and_3d(
     out_glb = CREATURES_DIR / glb_filename
     out_blend = CREATURES_DIR / blend_filename
 
+    @dataclass
     class CreatureStats:
-        def __init__(self, brain: int, attack: int, armor: int, speed: int, sense: int, stomach: int):
-            self.brain = brain
-            self.attack = attack
-            self.armor = armor
-            self.speed = speed
-            self.sense = sense
-            self.stomach = stomach
+        brain: int
+        attack: int
+        armor: int
+        speed: int
+        sense: int
+        stomach: int
 
     t_vals = traits if (traits and len(traits) == 6) else [1, 0, 1, 4, 3, 3]
-    creature_traits = CreatureStats(
-        brain=t_vals[0],
-        attack=t_vals[1],
-        armor=t_vals[2],
-        speed=t_vals[3],
-        sense=t_vals[4],
-        stomach=t_vals[5],
-    )
+    try:
+        creature_traits: Any = Traits(
+            brain=t_vals[0],
+            attack=t_vals[1],
+            armor=t_vals[2],
+            speed=t_vals[3],
+            sense=t_vals[4],
+            stomach=t_vals[5],
+        )
+    except (AssertionError, ValueError):
+        creature_traits = CreatureStats(
+            brain=t_vals[0],
+            attack=t_vals[1],
+            armor=t_vals[2],
+            speed=t_vals[3],
+            sense=t_vals[4],
+            stomach=t_vals[5],
+        )
 
     active_feats = []
     feat_lookup = {f.key: f for f in FEATURES}
@@ -403,7 +426,7 @@ def generate_creature_concept_and_3d(
 
     blender_bin = _find_blender()
     model_ready = False
-    error = "BLENDER_UNAVAILABLE"
+    error: str | None = "BLENDER_UNAVAILABLE"
     if blender_bin:
         with tempfile.NamedTemporaryFile(suffix=".py", mode="w", encoding="utf-8", delete=False) as tf:
             tf.write(blender_code)

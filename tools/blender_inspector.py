@@ -5,7 +5,7 @@ capture snapshots, and build a unified 2x2 vision grid for visual inspection.
 """
 
 import math
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Standard 4-angle inspection presets
 PRESET_ANGLES: Dict[str, Dict[str, Any]] = {

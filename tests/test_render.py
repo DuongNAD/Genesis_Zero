@@ -93,7 +93,7 @@ def test_render_frame_is_pure() -> None:
     """B2: render_frame là hàm thuần, không bao giờ sửa trạng thái thế giới hay sinh vật."""
     rng = random.Random(42)
     world = World(config.GRID_W, config.GRID_H, rng)
-    world.plants[(1, 1)] = 0
+    world.plants[(1, 1)] = "FRUIT_A"
     world.corpses[(2, 2)] = 0
     creatures = spawn_population(world, random.Random(42))
 

@@ -1,0 +1,55 @@
+# .dockerignore for Genesis Zero containerization
+# Exclude version control metadata
+.git/
+.gitignore
+.gitattributes
+
+# Exclude virtual environments
+.venv/
+venv/
+env/
+
+# Exclude Python bytecode and cache directories
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Exclude agent metadata and temporary logs
+.agents/
+.gemini/
+
+# Exclude local secrets, logs, and scratch files
+.env
+.env.*
+!.env.example
+*.log
+scratch/
+
+# Exclude match run artifacts and baseline output (mounted via volume at runtime)
+runs/*.jsonl
+runs/*.truth.json
+runs/baselines/
+
+# Exclude large renders and 3D authoring files
+renders/
+assets/blender_map/render_*.png
+assets/blender_map/*.blend
+assets/blender_map/*.blend1
+web/creature_images/
+web/flora_images/
+
+# Exclude local editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

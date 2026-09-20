@@ -26,13 +26,13 @@ Procedural 3D Open World Generator (Blender 5.2+ / Python API)
 =============================================================================
 """
 
-import bpy
-import bmesh
-from mathutils import Vector, Matrix, Euler
 import math
-import random
 import os
-import sys
+import random
+
+import bmesh
+import bpy
+from mathutils import Euler, Matrix, Vector
 
 random.seed(2026)
 
@@ -389,7 +389,6 @@ def build_pristine_terrain() -> bpy.types.Object:
 
     # 2. CỎ
     c_lush_grass = (0.20, 0.50, 0.15, 1.0)      # Cỏ xanh mướt mát
-    c_clover_green = (0.26, 0.55, 0.18, 1.0)    # Cỏ non tươi
     c_wild_meadow = (0.34, 0.52, 0.19, 1.0)     # Cỏ thảo nguyên vàng nắng
     c_alpine_tundra = (0.38, 0.45, 0.23, 1.0)   # Cỏ rêu núi cao
 
@@ -595,7 +594,7 @@ def build_karst_water_cave_system():
         mat_glow = mat_glow_cyan if c_idx % 2 == 0 else mat_glow_purple
 
         bm_shroom = bmesh.new()
-        for m in range(5):
+        for _m in range(5):
             cap_x = random.uniform(-0.5, 0.5)
             cap_y = random.uniform(-0.5, 0.5)
             r_cap = random.uniform(0.20, 0.45)
@@ -903,7 +902,7 @@ def build_flora_and_flower_prototypes() -> dict:
 
     # 8. Wildflower 1: White Daisy Cluster
     bm_fw = bmesh.new()
-    for fi in range(4):
+    for _fi in range(4):
         fox = random.uniform(-0.4, 0.4)
         foy = random.uniform(-0.4, 0.4)
         bmesh.ops.create_circle(bm_fw, cap_ends=True, segments=7, radius=0.22,
@@ -919,7 +918,7 @@ def build_flora_and_flower_prototypes() -> dict:
 
     # 9. Wildflower 2: Yellow Buttercup Cluster
     bm_fy = bmesh.new()
-    for fi in range(4):
+    for _fi in range(4):
         fox = random.uniform(-0.4, 0.4)
         foy = random.uniform(-0.4, 0.4)
         bmesh.ops.create_cone(bm_fy, cap_ends=True, segments=6, radius1=0.20, radius2=0.06, depth=0.18,
@@ -935,7 +934,7 @@ def build_flora_and_flower_prototypes() -> dict:
 
     # 10. Wildflower 3: Purple Lavender Stalks
     bm_fp = bmesh.new()
-    for fi in range(5):
+    for _fi in range(5):
         fox = random.uniform(-0.35, 0.35)
         foy = random.uniform(-0.35, 0.35)
         bmesh_create_cylinder(bm_fp, segments=5, radius=0.07, depth=0.45,
@@ -951,7 +950,7 @@ def build_flora_and_flower_prototypes() -> dict:
 
     # 11. Wildflower 4: Alpine Red Poppy
     bm_fr = bmesh.new()
-    for fi in range(3):
+    for _fi in range(3):
         fox = random.uniform(-0.35, 0.35)
         foy = random.uniform(-0.35, 0.35)
         bmesh.ops.create_circle(bm_fr, cap_ends=True, segments=6, radius=0.26,
@@ -967,7 +966,7 @@ def build_flora_and_flower_prototypes() -> dict:
 
     # 12. 3D Grass Blade Tufts
     bm_gt = bmesh.new()
-    for bi in range(6):
+    for _bi in range(6):
         rot_b = Euler((random.uniform(-0.25, 0.25), random.uniform(-0.25, 0.25), random.uniform(0, math.pi * 2)))
         mat_blade = Matrix.Translation((random.uniform(-0.2, 0.2), random.uniform(-0.2, 0.2), 0.25)) @ rot_b.to_matrix().to_4x4()
         bmesh.ops.create_cone(bm_gt, cap_ends=True, segments=4, radius1=0.06, radius2=0.01, depth=0.55, matrix=mat_blade)

@@ -601,3 +601,109 @@ Meshy API Key: msy_yFOKAOFOk9yjKUcwuk9rlkb0lTyuWMI0sT1T
 - [ ] `world_256.anmw` giải mã thành công với FNV-1a checksum hợp lệ, tuân thủ `COORDINATE_CONTRACT.md`.
 - [ ] `map_manifest.json` khớp với schema draft-07.
 - [ ] Toàn bộ test suite tự động vượt qua 100%.
+
+## 2026-09-18T03:59:32Z
+
+Nghiên cứu nâng cấp, phát triển toàn diện dự án Genesis_Zero: rà soát và khắc phục triệt để lỗi hệ thống, tối ưu hóa hiệu năng tính toán và hiển thị (simulation/WebGL/memory), cùng nâng cấp chất lượng kiến trúc để dự án đạt trạng thái vận hành tốt nhất.
+
+Working directory: e:\Project\01_AI_Agents\Genesis_Zero
+Integrity mode: development
+
+## Requirements
+
+### R1. Comprehensive Defect Detection & Bug Remediation
+Conduct an exhaustive audit of the codebase (`genesis`, `scripts`, `tests`, `web`, `tools`) to detect and fix runtime errors, test failures, race conditions, edge case exceptions, and platform encoding issues (Windows UTF-8). All existing functionality must be preserved without regressions.
+
+### R2. Performance & Resource Optimization
+Profile and optimize critical performance paths including terrain/erosion/hydrology simulation loops, agent simulation ticks, asset ingestion/mesh handling, and WebGL viewer payload/render responsiveness. Provide concrete, measurable speedups or memory footprint reductions.
+
+### R3. Architectural Upgrade & Maintainability
+Refactor fragile modules, tighten interface contracts, streamline CLI/server runtime pipelines, and deliver an actionable architectural upgrade roadmap documenting all enhancements and future scaling pathways.
+
+## Acceptance Criteria
+
+### Automated Verification
+- [ ] `python scripts/ci_quick.py` passes 100% (exit code 0) within baseline timing bounds.
+- [ ] `python scripts/ci_smoke.py` passes 100% (exit code 0) without unhandled exceptions.
+- [ ] The existing test baseline (1679+ passing tests) maintains zero regressions across `pytest` test suites.
+- [ ] Core CLI entrypoints (`python -m genesis.run`, `python scripts/launch.py --help`, `python scripts/preflight.py`) execute cleanly without encoding errors or tracebacks.
+
+### Optimization & Quality Verification
+- [ ] Performance optimizations are benchmarked and verified with before/after execution metrics or profiling logs.
+- [ ] Binary map artifacts (`.anmw`), manifests (`map_manifest.json`), and schema validators retain strict data format compliance.
+- [ ] WebGL viewer (`assets/blender_map/viewer.html` / `web/`) remains fully functional with zero broken asset links or console errors.
+
+### Deliverables & Reporting
+- [ ] A detailed optimization and upgrade report documenting all bugs resolved, performance gains achieved, and architectural enhancements made.
+
+## 2026-09-18T09:32:26Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: [none — teamwork routes from the description]
+
+Comprehensively upgrade, optimize, and modernize the Genesis_Zero project across all dimensions: performance, architecture, feature capabilities, and reliability, bringing it to a state-of-the-art production standard.
+
+Working directory: e:\Project\01_AI_Agents\Genesis_Zero
+Integrity mode: development
+
+## Requirements
+
+### R1. Performance & Optimization
+Analyze and refactor the core logic to maximize execution speed and minimize resource consumption.
+
+### R2. Architecture & Modernization
+Update project dependencies to their latest stable versions and restructure the codebase to adhere to modern industry best practices.
+
+### R3. Reliability
+Ensure robust error handling throughout the application and implement a comprehensive test suite.
+
+## Acceptance Criteria
+
+### Verification: Quality & Modernization
+- [ ] All code passes static analysis (e.g., `ruff check`, `mypy`) with zero errors.
+- [ ] Dependency manager (e.g., `uv` or `pip`) reports no highly vulnerable or severely outdated dependencies.
+
+### Verification: Reliability
+- [ ] The `pytest` test suite executes successfully with no failing tests.
+- [ ] Code coverage is maintained or improved compared to the current baseline.
+
+## 2026-09-19T15:27:10Z
+
+Thực hiện nghiên cứu toàn diện dự án Genesis_Zero, đề xuất các giải pháp nâng cấp (hiệu năng, kiến trúc, CI/CD) và **trực tiếp thực hiện việc chỉnh sửa mã nguồn** để áp dụng các nâng cấp này.
+
+Working directory: e:\Project\01_AI_Agents\Genesis_Zero
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Phân tích và lập kế hoạch
+Quét mã nguồn dự án Genesis_Zero, nhận diện điểm nghẽn và technical debt. Lập một bản kế hoạch nâng cấp (`upgrade_plan.md`) ngắn gọn trước khi thực thi.
+
+### R2. Thực thi nâng cấp mã nguồn
+Trực tiếp sửa đổi, tái cấu trúc (refactor) và viết thêm mã nguồn mới để áp dụng các giải pháp đã đề xuất. Nâng cấp các thư viện/framework nếu cần thiết.
+
+### R3. Tối ưu hóa CI/CD
+Cập nhật hoặc tạo mới các file cấu hình CI/CD (ví dụ: GitHub Actions, GitLab CI, Dockerfile) theo tiêu chuẩn mới.
+
+### R4. Tài liệu hóa
+Cập nhật README.md hoặc tạo tài liệu giải thích các thay đổi kiến trúc và cách chạy/deploy dự án sau khi nâng cấp.
+
+## Verification Resources
+Dự án có sẵn các công cụ để tự kiểm chứng:
+- Chạy `make test` hoặc `pytest` để chạy bộ unit test hiện có.
+- Chạy `make lint` để kiểm tra lỗi cú pháp/chuẩn mã nguồn (sử dụng `ruff`).
+- Có thể dùng `make preflight` để kiểm tra độ sẵn sàng của hệ thống.
+
+## Acceptance Criteria
+
+### Tính toàn vẹn của mã nguồn
+- [ ] Mã nguồn sau khi nâng cấp phải vượt qua `make test` (chạy thành công các test case hiện có).
+- [ ] Vượt qua kiểm tra của linter bằng lệnh `make lint` mà không báo lỗi nghiêm trọng.
+- [ ] Các tính năng cốt lõi của dự án chạy bình thường.
+
+### CI/CD
+- [ ] File cấu hình CI/CD phải hợp lệ và tương thích với kiến trúc mới.
+

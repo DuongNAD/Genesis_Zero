@@ -29,10 +29,11 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-from pathlib import Path
 import random
 import re
 import struct
+from pathlib import Path
+
 import jsonschema
 import pytest
 
@@ -120,8 +121,8 @@ class TestWorldArtifactBinaryRobustness:
             len(payload) - 1,
         ]
         random.seed(1337)
-        for _ in range(30):
-            sample_indices.append(random.randint(0, len(payload) - 1))
+        sample_indices.extend(random.randint(0, len(payload) - 1) for _ in range(30))
+
 
         mutations_tested = 0
         for idx in sample_indices:

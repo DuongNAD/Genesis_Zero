@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import random
 from enum import StrEnum
 from typing import TYPE_CHECKING
@@ -75,6 +76,15 @@ TERRAIN_CODE: dict[Terrain, str] = {
     Terrain.TREE: "T",
     Terrain.CAVE: "C",
 }
+
+_domain_mod = None
+
+def _get_domain():
+    global _domain_mod
+    if _domain_mod is None:
+        import genesis.domain as _dom
+        _domain_mod = _dom
+    return _domain_mod
 
 # Thứ tự GIEO HẠT địa hình. Một tuple, và cả hai đường dựng lưới đọc từ đây.
 #
@@ -184,6 +194,13 @@ class World:
         else:
             from genesis.maps import MAPS, generate_terrain
             self.grid = generate_terrain(MAPS[map_name], w, h, rng)
+        self.plain_tiles: tuple[tuple[int, int], ...] = tuple(
+            (x, y) for y in range(self.h) for x in range(self.w) if self.grid[y][x] == Terrain.PLAIN
+        )
+        self.water_tiles: tuple[tuple[int, int], ...] = tuple(
+            (x, y) for y in range(self.h) for x in range(self.w)
+            if self.grid[y][x] in (Terrain.WATER, Terrain.DEEP)
+        )
         # Bẫy: dùng dict, không dùng set để đảm bảo thứ tự lặp tất định
         self.fruits: dict[tuple[int, int], str] = {}
         self.corpses: dict[tuple[int, int], int] = {}
@@ -295,22 +312,45 @@ class World:
         lọt qua lập chỉ mục âm của Python và im lặng trả về ô ở góc đối diện,
         còn `(24, 24)` thì ném IndexError. Cả hai đều là bug ở mép bản đồ.
         """
-        from genesis.domain import Domain, can_enter, domain_of
-
         x, y = self.wrap(*pos)
         terrain = self.grid[y][x]
+        dom_mod = _domain_mod or _get_domain()
         if creature is None:
-            return can_enter(Domain.CAN, terrain, None)
-        kit = getattr(creature, "kit", None) or self.kits.get(creature.species)
-        return can_enter(domain_of(creature.species), terrain, creature.traits, kit)
+            return terrain in dom_mod._BASE[dom_mod.Domain.CAN]
+
+        cached = getattr(creature, "_cached_passable", None)
+        species = getattr(creature, "species", "")
+        kit = getattr(creature, "kit", None) or self.kits.get(species)
+        traits = getattr(creature, "traits", None)
+        if cached is not None and cached[0] is traits and cached[1] is kit:
+            return terrain in cached[2]
+
+        dom = dom_mod.domain_of(species)
+        p_set = frozenset(t for t in Terrain if dom_mod.can_enter(dom, t, traits, kit))
+        with contextlib.suppress(AttributeError, TypeError):
+            creature._cached_passable = (traits, kit, p_set)
+        return terrain in p_set
 
     def touchable(self, pos: tuple[int, int], creature) -> bool:
         """Con vật này ĂN / UỐNG / ĐÁNH được ở ô này không (W-18 bất biến 3)."""
-        from genesis.domain import can_touch, domain_of
-
         x, y = self.wrap(*pos)
-        kit = getattr(creature, "kit", None) or self.kits.get(creature.species)
-        return can_touch(domain_of(creature.species), self.grid[y][x], creature.traits, kit=kit)
+        terrain = self.grid[y][x]
+        dom_mod = _domain_mod or _get_domain()
+        species = getattr(creature, "species", "")
+        dom = dom_mod.domain_of(species)
+        if dom is dom_mod.Domain.TROI:
+            return terrain in dom_mod._TROI_TOUCH
+
+        cached = getattr(creature, "_cached_passable", None)
+        kit = getattr(creature, "kit", None) or self.kits.get(species)
+        traits = getattr(creature, "traits", None)
+        if cached is not None and cached[0] is traits and cached[1] is kit:
+            return terrain in cached[2]
+
+        p_set = frozenset(t for t in Terrain if dom_mod.can_enter(dom, t, traits, kit))
+        with contextlib.suppress(AttributeError, TypeError):
+            creature._cached_passable = (traits, kit, p_set)
+        return terrain in p_set
 
     def food_for(self, creature) -> dict[tuple[int, int], str]:
         """Ô thức ăn mà CON NÀY vừa ăn được vừa tới được.
@@ -326,17 +366,18 @@ class World:
         hai, và nó phải chọn giữa chúng bằng khoảng cách, không phải bằng việc
         người viết code nhớ hỏi đúng dict.
         """
-        from genesis.domain import Domain, can_enter, domain_of
-
-        dom = domain_of(creature.species)
-        kit = getattr(creature, "kit", None) or self.kits.get(creature.species)
+        dom_mod = _domain_mod or _get_domain()
+        species = getattr(creature, "species", "")
+        dom = dom_mod.domain_of(species)
+        kit = getattr(creature, "kit", None) or self.kits.get(species)
+        traits = getattr(creature, "traits", None)
         out: dict[tuple[int, int], str] = {}
         # Quả: nằm trên PLAIN. Ai vào được PLAIN thì ăn được.
-        if can_enter(dom, Terrain.PLAIN, creature.traits, kit):
+        if dom_mod.can_enter(dom, Terrain.PLAIN, traits, kit):
             out.update(self.fruits)
         # Rong: cổng theo TẦNG, không theo địa hình — xem `_resolve_algae`.
-        if dom is Domain.NUOC or (kit is not None
-                                  and Domain.NUOC in getattr(kit, "extra_domains", ())):
+        if dom is dom_mod.Domain.NUOC or (kit is not None
+                                          and dom_mod.Domain.NUOC in getattr(kit, "extra_domains", ())):
             out.update(self.algae)
         return out
 
@@ -367,12 +408,29 @@ def spawn_algae(world: World, rng: random.Random, tick: int = 0) -> int:
     room = config.ALGAE_MAX - len(world.algae)
     if room <= 0:
         return 0
-    candidates = [
-        (x, y)
-        for y in range(world.h)
-        for x in range(world.w)
-        if world.grid[y][x] in (Terrain.WATER, Terrain.DEEP) and (x, y) not in world.algae
-    ]
+    water_tiles = getattr(world, "water_tiles", None)
+    if water_tiles is not None:
+        candidates = [
+            p for p in water_tiles
+            if world.grid[p[1]][p[0]] in (Terrain.WATER, Terrain.DEEP) and p not in world.algae
+        ]
+        if not candidates:
+            scanned_water = tuple(
+                (x, y)
+                for y in range(world.h)
+                for x in range(world.w)
+                if world.grid[y][x] in (Terrain.WATER, Terrain.DEEP)
+            )
+            if scanned_water != water_tiles:
+                world.water_tiles = scanned_water
+                candidates = [p for p in scanned_water if p not in world.algae]
+    else:
+        candidates = [
+            (x, y)
+            for y in range(world.h)
+            for x in range(world.w)
+            if world.grid[y][x] in (Terrain.WATER, Terrain.DEEP) and (x, y) not in world.algae
+        ]
     if not candidates:
         return 0
     weather_mod = getattr(getattr(world, "weather", None), "modifiers", None)
@@ -396,12 +454,29 @@ def spawn_plants(world: World, rng: random.Random, tick: int = 0) -> int:
     room = config.PLANT_MAX - len(world.fruits)
     if room <= 0:
         return 0
-    candidates = [
-        (x, y)
-        for y in range(world.h)
-        for x in range(world.w)
-        if world.grid[y][x] == Terrain.PLAIN and (x, y) not in world.fruits
-    ]
+    plain_tiles = getattr(world, "plain_tiles", None)
+    if plain_tiles is not None:
+        candidates = [
+            p for p in plain_tiles
+            if world.grid[p[1]][p[0]] == Terrain.PLAIN and p not in world.fruits
+        ]
+        if not candidates:
+            scanned_plain = tuple(
+                (x, y)
+                for y in range(world.h)
+                for x in range(world.w)
+                if world.grid[y][x] == Terrain.PLAIN
+            )
+            if scanned_plain != plain_tiles:
+                world.plain_tiles = scanned_plain
+                candidates = [p for p in scanned_plain if p not in world.fruits]
+    else:
+        candidates = [
+            (x, y)
+            for y in range(world.h)
+            for x in range(world.w)
+            if world.grid[y][x] == Terrain.PLAIN and (x, y) not in world.fruits
+        ]
     if not candidates:
         return 0
     # Kẹp theo CẢ trần lẫn số ô trống -> không đường nào vượt PLANT_MAX,

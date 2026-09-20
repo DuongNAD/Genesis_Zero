@@ -8,6 +8,7 @@ và nó hỏng im lặng: `match` chỉ nhích lên và trông y như model vừ
 from __future__ import annotations
 
 import random
+from typing import Any
 
 from genesis import config, law_config
 from genesis.creature import Creature
@@ -30,7 +31,7 @@ from genesis.traits import founder_traits
 
 
 def _ctx(**kw) -> Ctx:
-    base = dict(
+    base: dict[str, Any] = dict(
         phase="DAY", terrain="PLAIN", hp_band="MID", energy_band="MID",
         age_band="YOUNG", wind_rel="WITH", alone=True, recent={},
         counts={"SAME_SP": {}, "OTHER_SP": {}, "ANY": {}}, subject={},
@@ -154,7 +155,8 @@ def test_6_bo_cham_khong_nhin_thay_linh_cam():
         encoding="utf-8")
     assert "HUNCH" not in src, "score.py không được biết linh cảm tồn tại"
 
-    for path in ("genesis/strategist.py", "net/routes_decision.py"):
+    strat_file = "genesis/strategy/llm.py" if (Path(__file__).resolve().parent.parent / "genesis" / "strategy" / "llm.py").exists() else "genesis/strategist.py"
+    for path in (strat_file, "net/routes_decision.py"):
         s = (Path(__file__).resolve().parent.parent / path).read_text(encoding="utf-8")
         i = s.find("HUNCH_OP")
         assert i != -1, f"{path} phải ghi HUNCH_OP"
@@ -306,7 +308,7 @@ def _run(seed: int, ticks: int, law_for_hunch, laws=None):
     from genesis.tick import build_match, tick
 
     w, cs, st, rng = build_match(seed, laws=laws)
-    strat = ReflexStrategist()
+    strat: Any = ReflexStrategist()
     strat.minds = Minds()
     strat.minds.hunch_enabled = True
     for c in cs:
@@ -464,7 +466,7 @@ def test_bat_hunch_ma_khong_ai_neu_thi_van_chay_Y_HET(tmp_path):
     def run(enabled: bool, path):
         laws = generate_cached(9, arm="STANDARD")
         w, cs, st, rng = build_match(9, laws=laws)
-        strat = ReflexStrategist()
+        strat: Any = ReflexStrategist()
         strat.minds = Minds()
         strat.minds.hunch_enabled = enabled
         with LogWriter(path, "m") as log:
@@ -487,7 +489,8 @@ def test_linh_cam_KHONG_BAO_GIO_cuop_luot_ghi_so():
     """
     from pathlib import Path
 
-    src = (Path(__file__).resolve().parent.parent / "genesis" / "strategist.py").read_text(
+    strat_file = "genesis/strategy/llm.py" if (Path(__file__).resolve().parent.parent / "genesis" / "strategy" / "llm.py").exists() else "genesis/strategist.py"
+    src = (Path(__file__).resolve().parent.parent / strat_file).read_text(
         encoding="utf-8")
     i_codex = src.index('kind = "codex"')
     i_hunch = src.index('kind = "hunch"')
@@ -514,3 +517,55 @@ def test_hoi_han_nguoi_KHONG_dung_len_mot_cuon_so_rong():
     assert not m.hunches, "chỉ HỎI thôi mà đã dựng sổ"
     m.hunch_of(c)
     assert c.id in m.hunches
+
+
+def test_hunch_negative_branches_and_resize():
+    hb = HunchBook(size=2)
+    law = _law()
+
+    # 1. Bad slot: negative or >= size
+    v_neg = hb.apply("SET", -1, law, tick=100)
+    assert not v_neg.ok and v_neg.reason == "HUNCH_BAD_SLOT"
+    v_overflow = hb.apply("SET", 2, law, tick=100)
+    assert not v_overflow.ok and v_overflow.reason == "HUNCH_BAD_SLOT"
+
+    # 2. SET with law=None
+    v_nolaw = hb.apply("SET", 0, None, tick=100)
+    assert not v_nolaw.ok and v_nolaw.reason == "HUNCH_MISSING_LAW"
+
+    # 3. SET valid law
+    v_set = hb.apply("SET", 0, law, tick=100)
+    assert v_set.ok
+    assert hb.entries()[0] is not None
+
+    # 4. DROP operation
+    v_drop = hb.apply("DROP", 0, None, tick=100 + law_config.HUNCH_COOLDOWN)
+    assert v_drop.ok
+    assert hb.entries()[0] is None
+    assert hb.last_write == 100 + law_config.HUNCH_COOLDOWN
+
+    # 5. Unknown operation code
+    v_unknown = hb.apply("INVALID_OP", 0, law, tick=100 + 2 * law_config.HUNCH_COOLDOWN)
+    assert not v_unknown.ok and v_unknown.reason == "HUNCH_UNKNOWN_OP"
+
+    # 6. resize() tests: expand and shrink
+    hb.resize(5)
+    assert hb.size == 5
+    assert len(hb._entries) == 5
+    assert hb.entries()[4] is None
+
+    # resize smaller: size changes, but entries list is preserved
+    hb.resize(3)
+    assert hb.size == 3
+    assert len(hb._entries) == 5
+
+    # negative size in resize
+    hb.resize(-1)
+    assert hb.size == 0
+
+    # 7. clear() operation
+    hb2 = HunchBook(size=3)
+    hb2.apply("SET", 0, law, tick=100)
+    assert hb2.clear() == 1
+    assert hb2.entries()[0] is None
+    assert hb2.last_write == -law_config.HUNCH_COOLDOWN

@@ -14,6 +14,16 @@ bạn**, và nó tồn tại để bạn tìm ra lỗ trước khi người lạ
 from __future__ import annotations
 
 import argparse
+import sys
+
+# Console stream encoding reconfiguration for Windows
+for _stream_name in ("stdout", "stderr"):
+    _stream = getattr(sys, _stream_name, None)
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError, ValueError):
+            continue
 
 import httpx
 

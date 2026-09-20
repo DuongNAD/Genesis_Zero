@@ -10,6 +10,7 @@ from __future__ import annotations
 import collections
 import json
 import logging
+from typing import Any
 
 import httpx
 import pytest
@@ -32,6 +33,7 @@ def _isolate_trait_shift_cohort(monkeypatch):
 def _model(frm: str, to: str, why: str = "cần chạy nhanh hơn"):
     def handler(request: httpx.Request) -> httpx.Response:
         p = json.loads(request.content)["prompt"]
+        out: dict[str, Any]
         if "[DỊCH CƠ THỂ]" in p:
             out = {"from": frm, "to": to, "why": why}
         else:

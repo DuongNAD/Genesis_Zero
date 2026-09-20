@@ -8,8 +8,9 @@ Creates a realistic Salix babylonica with:
 """
 
 import math
-import random
 import os
+import random
+
 import bpy
 import mathutils
 
@@ -215,7 +216,6 @@ def generate_realistic_weeping_willow():
         bough_pts = []
         b_segs = 10
         base_r = 0.32
-        tip_r = 0.12
 
         for bs in range(b_segs):
             bt = bs / (b_segs - 1.0)
@@ -291,7 +291,7 @@ def generate_realistic_weeping_willow():
         for ls in range(2, whip_segs - 1):
             pt = whip_pts[ls][0]
             # Next segment tangent
-            tang = (whip_pts[ls + 1][0] - whip_pts[ls - 1][0]).normalized()
+            (whip_pts[ls + 1][0] - whip_pts[ls - 1][0]).normalized()
 
             # 2 alternating leaves per node
             for side_mult in [-1, 1]:

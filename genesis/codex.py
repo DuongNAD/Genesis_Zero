@@ -86,10 +86,11 @@ class Codex:
             return Verdict(ok=True)
 
         elif op == "CONF":
-            if self._entries[slot] is None:
+            cur_entry = self._entries[slot]
+            if cur_entry is None:
                 return Verdict(ok=False, reason="CODEX_EMPTY_SLOT")
             conf_val = max(1, min(5, int(conf)))
-            self._entries[slot].conf = conf_val
+            cur_entry.conf = conf_val
             self.last_claim = tick
             return Verdict(ok=True)
 

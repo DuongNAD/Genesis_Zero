@@ -15,7 +15,6 @@ Evaluates:
 from __future__ import annotations
 
 import json
-import math
 import os
 import shutil
 import subprocess
@@ -300,7 +299,7 @@ def test_diorama_mesh_watertightness_and_bounds(probe_data: Dict[str, Any]):
     assert tw["boundary_edge_count"] == 0, f"Diorama mesh has {tw['boundary_edge_count']} open boundary edges!"
     assert tw["non_manifold_edge_count"] == 0, f"Diorama mesh has {tw['non_manifold_edge_count']} non-manifold edges!"
     assert tw["wire_edge_count"] == 0, f"Diorama mesh has {tw['wire_edge_count']} wire edges!"
-    assert tw["bottom_planar_at_minus_14"] is True, f"Diorama bottom cap is not sealed at Z = -14.0m"
+    assert tw["bottom_planar_at_minus_14"] is True, "Diorama bottom cap is not sealed at Z = -14.0m"
     assert tw["delta_z"] >= 20.0, f"Terrain delta Z {tw['delta_z']}m < 20.0m"
 
 

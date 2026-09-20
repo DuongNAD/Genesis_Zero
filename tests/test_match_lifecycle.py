@@ -148,3 +148,18 @@ class _AlwaysIn:
 
     def append(self, x) -> None:
         pass
+
+
+def test_net_state_set_runner():
+    """Verify net.state.set_runner updates global runner reference."""
+    import net.state as net_state
+
+    old_runner = net_state.runner
+    try:
+        new_runner = MatchRunner(seed=42, ticks=10, tick_ms=1, log_dir=None)
+        res = net_state.set_runner(new_runner)
+        assert res is new_runner
+        assert net_state.runner is new_runner
+    finally:
+        net_state.set_runner(old_runner)
+

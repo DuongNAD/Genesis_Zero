@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import csv
 import io
+import os
 import subprocess
 import sys
 import tempfile
@@ -75,11 +76,20 @@ def main() -> int:
              "--ticks", str(TICKS), "--llm", "all",
              "--llm-url", f"http://127.0.0.1:{PORT}", "--no-render",
              "--out", str(log), "--truth", str(truth)],
-            cwd=ROOT, check=True, stdout=subprocess.DEVNULL,
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            env=dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1"),
         )
         out = subprocess.run(
             [sys.executable, "-m", "genesis.score", str(log), str(truth)],
-            cwd=ROOT, check=True, capture_output=True, text=True,
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1"),
         ).stdout
     finally:
         server.terminate()

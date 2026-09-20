@@ -62,7 +62,7 @@ def test_acceptance_criteria_and_invariants() -> None:
     # B1: reflex_step KHÔNG sửa gì
     c = _mk_creature("L1:0", "L1", (5, 5))
     w.plants.clear()
-    w.plants[(8, 5)] = 0
+    w.plants[(8, 5)] = "FRUIT_A"
     snap = (c.pos, c.energy, dict(w.plants))
     it = reflex_step(c, w, [c], ActiveGoal(Goal.FORAGE, None, 5), random.Random(1))
     assert isinstance(it, Intent) and (c.pos, c.energy, dict(w.plants)) == snap
@@ -176,8 +176,8 @@ def test_reflex_step_forage_behavior() -> None:
             w.grid[y][x] = Terrain.PLAIN
 
     c = _mk_creature("L1:0", "L1", (5, 5))  # sight_radius = 3, moves_per_tick = 2
-    w.plants[(7, 5)] = 0  # dist 2
-    w.plants[(8, 5)] = 0  # dist 3
+    w.plants[(7, 5)] = "FRUIT_A"  # dist 2
+    w.plants[(8, 5)] = "FRUIT_A"  # dist 3
 
     # Đi về cây gần nhất (7, 5): bước 1 tới (6, 4) do phá hoà toạ độ, bước 2 tới (7, 5)
     it = reflex_step(c, w, [c], ActiveGoal(Goal.FORAGE, None, 5), random.Random(1))
@@ -191,7 +191,7 @@ def test_reflex_step_forage_behavior() -> None:
 
     # Không có cây trong tầm nhìn -> WANDER
     w.plants.clear()
-    w.plants[(20, 20)] = 0  # dist > 3
+    w.plants[(20, 20)] = "FRUIT_A"  # dist > 3
     it_wander = reflex_step(c, w, [c], ActiveGoal(Goal.FORAGE, None, 5), random.Random(1))
     assert len(it_wander.path) == c.traits.moves_per_tick
     assert w.passable(it_wander.path[-1])

@@ -5,10 +5,9 @@ Builds 11 photorealistic canopy trees with clean BMesh topology & PBR materials.
 """
 
 import math
-import os
-import random
 import sys
 from pathlib import Path
+
 import bpy
 from mathutils import Vector
 
@@ -16,15 +15,15 @@ ROOT = Path("/Users/duongnad/Documents/project/Genesis_Zero")
 sys.path.insert(0, str(ROOT / "assets" / "flora" / "generators"))
 
 from flora_builder import (
+    add_channeled_blade,
+    add_curved_tube,
+    add_foliage_clump,
     clean_scene,
     create_pbr_bark_material,
     create_pbr_foliage_material,
-    add_curved_tube,
-    add_cupped_petal,
-    add_channeled_blade,
-    add_foliage_clump,
-    save_and_export
+    save_and_export,
 )
+
 
 def apply_smooth_and_materials(mesh, materials, mat_idx):
     for p in mesh.polygons:
@@ -243,7 +242,7 @@ def build_tree_italian_cypress():
 
     # Iconic dense columnar spire/flame silhouette
     # Stacked tapering oval foliage lobes
-    for s_i, (z_c, r_xy, r_z) in enumerate([
+    for _s_i, (z_c, r_xy, r_z) in enumerate([
         (1.8, 0.60, 0.85),
         (3.0, 0.70, 0.95),
         (4.4, 0.65, 0.95),

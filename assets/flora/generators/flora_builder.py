@@ -15,13 +15,13 @@ Comprehensive rework of all 16 botanical species:
    - Offline Base64 synchronization to web/flora_models_data.js.
 """
 
+import base64
 import math
 import os
 import random
-import sys
-import base64
+
 import bpy
-from mathutils import Vector, Euler, Matrix
+from mathutils import Vector
 
 # -----------------------------------------------------------------------------
 # PBR Material Utility with Subsurface Scattering (SSS) & Procedural Micro-Bump
@@ -1789,7 +1789,7 @@ def build_broadleaf_cattail():
         ang = b * 2.0 * math.pi / blades_count + random.uniform(-0.06, 0.06)
         b_h = 2.3 + random.uniform(-0.35, 0.35)
         b_lean = 0.45 + random.uniform(-0.10, 0.15)
-        dx, dy = math.cos(ang), math.sin(ang)
+        _dx, _dy = math.cos(ang), math.sin(ang)
 
         b_segs = 10
         spine_pts = []

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from pathlib import Path
 
 from genesis import law_config as lc
 from genesis.adapt import reset_body
@@ -42,13 +43,15 @@ def test_codex_acceptance() -> None:
     assert cx.entries()[0] is not None
     assert not cx.apply("SET", 1, law, 3, tick=500).ok
     # B5: reflex KHÔNG import codex
-    t = ast.parse(open("genesis/reflex.py", encoding="utf-8").read())
+    reflex_src = Path("genesis/reflex.py").read_text(encoding="utf-8")
+    t = ast.parse(reflex_src)
     assert not [
         n
         for n in ast.walk(t)
         if isinstance(n, ast.ImportFrom) and n.module and "codex" in n.module
     ]
-    assert "codex" not in open("genesis/reflex.py", encoding="utf-8").read().lower()
+    assert "codex" not in reflex_src.lower()
+
 
 
 def test_codex_operations_set_drop_conf() -> None:
@@ -69,8 +72,9 @@ def test_codex_operations_set_drop_conf() -> None:
     # CONF cập nhật conf
     v_conf = cx.apply("CONF", 0, None, conf=5, tick=40)
     assert v_conf.ok
-    assert cx.entries()[0] is not None
-    assert cx.entries()[0].conf == 5
+    e0 = cx.entries()[0]
+    assert e0 is not None
+    assert e0.conf == 5
 
     # CONF trên ô trống -> lỗi
     v_conf_empty = cx.apply("CONF", 1, None, conf=3, tick=70)
@@ -112,8 +116,9 @@ def test_reset_body_does_not_touch_codex() -> None:
     reset_body(c)
 
     # Codex vẫn nguyên vẹn
-    assert codex.entries()[0] is not None
-    assert codex.entries()[0].law == law
+    entry = codex.entries()[0]
+    assert entry is not None
+    assert entry.law == law
 
 
 def test_resize_expand_and_shrink() -> None:

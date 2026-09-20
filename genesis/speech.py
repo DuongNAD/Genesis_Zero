@@ -176,6 +176,4 @@ class Reputation:
 def _contradicts(signal: str, goal: str) -> bool:
     if signal == "ALARM" and goal in ("HUNT", "GUARD"):
         return True
-    if signal == "SUBM" and goal == "HUNT":
-        return True
-    return False
+    return bool(signal == "SUBM" and goal == "HUNT")

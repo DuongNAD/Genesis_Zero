@@ -18,12 +18,8 @@ Bộ sinh 3D sinh học hoàn chỉnh chuẩn Studio chất lượng cao:
 
 from __future__ import annotations
 
-import math
-import os
-from pathlib import Path
 from typing import Sequence
 
-from genesis import config
 from genesis.domain import Domain, domain_of
 from genesis.features import Feature, roll_for_species
 from genesis.traits import Traits, founder_traits
@@ -70,14 +66,7 @@ def build_creature_blender_code(
     has_fangs = "RANG_NANH" in feat_keys or "FANGS" in feat_keys
     has_night_eyes = "MAT_DEM" in feat_keys
     has_dig_claws = "DAO_HANG" in feat_keys
-    has_fur = "LONG_DAI" in feat_keys
-    has_scales = "VAY_CUNG" in feat_keys or "HARD_SHELL" in feat_keys
-    has_shell = "VO_SO" in feat_keys
-    has_whiskers = "RAU_CAM_UNG" in feat_keys
     has_cheek_pouches = "TUI_MA" in feat_keys or "CHEEK_POUCH" in feat_keys
-    has_glider = "CANH_LUOT" in feat_keys or "GLIDER_FLAP" in feat_keys
-    has_climbing = "TREO_GIOI" in feat_keys
-    has_camo = "CAMOUFLAGE" in feat_keys
 
     # Bảng màu tự nhiên theo Tầng và Loài
     if domain == Domain.NUOC:

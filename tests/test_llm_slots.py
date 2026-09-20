@@ -50,7 +50,7 @@ def test_id_slot_khong_bao_gio_vuot_so_cho_that():
 
     asyncio.run(go())
     assert st._n_slots == 4
-    for cid, idx in st.slots.items():
+    for idx in st.slots.values():
         assert 0 <= idx % st._n_slots < 4
 
 

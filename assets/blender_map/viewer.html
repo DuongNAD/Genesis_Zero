@@ -401,62 +401,74 @@
       const terrain = model.getObjectByName('Diorama_Island_Block');
       if (terrain && terrain.geometry) {
         const geom = terrain.geometry;
-        const pos = geom.attributes.position;
-        const norm = geom.attributes.normal;
-        const count = pos.count;
-        const colors = new Float32Array(count * 3);
+        if (geom.attributes.color) {
+          // Fast path: vertex colors already present in mesh
+          terrain.material.vertexColors = true;
+          terrain.material.color.setHex(0xffffff);
+          terrain.material.roughness = 0.92;
+          terrain.material.metalness = 0.0;
+          terrain.material.needsUpdate = true;
+        } else {
+          const pos = geom.attributes.position;
+          const norm = geom.attributes.normal;
+          const count = pos.count;
+          const posArr = pos.array;
+          const normArr = norm ? norm.array : null;
+          const colors = new Float32Array(count * 3);
 
-        for (let i = 0; i < count; i++) {
-          const x = pos.getX(i);
-          const y = pos.getY(i);
-          const z = pos.getZ(i);
+          for (let i = 0; i < count; i++) {
+            const idx3 = i * 3;
+            const x = posArr[idx3];
+            const y = posArr[idx3 + 1];
+            const z = posArr[idx3 + 2];
 
-          const ny = norm ? norm.getY(i) : 1.0;
-          const slope = 1.0 - Math.min(1.0, Math.max(0.0, ny));
+            const ny = normArr ? normArr[idx3 + 1] : 1.0;
+            const slope = 1.0 - Math.min(1.0, Math.max(0.0, ny));
 
-          const n1 = Math.sin(x * 0.15 + z * 0.12) * 0.04;
-          const n2 = Math.cos(x * 0.4 - z * 0.3) * 0.02;
-          const strata = 0.5 + 0.5 * Math.sin(y * 1.6 + x * 0.08);
+            const n1 = Math.sin(x * 0.15 + z * 0.12) * 0.04;
+            const n2 = Math.cos(x * 0.4 - z * 0.3) * 0.02;
+            const strata = 0.5 + 0.5 * Math.sin(y * 1.6 + x * 0.08);
 
-          let r, g, b;
-          if (y <= -15.0) {
-            r = 0.12; g = 0.12; b = 0.14;
-          } else if (Math.abs(x) > 78.5 || Math.abs(z) > 78.5) {
-            const band = 0.5 + 0.5 * Math.sin(y * 1.1);
-            r = 0.32 + 0.08 * band;
-            g = 0.26 + 0.06 * band;
-            b = 0.20 + 0.04 * band;
-          } else if (y < -0.5) {
-            r = 0.18 + n1; g = 0.20 + n1; b = 0.22 + n1;
-          } else if (y < 0.8 && slope < 0.4) {
-            r = 0.58 + n1; g = 0.48 + n1; b = 0.34 + n1;
-          } else if (y > 32.0) {
-            r = 0.90; g = 0.92; b = 0.96;
-          } else if (slope > 0.42) {
-            const rockTone = 0.38 + 0.06 * strata + n1;
-            r = rockTone * 1.05; g = rockTone * 0.95; b = rockTone * 0.85;
-          } else if (y > 16.0) {
-            const scree = 0.42 + 0.05 * strata + n1;
-            r = scree * 1.0; g = scree * 0.92; b = scree * 0.84;
-          } else if (y < 5.0 && slope < 0.25) {
-            r = 0.22 + n1; g = 0.32 + n1; b = 0.16 + n1;
-          } else {
-            r = 0.38 + n1 + n2; g = 0.36 + n1 + n2; b = 0.26 + n1 + n2;
+            let r, g, b;
+            if (y <= -15.0) {
+              r = 0.12; g = 0.12; b = 0.14;
+            } else if (Math.abs(x) > 78.5 || Math.abs(z) > 78.5) {
+              const band = 0.5 + 0.5 * Math.sin(y * 1.1);
+              r = 0.32 + 0.08 * band;
+              g = 0.26 + 0.06 * band;
+              b = 0.20 + 0.04 * band;
+            } else if (y < -0.5) {
+              r = 0.18 + n1; g = 0.20 + n1; b = 0.22 + n1;
+            } else if (y < 0.8 && slope < 0.4) {
+              r = 0.58 + n1; g = 0.48 + n1; b = 0.34 + n1;
+            } else if (y > 32.0) {
+              r = 0.90; g = 0.92; b = 0.96;
+            } else if (slope > 0.42) {
+              const rockTone = 0.38 + 0.06 * strata + n1;
+              r = rockTone * 1.05; g = rockTone * 0.95; b = rockTone * 0.85;
+            } else if (y > 16.0) {
+              const scree = 0.42 + 0.05 * strata + n1;
+              r = scree * 1.0; g = scree * 0.92; b = scree * 0.84;
+            } else if (y < 5.0 && slope < 0.25) {
+              r = 0.22 + n1; g = 0.32 + n1; b = 0.16 + n1;
+            } else {
+              r = 0.38 + n1 + n2; g = 0.36 + n1 + n2; b = 0.26 + n1 + n2;
+            }
+
+            colors[idx3] = Math.min(1.0, Math.max(0.0, r));
+            colors[idx3 + 1] = Math.min(1.0, Math.max(0.0, g));
+            colors[idx3 + 2] = Math.min(1.0, Math.max(0.0, b));
           }
 
-          colors[i * 3] = Math.min(1.0, Math.max(0.0, r));
-          colors[i * 3 + 1] = Math.min(1.0, Math.max(0.0, g));
-          colors[i * 3 + 2] = Math.min(1.0, Math.max(0.0, b));
+          geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+          geom.attributes.color.needsUpdate = true;
+
+          terrain.material.vertexColors = true;
+          terrain.material.color.setHex(0xffffff);
+          terrain.material.roughness = 0.92;
+          terrain.material.metalness = 0.0;
+          terrain.material.needsUpdate = true;
         }
-
-        geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        geom.attributes.color.needsUpdate = true;
-
-        terrain.material.vertexColors = true;
-        terrain.material.color.setHex(0xffffff);
-        terrain.material.roughness = 0.92;
-        terrain.material.metalness = 0.0;
-        terrain.material.needsUpdate = true;
       }
 
       // 3. Water PBR Styling
@@ -554,7 +566,7 @@
 
     function loadModel() {
       const loader = new THREE.GLTFLoader();
-      const glbUrl = 'ecosystem_map.glb?v=' + Date.now();
+      const glbUrl = 'ecosystem_map.glb';
 
       loader.load(
         glbUrl,

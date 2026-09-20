@@ -28,19 +28,14 @@ Usage:
 """
 
 import math
-import os
 import shutil
-import struct
 import subprocess
-import sys
-import tempfile
 import time
 from pathlib import Path
 
 import bmesh
 import bpy
-import mathutils
-from mathutils import Euler, Matrix, Quaternion, Vector
+from mathutils import Vector
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = PROJECT_ROOT / "assets" / "creatures"
@@ -460,7 +455,7 @@ def build_creature_geometry_and_armature(cfg):
         abdo_b = eb.new("Abdomen"); abdo_b.head = (0, 0.1, 0.42); abdo_b.tail = (0, 0.85, 0.55); abdo_b.parent = ceph_b
         spin_b = eb.new("Spinnerets"); spin_b.head = abdo_b.tail; spin_b.tail = (0, 1.1, 0.5); spin_b.parent = abdo_b
 
-        for s_idx, (side, s_val) in enumerate([(".L", 1.0), (".R", -1.0)]):
+        for _s_idx, (side, s_val) in enumerate([(".L", 1.0), (".R", -1.0)]):
             chel_b = eb.new(f"Chelicera{side}")
             chel_b.head = (s_val * 0.1, -0.45, 0.38)
             chel_b.tail = (s_val * 0.12, -0.65, 0.22)
@@ -786,7 +781,8 @@ def build_creature_geometry_and_armature(cfg):
         # Abdomen (swollen spherical opisthosoma)
         add_uv_sphere(bm, Vector((0, 0.55, 0.55)), 0.52, u_seg=16, v_seg=12, mat_idx=MAT_BELL)
         # 8 Legs
-        for s_idx, (side, s_val) in enumerate([(".L", 1.0), (".R", -1.0)]):
+        for _s_idx, (_side, s_val) in enumerate([(".L", 1.0), (".R", -1.0)]):
+
             # Chelicera & Fang
             add_limb_tube(bm, [Vector((s_val * 0.1, -0.45, 0.38)), Vector((s_val * 0.12, -0.65, 0.22))], [0.08, 0.05], M=6, mat_idx=MAT_PRIM)
             add_limb_tube(bm, [Vector((s_val * 0.12, -0.65, 0.22)), Vector((s_val * 0.08, -0.75, 0.08))], [0.05, 0.015], M=6, mat_idx=MAT_ACNT)
@@ -838,7 +834,8 @@ def build_creature_geometry_and_armature(cfg):
         add_limb_tube(bm, [Vector((-0.20, -0.66, 0.78)), Vector((0.20, -0.66, 0.78))], [0.04, 0.04], M=6, mat_idx=MAT_EYE)
 
         # 4 Hydraulic Legs
-        for side, s_val in [(".L", 1.0), (".R", -1.0)]:
+        for _side, s_val in [(".L", 1.0), (".R", -1.0)]:
+
             # Foreleg
             pts_f = [
                 Vector((s_val * 0.45, -0.25, 0.70)),
@@ -876,7 +873,7 @@ def build_creature_geometry_and_armature(cfg):
         loft_rings(bm, rings, cap_start=True, cap_end=True, mat_idx=MAT_PRIM)
 
         # Caudal Fin (Crescent tail)
-        c_pts = [Vector((0, 1.95, 0.70)), Vector((0, 2.30, 0.72)), Vector((0, 2.65, 1.15)), Vector((0, 2.65, 0.25))]
+        [Vector((0, 1.95, 0.70)), Vector((0, 2.30, 0.72)), Vector((0, 2.65, 1.15)), Vector((0, 2.65, 0.25))]
         add_limb_tube(bm, [Vector((0, 1.95, 0.70)), Vector((0, 2.50, 1.10))], [0.04, 0.015], M=6, mat_idx=MAT_ACNT)
         add_limb_tube(bm, [Vector((0, 1.95, 0.70)), Vector((0, 2.50, 0.30))], [0.04, 0.015], M=6, mat_idx=MAT_ACNT)
 
@@ -884,7 +881,8 @@ def build_creature_geometry_and_armature(cfg):
         add_limb_tube(bm, [Vector((0, -0.20, 1.05)), Vector((0, 0.25, 1.35)), Vector((0, 0.65, 0.95))], [0.05, 0.035, 0.02], M=6, mat_idx=MAT_ACNT)
 
         # Pectoral Fins
-        for side, s_val in [(".L", 1.0), (".R", -1.0)]:
+        for _side, s_val in [(".L", 1.0), (".R", -1.0)]:
+
             pts_pec = [
                 Vector((s_val * 0.32, -0.45, 0.55)),
                 Vector((s_val * 0.85, -0.35, 0.45)),
@@ -915,7 +913,8 @@ def build_creature_geometry_and_armature(cfg):
         add_limb_tube(bm, beak_pts, [0.09, 0.06, 0.02], M=6, mat_idx=MAT_ACNT)
 
         # Segmented Wings
-        for side, s_val in [(".L", 1.0), (".R", -1.0)]:
+        for _side, s_val in [(".L", 1.0), (".R", -1.0)]:
+
             pts_wing = [
                 Vector((s_val * 0.25, -0.40, 0.95)),
                 Vector((s_val * 0.85, -0.35, 1.05)),
@@ -995,7 +994,8 @@ def build_creature_geometry_and_armature(cfg):
         fore_y = -0.35 if not is_croc else -0.55
         hind_y = 0.75 if not is_croc else 0.85
         flen_scale = 1.0 if not is_skink else 0.75
-        for side, s_val in [(".L", 1.0), (".R", -1.0)]:
+        for _side, s_val in [(".L", 1.0), (".R", -1.0)]:
+
             # Foreleg
             pts_fl = [
                 Vector((s_val * 0.40, fore_y, 0.78)),
@@ -1117,6 +1117,17 @@ def create_and_bake_8_animations(arm_obj, cfg):
             pb.rotation_euler = (0, 0, 0)
             pb.scale = (1, 1, 1)
 
+    def _kf_rot(bone, rot, frame):
+        if bone:
+            bone.rotation_euler = rot
+            bone.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+    def _kf_loc(bone, loc, frame):
+        if bone:
+            bone.location = loc
+            bone.keyframe_insert(data_path="location", frame=frame)
+
+
     # 1. Idle_Normal (60 frames loop)
     act_idle = bpy.data.actions.new("Idle_Normal")
     arm_obj.animation_data.action = act_idle
@@ -1176,44 +1187,45 @@ def create_and_bake_8_animations(arm_obj, cfg):
     if btype == "fish":
         t1 = arm_obj.pose.bones.get("Tail_1")
         t2 = arm_obj.pose.bones.get("Tail_2")
-        t3 = arm_obj.pose.bones.get("Tail_3")
+        arm_obj.pose.bones.get("Tail_3")
         cau = arm_obj.pose.bones.get("CaudalFin")
-        if t1: t1.rotation_euler = (0, 0, math.radians(12)); t1.keyframe_insert(data_path="rotation_euler", frame=10)
-        if t2: t2.rotation_euler = (0, 0, math.radians(20)); t2.keyframe_insert(data_path="rotation_euler", frame=10)
-        if cau: cau.rotation_euler = (0, 0, math.radians(25)); cau.keyframe_insert(data_path="rotation_euler", frame=10)
-        if t1: t1.rotation_euler = (0, 0, math.radians(-12)); t1.keyframe_insert(data_path="rotation_euler", frame=30)
-        if t2: t2.rotation_euler = (0, 0, math.radians(-20)); t2.keyframe_insert(data_path="rotation_euler", frame=30)
-        if cau: cau.rotation_euler = (0, 0, math.radians(-25)); cau.keyframe_insert(data_path="rotation_euler", frame=30)
+        _kf_rot(t1, (0, 0, math.radians(12)), 10)
+        _kf_rot(t2, (0, 0, math.radians(20)), 10)
+        _kf_rot(cau, (0, 0, math.radians(25)), 10)
+        _kf_rot(t1, (0, 0, math.radians(-12)), 30)
+        _kf_rot(t2, (0, 0, math.radians(-20)), 30)
+        _kf_rot(cau, (0, 0, math.radians(-25)), 30)
     elif btype == "eagle":
         w_l = arm_obj.pose.bones.get("Wing_Arm.L")
         w_r = arm_obj.pose.bones.get("Wing_Arm.R")
         if w_l and w_r:
-            w_l.rotation_euler = (math.radians(-25), 0, math.radians(15)); w_l.keyframe_insert(data_path="rotation_euler", frame=20)
-            w_r.rotation_euler = (math.radians(-25), 0, math.radians(-15)); w_r.keyframe_insert(data_path="rotation_euler", frame=20)
+            _kf_rot(w_l, (math.radians(-25), 0, math.radians(15)), 20)
+            _kf_rot(w_r, (math.radians(-25), 0, math.radians(-15)), 20)
     elif btype == "spider":
         # Multi-leg alternating gait
         for l_num in [1, 3]:
             fl = arm_obj.pose.bones.get(f"Femur_{l_num}.L")
-            if fl: fl.rotation_euler = (math.radians(15), 0, 0); fl.keyframe_insert(data_path="rotation_euler", frame=15)
+            _kf_rot(fl, (math.radians(15), 0, 0), 15)
         for l_num in [2, 4]:
             fr = arm_obj.pose.bones.get(f"Femur_{l_num}.R")
-            if fr: fr.rotation_euler = (math.radians(15), 0, 0); fr.keyframe_insert(data_path="rotation_euler", frame=15)
+            _kf_rot(fr, (math.radians(15), 0, 0), 15)
     else:
         # Tetrapod walk
         ua_l = arm_obj.pose.bones.get("UpperArm.L") or arm_obj.pose.bones.get("UpperLeg.L")
         ua_r = arm_obj.pose.bones.get("UpperArm.R") or arm_obj.pose.bones.get("UpperLeg.R")
         th_l = arm_obj.pose.bones.get("Thigh.L") or arm_obj.pose.bones.get("UpperLeg_H.L")
         th_r = arm_obj.pose.bones.get("Thigh.R") or arm_obj.pose.bones.get("UpperLeg_H.R")
-        if ua_l: ua_l.rotation_euler = (math.radians(-18), 0, math.radians(12)); ua_l.keyframe_insert(data_path="rotation_euler", frame=10)
-        if ua_r: ua_r.rotation_euler = (math.radians(18), 0, math.radians(-12)); ua_r.keyframe_insert(data_path="rotation_euler", frame=10)
-        if th_l: th_l.rotation_euler = (math.radians(18), 0, math.radians(-12)); th_l.keyframe_insert(data_path="rotation_euler", frame=10)
-        if th_r: th_r.rotation_euler = (math.radians(-18), 0, math.radians(12)); th_r.keyframe_insert(data_path="rotation_euler", frame=10)
+        _kf_rot(ua_l, (math.radians(-18), 0, math.radians(12)), 10)
+        _kf_rot(ua_r, (math.radians(18), 0, math.radians(-12)), 10)
+        _kf_rot(th_l, (math.radians(18), 0, math.radians(-12)), 10)
+        _kf_rot(th_r, (math.radians(-18), 0, math.radians(12)), 10)
 
-        if ua_l: ua_l.rotation_euler = (math.radians(18), 0, math.radians(-12)); ua_l.keyframe_insert(data_path="rotation_euler", frame=30)
-        if ua_r: ua_r.rotation_euler = (math.radians(-18), 0, math.radians(12)); ua_r.keyframe_insert(data_path="rotation_euler", frame=30)
-        if th_l: th_l.rotation_euler = (math.radians(-18), 0, math.radians(12)); th_l.keyframe_insert(data_path="rotation_euler", frame=30)
-        if th_r: th_r.rotation_euler = (math.radians(18), 0, math.radians(-12)); th_r.keyframe_insert(data_path="rotation_euler", frame=30)
+        _kf_rot(ua_l, (math.radians(18), 0, math.radians(-12)), 30)
+        _kf_rot(ua_r, (math.radians(-18), 0, math.radians(12)), 30)
+        _kf_rot(th_l, (math.radians(-18), 0, math.radians(12)), 30)
+        _kf_rot(th_r, (math.radians(18), 0, math.radians(-12)), 30)
     created_actions.append(act_walk)
+
 
     # 4. Run (24 frames loop)
     act_run = bpy.data.actions.new("Run")
@@ -1229,10 +1241,10 @@ def create_and_bake_8_animations(arm_obj, cfg):
 
     ua_l = arm_obj.pose.bones.get("UpperArm.L") or arm_obj.pose.bones.get("UpperLeg.L")
     ua_r = arm_obj.pose.bones.get("UpperArm.R") or arm_obj.pose.bones.get("UpperLeg.R")
-    if ua_l: ua_l.rotation_euler = (math.radians(-32), 0, math.radians(20)); ua_l.keyframe_insert(data_path="rotation_euler", frame=6)
-    if ua_r: ua_r.rotation_euler = (math.radians(32), 0, math.radians(-20)); ua_r.keyframe_insert(data_path="rotation_euler", frame=6)
-    if ua_l: ua_l.rotation_euler = (math.radians(32), 0, math.radians(-20)); ua_l.keyframe_insert(data_path="rotation_euler", frame=18)
-    if ua_r: ua_r.rotation_euler = (math.radians(-32), 0, math.radians(20)); ua_r.keyframe_insert(data_path="rotation_euler", frame=18)
+    _kf_rot(ua_l, (math.radians(-32), 0, math.radians(20)), 6)
+    _kf_rot(ua_r, (math.radians(32), 0, math.radians(-20)), 6)
+    _kf_rot(ua_l, (math.radians(32), 0, math.radians(-20)), 18)
+    _kf_rot(ua_r, (math.radians(-32), 0, math.radians(20)), 18)
     created_actions.append(act_run)
 
     # 5. Attack (30 frames)
@@ -1244,15 +1256,15 @@ def create_and_bake_8_animations(arm_obj, cfg):
         pb.keyframe_insert(data_path="rotation_euler", frame=30)
 
     # F8: Anticipation / Recoil back
-    if head_bone: head_bone.rotation_euler = (math.radians(-16), 0, 0); head_bone.keyframe_insert(data_path="rotation_euler", frame=8)
+    _kf_rot(head_bone, (math.radians(-16), 0, 0), 8)
     jaw_bone = arm_obj.pose.bones.get("Jaw") or arm_obj.pose.bones.get("Beak") or arm_obj.pose.bones.get("Chelicera.L")
-    if jaw_bone: jaw_bone.rotation_euler = (math.radians(24), 0, 0); jaw_bone.keyframe_insert(data_path="rotation_euler", frame=8)
+    _kf_rot(jaw_bone, (math.radians(24), 0, 0), 8)
 
     # F14: Strike Snap
-    if head_bone: head_bone.rotation_euler = (math.radians(18), 0, 0); head_bone.keyframe_insert(data_path="rotation_euler", frame=14)
-    if jaw_bone: jaw_bone.rotation_euler = (math.radians(-6), 0, 0); jaw_bone.keyframe_insert(data_path="rotation_euler", frame=14)
-    if ua_l: ua_l.rotation_euler = (math.radians(25), 0, 0); ua_l.keyframe_insert(data_path="rotation_euler", frame=14)
-    if ua_r: ua_r.rotation_euler = (math.radians(25), 0, 0); ua_r.keyframe_insert(data_path="rotation_euler", frame=14)
+    _kf_rot(head_bone, (math.radians(18), 0, 0), 14)
+    _kf_rot(jaw_bone, (math.radians(-6), 0, 0), 14)
+    _kf_rot(ua_l, (math.radians(25), 0, 0), 14)
+    _kf_rot(ua_r, (math.radians(25), 0, 0), 14)
     created_actions.append(act_attack)
 
     # 6. Hurt_Defend (20 frames)
@@ -1264,8 +1276,8 @@ def create_and_bake_8_animations(arm_obj, cfg):
         pb.keyframe_insert(data_path="rotation_euler", frame=20)
 
     root_bone = arm_obj.pose.bones.get("Root")
-    if root_bone: root_bone.location = (0, 0.15, -0.05); root_bone.keyframe_insert(data_path="location", frame=8)
-    if head_bone: head_bone.rotation_euler = (math.radians(16), math.radians(-10), math.radians(8)); head_bone.keyframe_insert(data_path="rotation_euler", frame=8)
+    _kf_loc(root_bone, (0, 0.15, -0.05), 8)
+    _kf_rot(head_bone, (math.radians(16), math.radians(-10), math.radians(8)), 8)
     created_actions.append(act_hurt)
 
     # 7. Eat (40 frames loop)
@@ -1278,16 +1290,16 @@ def create_and_bake_8_animations(arm_obj, cfg):
 
     # Lower head to graze/feed
     nk = arm_obj.pose.bones.get("Neck") or head_bone
-    if nk: nk.rotation_euler = (math.radians(22), 0, 0); nk.keyframe_insert(data_path="rotation_euler", frame=1)
-    if nk: nk.rotation_euler = (math.radians(22), 0, 0); nk.keyframe_insert(data_path="rotation_euler", frame=40)
+    _kf_rot(nk, (math.radians(22), 0, 0), 1)
+    _kf_rot(nk, (math.radians(22), 0, 0), 40)
 
     # Mastication chews at F10, F25
-    if jaw_bone:
-        jaw_bone.rotation_euler = (math.radians(14), 0, 0); jaw_bone.keyframe_insert(data_path="rotation_euler", frame=10)
-        jaw_bone.rotation_euler = (0, 0, 0); jaw_bone.keyframe_insert(data_path="rotation_euler", frame=18)
-        jaw_bone.rotation_euler = (math.radians(12), 0, 0); jaw_bone.keyframe_insert(data_path="rotation_euler", frame=26)
-        jaw_bone.rotation_euler = (0, 0, 0); jaw_bone.keyframe_insert(data_path="rotation_euler", frame=34)
+    _kf_rot(jaw_bone, (math.radians(14), 0, 0), 10)
+    _kf_rot(jaw_bone, (0, 0, 0), 18)
+    _kf_rot(jaw_bone, (math.radians(12), 0, 0), 26)
+    _kf_rot(jaw_bone, (0, 0, 0), 34)
     created_actions.append(act_eat)
+
 
     # 8. Death (45 frames)
     act_death = bpy.data.actions.new("Death")

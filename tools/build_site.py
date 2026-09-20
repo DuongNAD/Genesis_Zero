@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """Dựng docs/site.html từ toàn bộ bộ tài liệu. Chạy lại sau mỗi lần sửa .md."""
+import contextlib
 import html
 import json
 import pathlib
 import re
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).parent))
-import md as MD
+for _s in (sys.stdout, sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        with contextlib.suppress(AttributeError, OSError, ValueError):
+            _s.reconfigure(encoding="utf-8", errors="replace")
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from tools import md as MD
+
 DOCS = ROOT / "docs"
 TASKS = DOCS / "tasks"
 
@@ -99,7 +107,7 @@ def make_linkfn(cur_dir):
     return fn
 
 bodies, tocs = {}, {}
-for sid, kind, code, title, sub, txt in sections:
+for sid, kind, _code, _title, _sub, txt in sections:
     cur_dir = ROOT if sid == "overview" else (TASKS if kind == "task" else DOCS)
     body = re.sub(r"^#\s.*\n", "", txt, count=1)          # bỏ h1, đã có ở header
     body = re.sub(r"^>\s*\[00 Bản đồ\].*\n", "", body, flags=re.MULTILINE)  # bỏ dải nav .md
@@ -118,7 +126,8 @@ def rich(s):
 
 nav = []
 nav.append('<div class="navgroup"><div class="navgroup-h">Tài liệu</div><ul class="navlist">')
-for sid, kind, code, title, sub, _ in sections:
+for sid, kind, code, title, _sub, _ in sections:
+
     if kind != "doc":
         continue
     label = code if code else "—"
@@ -126,7 +135,7 @@ for sid, kind, code, title, sub, _ in sections:
                f'<span class="chip chip-doc">{esc(label)}</span><span class="nav-t">{esc(plain(title))}</span></a></li>')
 nav.append("</ul></div>")
 
-for tk, (tname, tdesc) in TRACKS.items():
+for tk, (tname, _tdesc) in TRACKS.items():
     items = [t for t in task_meta if t["track"] == tk]
     nav.append(f'<div class="navgroup" data-track="{tk}">'
                f'<div class="navgroup-h"><span class="tdot" style="background:var(--t-{tk})"></span>{esc(tname)}'
@@ -144,14 +153,14 @@ for tk, (tname, tdesc) in TRACKS.items():
 
 arts = []
 for sid, kind, code, title, sub, _ in sections:
-    tk = code[0] if kind == "task" else None
+    task_track = code[0] if kind == "task" else None
     eyebrow = ""
-    if kind == "task":
-        tname = TRACKS[tk][0]
+    if kind == "task" and task_track is not None:
+        tname = TRACKS[task_track][0]
         st = next((m["status"] for m in task_meta if m["code"] == code), "⬜")
         stt = {"✅": "Xong", "🟨": "Đang làm", "🚫": "Bị chặn"}.get(st, "Chưa bắt đầu")
         scls = {"✅": "st-done", "🟨": "st-wip", "🚫": "st-blk"}.get(st, "st-todo")
-        eyebrow = (f'<div class="eyebrow"><span class="chip chip-lg" style="--c:var(--t-{tk})">{esc(code)}</span>'
+        eyebrow = (f'<div class="eyebrow"><span class="chip chip-lg" style="--c:var(--t-{task_track})">{esc(code)}</span>'
                    f'<span class="eyebrow-t">{esc(tname)}</span>'
                    f'<span class="statepill"><span class="st {scls}"></span>{stt}</span></div>')
     elif code:

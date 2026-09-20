@@ -4,7 +4,6 @@ sync_all_flora_models_to_js.py - Syncs all 103 GLB models into web/flora_models_
 
 import base64
 import glob
-import json
 import os
 from pathlib import Path
 
@@ -23,7 +22,8 @@ def sync_models():
 
     for idx, gf in enumerate(glb_files):
         slug = Path(gf).stem
-        data = open(gf, "rb").read()
+        data = Path(gf).read_bytes()
+
         b64_str = base64.b64encode(data).decode("ascii")
         comma = "," if idx < len(glb_files) - 1 else ""
         lines.append(f'  "{slug}": "{b64_str}"{comma}')

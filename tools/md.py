@@ -132,19 +132,22 @@ def render(md, linkfn, idprefix=''):
             aligns = []
             for c in cells(lines[i + 1]):
                 a = 'left'
-                if c.startswith(':') and c.endswith(':'): a = 'center'
-                elif c.endswith(':'): a = 'right'
+                if c.startswith(':') and c.endswith(':'):
+                    a = 'center'
+                elif c.endswith(':'):
+                    a = 'right'
                 aligns.append(a)
             j = i + 2; rows = []
             while j < n and lines[j].lstrip().startswith('|'):
                 rows.append(cells(lines[j])); j += 1
-            def td(tag, cs):
+            def td(tag, cs, col_aligns=aligns):
                 o = []
                 for k, c in enumerate(cs):
-                    a = aligns[k] if k < len(aligns) else 'left'
+                    a = col_aligns[k] if k < len(col_aligns) else 'left'
                     st = f' style="text-align:{a}"' if a != 'left' else ''
                     o.append(f'<{tag}{st}>{inline(c, linkfn)}</{tag}>')
                 return '<tr>' + ''.join(o) + '</tr>'
+
             bare = not any(c.strip() for c in head)
             cls = ' class="meta"' if bare else ''
             t = f'<div class="tablewrap"><table{cls}>'

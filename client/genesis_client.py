@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import logging
 import tomllib
@@ -91,10 +92,8 @@ async def heartbeat_loop(srv: httpx.AsyncClient, headers: dict, stop: asyncio.Ev
                            json={"healthy": True, "queue_depth": 0, "model_ready": True})
         except httpx.HTTPError as exc:
             logger.warning("heartbeat hỏng: %s", exc)
-        try:
+        with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(stop.wait(), timeout=HEARTBEAT_SECONDS)
-        except TimeoutError:
-            pass
 
 
 async def run(
@@ -179,11 +178,12 @@ async def run(
             if not items:
                 continue
 
-            async def one(item: dict[str, Any]) -> bool:
+            async def one(item: dict[str, Any], slots=slots, prompts=prompts) -> bool:
                 cid = item["creature_id"]
                 r = await ask_model(mdl, model_url, slots.get(cid, 0),
                                     prompts.get(cid, ""), item["user_block"],
                                     item["max_tokens"], item["json_schema"])
+
                 if r is None:
                     return False
                 # Không tự đoán `deadline_tick` đã qua hay chưa: cứ tính xong thì
@@ -209,10 +209,8 @@ async def run(
         stop.set()
         if hb is not None:
             hb.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await hb
-            except asyncio.CancelledError:
-                pass
         await srv.aclose()
         await mdl.aclose()
 

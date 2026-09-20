@@ -23,11 +23,10 @@ Performs:
 from __future__ import annotations
 
 import json
-import math
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import bmesh
 import bpy
@@ -38,7 +37,7 @@ RENDERS_DIR = PROJECT_ROOT / "renders" / "camera_rig"
 MANIFEST_PATH = RENDERS_DIR / "verification_manifest.json"
 
 sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
-import build_genesis_diorama_master as builder
+import scripts.build_genesis_diorama_master as builder
 
 
 def verify_scene_structure() -> Dict[str, Any]:
@@ -111,7 +110,7 @@ def verify_scene_structure() -> Dict[str, Any]:
     results["cave_clearance"] = {
         "min_clearance_m": round(min_clearance, 2),
         "avg_clearance_m": round(avg_clearance, 2),
-        "apex_clearance_m": round(builder.compute_terrain_elevation(14.0, 18.0) - (-2.20), 2),
+        "apex_clearance_m": round(float(builder.compute_terrain_elevation(14.0, 18.0)) - (-2.20), 2),
     }
     assert min_clearance >= 12.0, f"Cave clearance invariant failed: min clearance {min_clearance:.2f}m < 12.0m"
     print(f"PASS: Subterranean cave rock clearance verified: min = {min_clearance:.2f}m >= 12.0m, avg = {avg_clearance:.2f}m")
@@ -132,7 +131,7 @@ def verify_scene_structure() -> Dict[str, Any]:
         "perimeter_breaches": lake_breaches,
     }
     assert lake_breaches == 0, f"Lake containment failed: {lake_breaches} perimeter breaches detected"
-    print(f"PASS: Central freshwater lake water containment verified: 0 perimeter breaches")
+    print("PASS: Central freshwater lake water containment verified: 0 perimeter breaches")
 
     # 5. 24 Cameras Check
     cam_col = bpy.data.collections.get("Camera_Rig_24")
@@ -143,7 +142,7 @@ def verify_scene_structure() -> Dict[str, Any]:
         "names": sorted([o.name for o in cam_objs]),
     }
     assert len(cam_objs) == 24, f"Expected 24 cameras, found {len(cam_objs)}"
-    print(f"PASS: Camera Rig verified: 24 cameras linked to Camera_Rig_24 collection")
+    print("PASS: Camera Rig verified: 24 cameras linked to Camera_Rig_24 collection")
 
     return results
 
