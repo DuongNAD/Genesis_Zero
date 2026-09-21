@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import subprocess
 import time
+import sys
 from pathlib import Path
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 RUN_PS1 = ROOT / "run.ps1"
@@ -45,6 +47,7 @@ def test_ps1_smart_quote_collision_prevented():
     assert "\U0001f4e6" in utf8_text, "Decoded UTF-8 must contain the intended package emoji 📦"
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Requires Windows PowerShell")
 def test_powershell_ast_clean_parse():
     """Empirically invoke PowerShell 5.1 language parser to verify AST cleanly parses with 0 errors."""
     ps_cmd = (
@@ -65,6 +68,7 @@ def test_powershell_ast_clean_parse():
     assert res.returncode == 0, f"PowerShell AST parsing failed: stderr={res.stderr}, stdout={res.stdout}"
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Requires Windows PowerShell and Windows paths")
 def test_run_ps1_execution_reflex():
     """Empirical test: run.ps1 runs in ~3s, exits 0, and uses .venv python."""
     start = time.perf_counter()
@@ -84,6 +88,7 @@ def test_run_ps1_execution_reflex():
     assert duration < 8.0, f"run.ps1 should complete in ~3s, took {duration:.2f}s"
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Requires Windows PowerShell and Windows paths")
 def test_run_ps1_exit_code_propagation():
     """Empirical test: run.ps1 propagates non-zero exit codes from child process."""
     res = subprocess.run(
@@ -99,6 +104,7 @@ def test_run_ps1_exit_code_propagation():
     assert "unrecognized arguments: --invalid-test-flag-xyz" in res.stderr
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Requires Windows cmd")
 def test_run_bat_execution_reflex():
     """Empirical test: run.bat runs, exits 0, and uses .venv python."""
     res = subprocess.run(
@@ -115,6 +121,7 @@ def test_run_bat_execution_reflex():
     assert "Khởi chạy mô phỏng" in res.stdout, "run.bat must successfully start simulation"
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="Requires Windows cmd")
 def test_run_bat_exit_code_propagation():
     """Empirical test: run.bat propagates non-zero exit codes from child process."""
     res = subprocess.run(

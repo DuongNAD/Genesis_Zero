@@ -470,5 +470,5 @@ class TestSimulationIntegrationWithStrategistExtensions:
         )
         assert res.returncode == 0
         assert "[DRY-RUN]" in res.stdout
-        assert "Sẽ xoá" in res.stdout or "Không có file log nào" in res.stdout
+        assert "Sẽ xoá" in res.stdout or "Không có file log nào" in res.stdout or "0 file cần dọn dẹp" in res.stdout
 

@@ -19,13 +19,16 @@ Empirical verification of:
 
 from __future__ import annotations
 
+import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
+import pytest
 
 from fastapi.testclient import TestClient
 
@@ -198,6 +201,7 @@ class TestLogRotationStressAndImmunity:
             remaining = {p.name for p in runs_dir.iterdir() if p.is_file()}
             assert remaining == {f"recent_{i:02d}.jsonl" for i in range(5)}
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="POSIX allows deleting read-only files if dir is writable")
     def test_log_rotation_read_only_graceful_handling(self) -> None:
         """Verify that read-only files causing PermissionError are handled gracefully without aborting."""
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -114,6 +114,9 @@ jobs:
       - name: Run Quick Offline Release Contracts (<60s)
         run: uv run python scripts/ci_quick.py
 
+      - name: Build packages (for packaging tests)
+        run: uv build
+
       - name: Run Test Suite (pytest)
         run: uv run pytest -q
 

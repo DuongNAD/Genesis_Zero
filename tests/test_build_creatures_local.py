@@ -13,5 +13,6 @@ def test_explicit_blender_override(tmp_path, monkeypatch):
     binary = tmp_path / "Blender folder" / "blender.exe"
     binary.parent.mkdir()
     binary.touch()
+    binary.chmod(0o755)
     monkeypatch.setenv("GENESIS_BLENDER_BIN", str(binary))
     assert build_creatures.find_blender() == str(binary)
