@@ -2,8 +2,8 @@
 
 [![CI Pipeline](https://github.com/DuongNAD/Genesis_Zero/actions/workflows/ci.yml/badge.svg)](https://github.com/DuongNAD/Genesis_Zero/actions/workflows/ci.yml)
 [![GitLab CI](https://img.shields.io/badge/GitLab%20CI-7%20stages-blue?logo=gitlab)](.gitlab-ci.yml)
-[![Tests](https://img.shields.io/badge/tests-1889%20collected-success)](tests/)
-[![Throughput](https://img.shields.io/badge/throughput-854.77%20ticks%2Fs-brightgreen)](docs/ARCHITECTURE.md)
+[![Tests](https://img.shields.io/badge/tests-2081%20collected-success)](tests/)
+[![Throughput](https://img.shields.io/badge/throughput-1091.7%20ticks%2Fs-brightgreen)](docs/ARCHITECTURE.md)
 [![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checked: Mypy](https://img.shields.io/badge/typing-mypy-blue)](https://github.com/python/mypy)
 [![Docker: Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](Dockerfile)
@@ -159,8 +159,8 @@ kiểm điều đó từ ngoài.
 
 | | |
 |---|---|
-| Test | **1889 mục được thu thập / 113 files**; baseline 2026-09-17 (20260917T154659Z): 1679 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
-| Hiệu năng | **854.77 ticks/giây** (tốc độ vòng lặp mô phỏng headless trung bình); tăng tốc ~2.25x nhờ đơn vòng khoảng cách Chebyshev (`lawhook.py`), cache định danh con trỏ `is traits` (`world.py`), và fast RNG seed derivation (`tick.py`). Xem [Kiến trúc](docs/ARCHITECTURE.md). |
+| Test | **2081 mục được thu thập / 136 files**; baseline 2026-09-17 (20260917T154659Z): 1679 pass, 0 fail, 0 error, 39 skip — 100% ngoài skip. Xem [baseline](docs/BASELINE_TESTING.md). |
+| Hiệu năng | **1091.7 ticks/giây** (tốc độ vòng lặp mô phỏng headless trung bình); tăng tốc ~2.5x nhờ bảng tra cứu Chebyshev (`_dist_table`), cache định danh con trỏ `(traits, kit)` (`world.py`), và bộ đếm ngăn xếp LawDSL (`lawhook.py`). Xem [Kiến trúc](docs/ARCHITECTURE.md). |
 | CI/CD & Đóng gói | **GitHub Actions 7-Stage Matrix** (Ubuntu/Windows/macOS x Python 3.11/3.12) + **GitLab CI**; Docker multi-stage build với non-root user `genesis` (UID 1000) và `/v1/healthz` healthcheck. Xem [Triển khai](docs/DEPLOYMENT.md). |
 | Phiếu việc | 65, xem [docs/01-STATUS.md](docs/01-STATUS.md) |
 | Đường ống | chạy trọn: sinh luật → ván → Sổ Luật → chấm điểm (In-memory Zero-I/O referee) |
@@ -218,7 +218,7 @@ bất biến, cách nghiệm thu, và — quan trọng nhất — **những lỗ
 
 ```bash
 make preflight    # máy này chạy được một ván thật chưa?
-make test         # 1889 test (số lượng collection; không phải tất cả đã pass)
+make test         # 2081 test (số lượng collection; không phải tất cả đã pass)
 make serve        # server ván, cổng 8000
 make hostile      # kiểm cửa chống lạm dụng — chạy TRƯỚC khi phơi ra internet
 make expose       # mở tunnel ngrok
@@ -246,9 +246,9 @@ Số mục bao gồm các biến thể parametrized; collection không đồng n
 
 | Thư mục | Số mục |
 |---|---:|
-| `tests` | 1681 |
+| `tests` | 1873 |
 | `tests/e2e` | 208 |
-| **Tổng** | **1889** |
+| **Tổng** | **2081** |
 
 Đối soát và xuất danh sách từng file/node ID:
 

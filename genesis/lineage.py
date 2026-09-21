@@ -39,6 +39,8 @@ nên nó có một bài test riêng.
 from __future__ import annotations
 
 import random
+from dataclasses import dataclass, field
+from typing import Any
 
 from genesis import config
 from genesis.creature import Creature
@@ -157,3 +159,83 @@ def forget_on_death(notes, codex) -> int:
     if codex is None:
         return 0
     return codex.decay_confidence(config.CODEX_CONF_DECAY_PER_GEN)
+
+
+@dataclass
+class CladogramNode:
+    creature_id: str
+    species: str
+    generation: int
+    born_at: int
+    died_at: int | None
+    cause: str | None
+    traits: dict[str, int]
+    parent_id: str | None
+    children: list[str] = field(default_factory=list)
+
+
+def genetic_divergence(t1: Traits, t2: Traits) -> float:
+    """Tính khoảng cách di truyền chuẩn hóa giữa hai vector traits (Euclidean distance)."""
+    dist_sq = sum(
+        (getattr(t1, n, 0) - getattr(t2, n, 0)) ** 2
+        for n in config.TRAIT_NAMES
+    )
+    return round(dist_sq ** 0.5, 4)
+
+
+class PhylogeneticCladogram:
+    """Theo dõi cây phả hệ dòng dõi sinh vật và khoảng cách di truyền qua các thế hệ."""
+
+    def __init__(self) -> None:
+        self.nodes: dict[str, CladogramNode] = {}
+        self.roots: list[str] = []
+
+    def record_birth(
+        self,
+        node_id: str,
+        creature: Creature,
+        tick: int,
+        parent_id: str | None = None,
+    ) -> CladogramNode:
+        t_dict = {n: getattr(creature.traits, n, 0) for n in config.TRAIT_NAMES}
+        node = CladogramNode(
+            creature_id=creature.id,
+            species=creature.species,
+            generation=creature.generation,
+            born_at=tick,
+            died_at=None,
+            cause=None,
+            traits=t_dict,
+            parent_id=parent_id,
+        )
+        self.nodes[node_id] = node
+        if parent_id is not None and parent_id in self.nodes:
+            self.nodes[parent_id].children.append(node_id)
+        else:
+            self.roots.append(node_id)
+        return node
+
+    def record_death(self, node_id: str, tick: int, cause: str | None) -> None:
+        if node_id in self.nodes:
+            self.nodes[node_id].died_at = tick
+            self.nodes[node_id].cause = cause
+
+    def export_tree(self) -> dict[str, Any]:
+        """Xuất cây phả hệ dưới dạng cấu trúc JSON phân cấp."""
+        def build_sub(nid: str) -> dict[str, Any]:
+            n = self.nodes[nid]
+            return {
+                "id": nid,
+                "species": n.species,
+                "generation": n.generation,
+                "born_at": n.born_at,
+                "died_at": n.died_at,
+                "cause": n.cause,
+                "traits": n.traits,
+                "children": [build_sub(cid) for cid in n.children if cid in self.nodes],
+            }
+        return {
+            "total_nodes": len(self.nodes),
+            "roots": [build_sub(r) for r in self.roots if r in self.nodes],
+        }
+

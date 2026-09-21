@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from genesis import config
 from genesis.creature import Creature, creature_sort_key
@@ -45,11 +46,51 @@ class Intent:
     attack_id: str | None = None
 
 
+def _get_active_hunches(
+    c: Creature,
+    world: World,
+    hunches: Any | None = None,
+) -> list[Any]:
+    source = hunches
+    if source is None:
+        source = getattr(c, "hunches", None)
+    if source is None:
+        source = getattr(c, "_hunches", None)
+    if source is None:
+        source = getattr(c, "hunch_book", None)
+    if source is None and hasattr(world, "minds") and world.minds is not None:
+        source = getattr(world.minds, "hunches", {}).get(c.id)
+
+    if source is None:
+        return []
+
+    if hasattr(source, "entries") and callable(source.entries):
+        raw = source.entries()
+    elif isinstance(source, (list, tuple)):
+        raw = list(source)
+    elif isinstance(source, dict):
+        raw = list(source.values())
+    else:
+        return []
+
+    return [item for item in raw if item is not None and getattr(item, "tried", 0) < 3]
+
+
+def _hunch_trigger_kinds(active_hunches: list[Any]) -> set[str]:
+    kinds = set()
+    for h in active_hunches:
+        law = getattr(h, "law", None)
+        if law is not None and hasattr(law, "trigger"):
+            kinds.add(str(getattr(law.trigger, "kind", "")))
+    return kinds
+
+
 def choose_goal(
     c: Creature,
     world: World,
     seen: list[Creature],
     rng: random.Random,
+    hunches: Any | None = None,
 ) -> ActiveGoal:
     """Chọn mục tiêu theo thứ tự ưu tiên bản năng cho sinh vật."""
     # 1. hp < 30% HP_MAX và có kẻ nguy hiểm trong tầm -> FLEE
@@ -70,11 +111,60 @@ def choose_goal(
             )
             return _finalize_goal(c, Goal.FLEE, target_c.id, rng)
 
-    # 2. Chưa no -> đi kiếm ăn. Không tìm thấy cây nào thì reflex_step tự đi tìm.
+    active_hunches = _get_active_hunches(c, world, hunches)
+    hunch_triggers = _hunch_trigger_kinds(active_hunches) if active_hunches else set()
+
+    # 2. Nguy cấp năng lượng (< 30% energy_max) -> đi kiếm ăn ngay để sinh tồn
+    if c.energy < HP_LOW_RATIO * c.traits.energy_max:
+        return _finalize_goal(c, Goal.FORAGE, None, rng)
+
+    # 3. Điều hướng kiểm chứng giả thuyết chủ động khi không bị đe dọa sinh tồn
+    if active_hunches and c.energy >= HP_LOW_RATIO * c.traits.energy_max:
+        if "REST" in hunch_triggers and c.energy >= 0.5 * c.traits.energy_max:
+            return _finalize_goal(c, Goal.REST, None, rng)
+
+        if ("ATTACK" in hunch_triggers or "HIT_BY" in hunch_triggers) and c.energy >= 0.5 * c.traits.energy_max:
+            candidates = [
+                other
+                for other in seen
+                if other is not c
+                and other.alive
+                and other.species != c.species
+                and other.traits.damage <= c.traits.damage
+            ]
+            if candidates:
+                target_c = min(
+                    candidates,
+                    key=lambda other: (world.dist(c.pos, other.pos), creature_sort_key(other)),
+                )
+                return _finalize_goal(c, Goal.HUNT, target_c.id, rng)
+
+        if "EAT" in hunch_triggers and c.energy < c.traits.energy_max:
+            return _finalize_goal(c, Goal.FORAGE, None, rng)
+
+        if c.energy >= ENERGY_FULL_RATIO * c.traits.energy_max:
+            weaker = [
+                other
+                for other in seen
+                if other is not c
+                and other.alive
+                and other.species != c.species
+                and other.traits.damage < c.traits.damage
+            ]
+            if weaker:
+                target_c = min(
+                    weaker,
+                    key=lambda other: (world.dist(c.pos, other.pos), creature_sort_key(other)),
+                )
+                return _finalize_goal(c, Goal.HUNT, target_c.id, rng)
+            # Khám phá kiểm chứng điều kiện thay vì đứng nghỉ thụ động
+            return _finalize_goal(c, Goal.WANDER, None, rng)
+
+    # 4. Chưa no -> đi kiếm ăn. Không tìm thấy cây nào thì reflex_step tự đi tìm.
     if c.energy < ENERGY_FULL_RATIO * c.traits.energy_max:
         return _finalize_goal(c, Goal.FORAGE, None, rng)
 
-    # 3. Đã no và có con khác loài yếu hơn trong tầm -> HUNT
+    # 5. Đã no và có con khác loài yếu hơn trong tầm -> HUNT
     # Yếu hơn: khác loài, đang thấy được, damage nhỏ hơn của mình
     if c.energy >= ENERGY_FULL_RATIO * c.traits.energy_max:
         weaker = [
@@ -92,10 +182,10 @@ def choose_goal(
             )
             return _finalize_goal(c, Goal.HUNT, target_c.id, rng)
 
-        # 4. Đã no, không có con mồi -> nghỉ cho đỡ tốn
+        # 6. Đã no, không có con mồi -> nghỉ cho đỡ tốn
         return _finalize_goal(c, Goal.REST, None, rng)
 
-    # 5. còn lại -> WANDER
+    # 7. còn lại -> WANDER
     return _finalize_goal(c, Goal.WANDER, None, rng)
 
 
@@ -119,6 +209,7 @@ def reflex_step(
     creatures: list[Creature],
     goal: ActiveGoal,
     rng: random.Random,
+    hunches: Any | None = None,
 ) -> Intent:
     """Biến mục tiêu thành Intent di chuyển thuần và tất định."""
     if not c.alive:
@@ -142,13 +233,35 @@ def reflex_step(
         if not visible_plants:
             path = _wander_path(c.pos, moves, world, rng, c)
         else:
+            target_fruit_args: set[str] = set()
+            active_h = _get_active_hunches(c, world, hunches)
+            for h in active_h:
+                law = getattr(h, "law", None)
+                if law is not None and str(getattr(law.trigger, "kind", "")) == "EAT":
+                    arg = getattr(law.trigger, "arg", None)
+                    if arg:
+                        target_fruit_args.add(str(arg))
+
+            sm = getattr(world, "surface_map", None)
+
+            def _plant_sort_key(p: tuple[int, int]) -> tuple[int, int, tuple[int, int]]:
+                fruit = world.plants.get(p)
+                fruit_surface = sm.cls_to_surface.get(fruit) if sm and fruit else None
+                is_hunch_target = False
+                if target_fruit_args and c.energy >= HP_LOW_RATIO * c.traits.energy_max:
+                    if fruit in target_fruit_args or (fruit_surface and fruit_surface in target_fruit_args):
+                        is_hunch_target = True
+                priority = 0 if is_hunch_target else 1
+                return (priority, world.dist(c.pos, p), p)
+
             # Hoà thì chọn ô có toạ độ nhỏ nhất
             target_plant = min(
                 visible_plants,
-                key=lambda p: (world.dist(c.pos, p), p),
+                key=_plant_sort_key,
             )
             path = _greedy_path_towards(c.pos, target_plant, moves, world, c)
         return Intent(creature_id=c.id, path=path)
+
 
     if goal.goal == Goal.HUNT:
         target_c = _find_creature_by_id(creatures, goal.target)

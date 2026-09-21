@@ -1,0 +1,5 @@
+include README.md LICENSE net_config.py requirements.txt requirements.lock Makefile Dockerfile docker-compose.yml run.sh run.bat run.ps1
+graft web
+graft assets
+recursive-include web *
+recursive-include assets *

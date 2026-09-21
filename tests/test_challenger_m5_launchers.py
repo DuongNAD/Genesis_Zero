@@ -262,7 +262,7 @@ def test_launch_py_conflicting_render_and_web_flags():
     ):
         ret = main()
         assert ret == 0
-        mock_web.assert_called_once_with(host="127.0.0.1", port=8014, open_browser=True)
+        mock_web.assert_called_once_with(host="127.0.0.1", port=8014, open_browser=True, path="/watch/watch3d.html")
 
 
 

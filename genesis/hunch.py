@@ -48,6 +48,13 @@ class Hunch:
     tried: int = 0      # số lần trigger + cond khớp
     hit: int = 0        # trong đó, số lần hệ quả ĐÚNG LOẠI thật sự xảy ra
 
+    @property
+    def confidence(self) -> float:
+        """Độ tin cậy xác suất Bayes với làm mịn Laplace: P(H|E) = (hit + 1) / (tried + 2)."""
+        if self.tried == 0:
+            return 0.5
+        return (self.hit + 1.0) / (self.tried + 2.0)
+
 
 class HunchBook:
     """Cuốn sổ nháp của một cá thể. Nhiều ô hơn Sổ Luật, và không ô nào được chấm."""
@@ -109,6 +116,16 @@ class HunchBook:
     # ── đọc ──────────────────────────────────────────────────────────────
     def entries(self) -> list[Hunch | None]:
         return list(self._entries)
+
+    def best_hunch(self, min_tried: int = 2) -> tuple[Hunch, float] | None:
+        """Trả về linh cảm có độ tin cậy Bayes cao nhất đã thử ít nhất `min_tried` lần."""
+        best: tuple[Hunch, float] | None = None
+        for h in self._entries:
+            if h is not None and h.tried >= min_tried:
+                conf = h.confidence
+                if best is None or conf > best[1]:
+                    best = (h, conf)
+        return best
 
     def resize(self, new_size: int) -> None:
         """Brain tụt thì KHÔNG cắt sổ đang có, chỉ chặn ghi thêm — như `Codex.resize`."""

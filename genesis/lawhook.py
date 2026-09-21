@@ -37,39 +37,72 @@ def build_ctx(c: Creature, world: World, tick_no: int, creatures: list[Creature]
     Bất biến: điền MỌI trường, không chỉ trường mà luật đang xét cần — cùng lý do
     với L-04 B1. Thiếu trường thì luật khác đánh giá thành None và ăn điểm oan.
     """
-    x, y = world.wrap(*c.pos)
-    counts: dict[str, dict[int, int]] = {
-        "SAME_SP": {1: 0, 2: 0, 3: 0},
-        "OTHER_SP": {1: 0, 2: 0, 3: 0},
-        "ANY": {1: 0, 2: 0, 3: 0},
-    }
+    px, py = c.pos
+    if 0 <= px < world.w and 0 <= py < world.h:
+        x, y = px, py
+    else:
+        x, y = world.wrap(px, py)
+
+    s1 = s2 = s3 = o1 = o2 = o3 = a1 = a2 = a3 = 0
+    c_sp = c.species
+    c_pos = c.pos
     for o in creatures:
         if o is c or not o.alive:
             continue
-        d = world.dist(c.pos, o.pos)
+        d = world.dist(c_pos, o.pos)
         if d > 3:
             continue
-        key = "SAME_SP" if o.species == c.species else "OTHER_SP"
-        for r in range(max(1, d), 4):
-            counts[key][r] += 1
-            counts["ANY"][r] += 1
+        if o.species == c_sp:
+            if d <= 1:
+                s1 += 1
+                a1 += 1
+            if d <= 2:
+                s2 += 1
+                a2 += 1
+            s3 += 1
+            a3 += 1
+        else:
+            if d <= 1:
+                o1 += 1
+                a1 += 1
+            if d <= 2:
+                o2 += 1
+                a2 += 1
+            o3 += 1
+            a3 += 1
+
+    counts = {
+        "SAME_SP": {1: s1, 2: s2, 3: s3},
+        "OTHER_SP": {1: o1, 2: o2, 3: o3},
+        "ANY": {1: a1, 2: a2, 3: a3},
+    }
+
+    subj = getattr(c, "_subj_dict", None)
+    if subj is None or getattr(c, "_subj_traits", None) is not c.traits:
+        subj = {
+            "ARMOR>=3": c.traits.armor >= 3,
+            "SPEED>=3": c.traits.speed >= 3,
+            "BRAIN<=1": c.traits.brain <= 1,
+            "SAME_SP": True,
+        }
+        try:
+            c._subj_dict = subj
+            c._subj_traits = c.traits
+        except (AttributeError, TypeError):
+            pass
+
     return Ctx(
-        phase=phase_at(tick_no),
+        phase=getattr(world, "phase", None) or phase_at(tick_no),
         terrain=str(world.grid[y][x]),
         hp_band=_band(c.hp, float(config.HP_MAX)),
         energy_band=_band(c.energy, c.traits.energy_max),
         age_band="YOUNG" if c.age < 100 else "OLD",
         # Gió là một nhãn quan sát được; chưa có hướng đi nên quy ước theo chẵn/lẻ tick.
         wind_rel="WITH" if (tick_no % 2 == 0) else "AGAINST",
-        alone=counts["ANY"][2] == 0,
-        recent=dict(recent),
+        alone=a2 == 0,
+        recent=recent,
         counts=counts,
-        subject={
-            "ARMOR>=3": c.traits.armor >= 3,
-            "SPEED>=3": c.traits.speed >= 3,
-            "BRAIN<=1": c.traits.brain <= 1,
-            "SAME_SP": True,
-        },
+        subject=subj,
     )
 
 

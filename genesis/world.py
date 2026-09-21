@@ -216,6 +216,41 @@ class World:
         self.surface_map: SurfaceMap = (
             surface_map if surface_map is not None else roll_surface_map(rng)
         )
+        if config.TOROIDAL:
+            self._dist_table: tuple[tuple[int, ...], ...] = tuple(
+                tuple(max(min(dx, self.w - dx), min(dy, self.h - dy)) for dy in range(self.h))
+                for dx in range(self.w)
+            )
+            self._neighbors_grid: tuple[tuple[tuple[tuple[int, int], ...], ...], ...] = tuple(
+                tuple(
+                    tuple(((x + dx) % self.w, (y + dy) % self.h) for dx, dy in NEIGHBOR_OFFSETS)
+                    for x in range(self.w)
+                )
+                for y in range(self.h)
+            )
+        else:
+            self._dist_table = tuple(
+                tuple(max(dx, dy) for dy in range(self.h))
+                for dx in range(self.w)
+            )
+            self._neighbors_grid = tuple(
+                tuple(
+                    tuple(
+                        (x + dx, y + dy)
+                        for dx, dy in NEIGHBOR_OFFSETS
+                        if 0 <= x + dx < self.w and 0 <= y + dy < self.h
+                    )
+                    for x in range(self.w)
+                )
+                for y in range(self.h)
+            )
+        self._passable_cells_by_set: dict[frozenset[Terrain], list[tuple[int, int]]] = {}
+        # Trường pheromone 2D (Gen 22: Chemical Ecology)
+        self.pheromones: dict[str, list[list[float]]] = {
+            "food": [[0.0] * self.w for _ in range(self.h)],
+            "danger": [[0.0] * self.w for _ in range(self.h)],
+            "kin": [[0.0] * self.w for _ in range(self.h)],
+        }
 
     @property
     def plants(self) -> dict[tuple[int, int], str]:
@@ -228,6 +263,59 @@ class World:
     def visible(self, obs: Creature, creatures: list[Creature] | None = None) -> list[Creature]:
         """Tiện ích gọi visible(obs, world, creatures)."""
         return visible(obs, self, creatures if creatures is not None else [])
+
+    def emit_pheromone(self, kind: str, pos: tuple[int, int], amount: float = 1.0) -> None:
+        """Kích hoạt giải phóng pheromone tại vị trí pos."""
+        grid = self.pheromones.get(kind)
+        if grid is not None:
+            x, y = pos[0] % self.w, pos[1] % self.h
+            grid[y][x] = min(10.0, grid[y][x] + amount)
+
+    def sample_pheromone(self, kind: str, pos: tuple[int, int]) -> float:
+        """Đo nồng độ pheromone tại vị trí pos."""
+        grid = self.pheromones.get(kind)
+        if grid is not None:
+            return grid[pos[1] % self.h][pos[0] % self.w]
+        return 0.0
+
+    def step_pheromones(self, diffusion: float = 0.1, evaporation: float = 0.05) -> None:
+        """Khuếch tán và bay hơi trường pheromone theo lưới hình xuyến."""
+        for kind, grid in self.pheromones.items():
+            new_grid = [[0.0] * self.w for _ in range(self.h)]
+            has_val = False
+            for y in range(self.h):
+                row = grid[y]
+                for x in range(self.w):
+                    val = row[x]
+                    if val < 0.001:
+                        continue
+                    has_val = True
+                    retained = val * (1.0 - evaporation - 4 * diffusion)
+                    new_grid[y][x] += max(0.0, retained)
+                    diffused = val * diffusion
+                    new_grid[(y - 1) % self.h][x] += diffused
+                    new_grid[(y + 1) % self.h][x] += diffused
+                    new_grid[y][(x - 1) % self.w] += diffused
+                    new_grid[y][(x + 1) % self.w] += diffused
+            if has_val:
+                self.pheromones[kind] = new_grid
+
+    def pheromone_gradient(self, kind: str, pos: tuple[int, int]) -> tuple[int, int]:
+        """Trả về vector hướng (dx, dy) về ô lân cận có nồng độ pheromone cao nhất."""
+        grid = self.pheromones.get(kind)
+        if grid is None:
+            return (0, 0)
+        cx, cy = pos[0] % self.w, pos[1] % self.h
+        best_val = grid[cy][cx]
+        best_dir = (0, 0)
+        for dx, dy in CARDINAL_OFFSETS:
+            nx = (cx + dx) % self.w
+            ny = (cy + dy) % self.h
+            val = grid[ny][nx]
+            if val > best_val:
+                best_val = val
+                best_dir = (dx, dy)
+        return best_dir
 
     def _generate_terrain(self, rng: random.Random) -> list[list[Terrain]]:
         # Mặc định toàn bộ bản đồ là PLAIN
@@ -273,29 +361,23 @@ class World:
 
     def dist(self, a: tuple[int, int], b: tuple[int, int]) -> int:
         """Khoảng cách Chebyshev có xét vòng mép toroidal ở CẢ HAI chiều."""
-        ax, ay = a
-        bx, by = b
-        dx = abs(ax - bx)
-        dy = abs(ay - by)
-        if config.TOROIDAL:
-            # Bẫy: phải wrap ở cả hai chiều dx và dy
-            dx = min(dx, self.w - dx)
-            dy = min(dy, self.h - dy)
-        return max(dx, dy)
+        dx = abs(a[0] - b[0])
+        dy = abs(a[1] - b[1])
+        try:
+            return self._dist_table[dx][dy]
+        except IndexError:
+            if config.TOROIDAL:
+                dx = min(dx, self.w - dx)
+                dy = min(dy, self.h - dy)
+            return max(dx, dy)
 
     def neighbors(self, pos: tuple[int, int]) -> list[tuple[int, int]]:
         """Trả về 8 ô lân cận theo thứ tự cố định."""
-        x, y = pos
-        if config.TOROIDAL:
-            return [self.wrap(x + dx, y + dy) for dx, dy in NEIGHBOR_OFFSETS]
-
-        res: list[tuple[int, int]] = []
-        for dx, dy in NEIGHBOR_OFFSETS:
-            nx = x + dx
-            ny = y + dy
-            if 0 <= nx < self.w and 0 <= ny < self.h:
-                res.append((nx, ny))
-        return res
+        px, py = pos
+        if 0 <= px < self.w and 0 <= py < self.h:
+            return list(self._neighbors_grid[py][px])
+        x, y = self.wrap(px, py)
+        return list(self._neighbors_grid[y][x])
 
     def passable(self, pos: tuple[int, int], creature=None) -> bool:
         """Ô này con vật NÀY đi được không.
@@ -312,16 +394,20 @@ class World:
         lọt qua lập chỉ mục âm của Python và im lặng trả về ô ở góc đối diện,
         còn `(24, 24)` thì ném IndexError. Cả hai đều là bug ở mép bản đồ.
         """
-        x, y = self.wrap(*pos)
+        px, py = pos
+        if 0 <= px < self.w and 0 <= py < self.h:
+            x, y = px, py
+        else:
+            x, y = self.wrap(px, py)
         terrain = self.grid[y][x]
         dom_mod = _domain_mod or _get_domain()
         if creature is None:
             return terrain in dom_mod._BASE[dom_mod.Domain.CAN]
 
         cached = getattr(creature, "_cached_passable", None)
+        traits = getattr(creature, "traits", None)
         species = getattr(creature, "species", "")
         kit = getattr(creature, "kit", None) or self.kits.get(species)
-        traits = getattr(creature, "traits", None)
         if cached is not None and cached[0] is traits and cached[1] is kit:
             return terrain in cached[2]
 
@@ -333,7 +419,11 @@ class World:
 
     def touchable(self, pos: tuple[int, int], creature) -> bool:
         """Con vật này ĂN / UỐNG / ĐÁNH được ở ô này không (W-18 bất biến 3)."""
-        x, y = self.wrap(*pos)
+        px, py = pos
+        if 0 <= px < self.w and 0 <= py < self.h:
+            x, y = px, py
+        else:
+            x, y = self.wrap(px, py)
         terrain = self.grid[y][x]
         dom_mod = _domain_mod or _get_domain()
         species = getattr(creature, "species", "")
@@ -342,8 +432,8 @@ class World:
             return terrain in dom_mod._TROI_TOUCH
 
         cached = getattr(creature, "_cached_passable", None)
-        kit = getattr(creature, "kit", None) or self.kits.get(species)
         traits = getattr(creature, "traits", None)
+        kit = getattr(creature, "kit", None) or self.kits.get(species)
         if cached is not None and cached[0] is traits and cached[1] is kit:
             return terrain in cached[2]
 
@@ -371,29 +461,36 @@ class World:
         dom = dom_mod.domain_of(species)
         kit = getattr(creature, "kit", None) or self.kits.get(species)
         traits = getattr(creature, "traits", None)
+        can_plain = dom_mod.can_enter(dom, Terrain.PLAIN, traits, kit)
+        is_water = dom is dom_mod.Domain.NUOC or (
+            kit is not None and dom_mod.Domain.NUOC in getattr(kit, "extra_domains", ())
+        )
+        if can_plain and not is_water:
+            return self.fruits.copy()
+        if is_water and not can_plain:
+            return self.algae.copy()
         out: dict[tuple[int, int], str] = {}
-        # Quả: nằm trên PLAIN. Ai vào được PLAIN thì ăn được.
-        if dom_mod.can_enter(dom, Terrain.PLAIN, traits, kit):
+        if can_plain:
             out.update(self.fruits)
-        # Rong: cổng theo TẦNG, không theo địa hình — xem `_resolve_algae`.
-        if dom is dom_mod.Domain.NUOC or (kit is not None
-                                          and dom_mod.Domain.NUOC in getattr(kit, "extra_domains", ())):
+        if is_water:
             out.update(self.algae)
         return out
 
     def eat_algae(self, pos: tuple[int, int]) -> float:
         """Ăn rong tại pos nếu có. Người gọi phải kiểm tầng TRƯỚC khi gọi."""
-        x, y = self.wrap(*pos)
-        if (x, y) in self.algae:
-            del self.algae[(x, y)]
+        px, py = pos
+        p = (px, py) if 0 <= px < self.w and 0 <= py < self.h else self.wrap(px, py)
+        if p in self.algae:
+            del self.algae[p]
             return float(config.ALGAE_ENERGY)
         return 0.0
 
     def eat_plant(self, pos: tuple[int, int]) -> float:
         """Ăn cây tại pos nếu có, trả về năng lượng. Phải wrap trước khi tra."""
-        x, y = self.wrap(*pos)
-        if (x, y) in self.fruits:
-            del self.fruits[(x, y)]
+        px, py = pos
+        p = (px, py) if 0 <= px < self.w and 0 <= py < self.h else self.wrap(px, py)
+        if p in self.fruits:
+            del self.fruits[p]
             return float(config.PLANT_ENERGY)
         return 0.0
 
@@ -510,41 +607,34 @@ def visible(obs: Creature, world: World, creatures: list[Creature]) -> list[Crea
     from genesis.creature import creature_sort_key
 
     # Bẫy B1: Bán kính nhìn lấy từ người quan sát (obs), không phải từ con bị nhìn
-    # ĐÊM LÀM NGẮN TẦM NHÌN (W-19). Trước đó ngày và đêm khác nhau đúng một
-    # chuỗi trong prompt và một trigger `PHASE_ENTER` — nó không đổi một hành vi
-    # nào. Nên đặc điểm "mắt đêm" hứa một lợi thế chống lại **một bất lợi không
-    # tồn tại**, tức là hình 3D nói dối. Cho đêm một cái giá là cách rẻ nhất để
-    # cả chu kỳ ngày/đêm thành một biến số thật, và để một ổ sinh thái ăn đêm
-    # trở nên đáng chọn.
+    # ĐÊM LÀM NGẮN TẦM NHÌN (W-19).
     sight_radius = obs.traits.sight_radius
+    kit = getattr(obs, "kit", None) or world.kits.get(obs.species)
     if world.phase == "NIGHT":
-        kit = getattr(obs, "kit", None) or world.kits.get(obs.species)
         if not (kit is not None and getattr(kit, "night_sight", False)):
             sight_radius = max(1, sight_radius - config.NIGHT_SIGHT_PENALTY)
     weather_mod = getattr(getattr(world, "weather", None), "modifiers", None)
     if weather_mod is not None:
         sight_radius = max(1, sight_radius - getattr(weather_mod, "sight_penalty", 0))
+
+    che = max(1, getattr(kit, "feel_radius", 0) if kit else 1)
+    grid = world.grid
+    w_w, w_h = world.w, world.h
+    obs_pos = obs.pos
+
     seen: list[Creature] = []
     for other in creatures:
         # Bẫy B2: Con chết không xuất hiện; không tự thấy chính mình
         if not other.alive or other is obs:
             continue
-        d = world.dist(obs.pos, other.pos)
+        d = world.dist(obs_pos, other.pos)
         if d > sight_radius:
             continue
-        # Bẫy B6: Bụi rậm xét ô của con BỊ NHÌN, vô hình nếu d > 1.
-        # CÂY che khuất y như bụi (W-18) — và đó không phải chuyện cho đẹp: cây
-        # là ô mà chỉ loài biết trèo vào được, nên nếu nó không che thì "trốn lên
-        # cây" chỉ là đứng trên bục cho cả bản đồ nhìn. Chỗ trốn phải trốn được.
-        # RÂU CẢM ỨNG (W-19) nới bán kính này ra: kẻ có râu **cảm** được con nấp
-        # trong bụi ở khoảng cách 2 thay vì 1. Đây là đặc điểm duy nhất đối lại
-        # trực tiếp cơ chế che khuất, nên nó là đặc điểm chống phục kích — và nó
-        # đắt đúng chỗ: một trong ba ô đặc điểm, đổi lấy việc không có gai,
-        # không có vảy, không đào hang.
-        kit = getattr(obs, "kit", None) or world.kits.get(obs.species)
-        che = max(1, getattr(kit, "feel_radius", 0) if kit else 1)
-        ox, oy = world.wrap(*other.pos)
-        if world.grid[oy][ox] in (Terrain.BUSH, Terrain.TREE) and d > che:
+        ox, oy = other.pos
+        if not (0 <= ox < w_w and 0 <= oy < w_h):
+            ox, oy = world.wrap(ox, oy)
+        t = grid[oy][ox]
+        if (t == Terrain.BUSH or t == Terrain.TREE) and d > che:
             continue
         seen.append(other)
 

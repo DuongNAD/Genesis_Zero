@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from rich.table import Table
 
 from genesis.lawdsl import (
+    EFFECT_FIELDS,
     Cond,
     Dur,
     Effect,
@@ -101,6 +102,20 @@ def law_from_surface_dict(d: dict[str, Any], sm: SurfaceMap) -> Law:
         return sm.class_of(arg) or arg
 
     out: dict[str, Any] = {"trigger": dict(d.get("trigger") or {}), "conds": [], "effect": dict(d.get("effect") or {})}
+    # Cognitive Schema Guardrail (Gen 22): tự động bổ khuyết các trường bắt buộc nếu LLM bỏ quên
+    eff = out["effect"]
+    e_kind = eff.get("kind")
+    if e_kind is not None:
+        e_kind_str = str(e_kind.value if hasattr(e_kind, "value") else e_kind)
+        if e_kind_str != "REVEAL":
+            req_fields = EFFECT_FIELDS.get(e_kind_str, ())
+            if "mag" in req_fields and not eff.get("mag"):
+                eff["mag"] = "MED"
+            if "dur" in req_fields and not eff.get("dur"):
+                eff["dur"] = "SHORT"
+            if "r" in req_fields and eff.get("r") is None:
+                eff["r"] = 1
+
     for part in (out["trigger"], out["effect"]):
         if "arg" in part:
             part["arg"] = unmap(part["arg"])

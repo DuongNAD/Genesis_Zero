@@ -17,10 +17,12 @@ from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from net import state
 from net.ratelimit import middleware as ratelimit_middleware
+from net.routes_arena import router as router_arena
 from net.routes_decision import router as router_decision
 from net.routes_health import router as router_health
 from net.routes_join import router as router_join
@@ -60,6 +62,7 @@ app.include_router(router_work)
 app.include_router(router_decision)
 app.include_router(router_health)
 app.include_router(router_spectate)
+app.include_router(router_arena)
 
 # Trang xem 2D và 3D. Mount ở cuối để không che các route /v1/*.
 # `three.js` nằm trong `web/vendor/` — không CDN, không build step (N-12).
@@ -69,7 +72,13 @@ if _WEB.is_dir():
 
 _ASSETS = Path(__file__).resolve().parent.parent / "assets"
 if _ASSETS.is_dir():
-    app.mount("/assets", StaticFiles(directory=str(_ASSETS)), name="assets")
+    app.mount("/assets", StaticFiles(directory=str(_ASSETS), html=True), name="assets")
+
+
+@app.get("/", include_in_schema=False)
+async def root_redirect() -> RedirectResponse:
+    """Tự động chuyển hướng từ URL gốc vào giao diện 3D Spectator."""
+    return RedirectResponse(url="/watch/watch3d.html")
 
 
 @app.get("/v1/state")

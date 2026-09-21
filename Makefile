@@ -1,4 +1,4 @@
-.PHONY: test baseline run serve expose preflight preflight-full demo model-check hostile lint lint-fix typecheck lock clean site
+.PHONY: test baseline run serve expose preflight preflight-full demo model-check hostile lint lint-fix typecheck lock clean site build dist
 
 test:
 	pytest
@@ -77,5 +77,12 @@ lint-fix:
 site:
 	python tools/build_site.py
 
+# Đóng gói sản phẩm phân phối (wheel và sdist) và kiểm tra tính toàn vẹn
+build:
+	python scripts/build_dist.py
+
+dist: build
+
 clean:
 	rm -rf runs/*.jsonl .pytest_cache **/__pycache__ __pycache__
+

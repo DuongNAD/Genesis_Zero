@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import random
 from dataclasses import dataclass, field
 
@@ -42,10 +43,20 @@ class Creature:
     reproduce_cooldown: int = 0
     features: tuple[str, ...] = ()
     _kit: object | None = field(default=None, repr=False, compare=False)
+    _sort_key: tuple[str, int] | None = field(default=None, repr=False, compare=False)
+    _cached_passable: tuple[object, object, frozenset] | None = field(default=None, repr=False, compare=False)
+    _subj_dict: dict[str, bool] | None = field(default=None, repr=False, compare=False)
+    _subj_traits: object | None = field(default=None, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         if not self.lineage_id and self.id:
             self.lineage_id = self.id
+        if self._sort_key is None and self.id:
+            species, _, idx = self.id.rpartition(":")
+            try:
+                self._sort_key = (species, int(idx))
+            except ValueError:
+                self._sort_key = (species, 999999)
 
     @property
     def kit(self) -> object | None:
@@ -136,11 +147,17 @@ def creature_sort_key(c: Creature) -> tuple[str, int]:
     "L5:1" và "L5:2" ngay khi một loài vượt 9 con — thứ tự duyệt đổi, ván đổi,
     và không có gì báo lỗi. Tách phần số ra rồi sắp bằng số.
     """
+    sk = getattr(c, "_sort_key", None)
+    if sk is not None:
+        return sk
     species, _, idx = c.id.rpartition(":")
     try:
-        return (species, int(idx))
+        sk = (species, int(idx))
     except ValueError:
-        return (species, 999999)
+        sk = (species, 999999)
+    with contextlib.suppress(AttributeError, TypeError):
+        c._sort_key = sk
+    return sk
 
 
 
@@ -225,12 +242,27 @@ def try_respawn(
         alive_sp = [x for x in alive_all if x.species == c.species]
         if len(alive_sp) >= config.POPULATION_SPECIES_MAX:
             return False
+    import genesis.world as _gw
+    dom_mod = _gw._domain_mod or _gw._get_domain()
+    species = getattr(c, "species", "")
+    kit = getattr(c, "kit", None) or getattr(world, "kits", {}).get(species)
+    cached_p = getattr(c, "_cached_passable", None)
+    if cached_p is not None and cached_p[0] is c.traits and cached_p[1] is kit:
+        p_set = cached_p[2]
+    else:
+        dom = dom_mod.domain_of(species)
+        p_set = frozenset(t for t in _gw.Terrain if dom_mod.can_enter(dom, t, c.traits, kit))
+        with contextlib.suppress(AttributeError, TypeError):
+            c._cached_passable = (c.traits, kit, p_set)
+
+    grid = world.grid
     passable_cells = [
         (x, y)
         for y in range(world.h)
         for x in range(world.w)
-        if world.passable((x, y), c)
+        if grid[y][x] in p_set
     ]
+
     if not passable_cells:
         return False
     c.pos = rng.choice(passable_cells)

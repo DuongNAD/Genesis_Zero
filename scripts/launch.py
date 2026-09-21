@@ -260,11 +260,16 @@ def run_demo_pipeline(seed: int = 9, ticks: int = 200) -> int:
                 server_proc.kill()
 
 
-def run_web_server(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = True) -> int:
-    """Khởi động máy chủ FastAPI và mở giao diện xem ván 3D."""
-    url = f"http://{host}:{port}/watch/watch3d.html"
+def run_web_server(
+    host: str = "127.0.0.1",
+    port: int = 8000,
+    open_browser: bool = True,
+    path: str = "/watch/watch3d.html",
+) -> int:
+    """Khởi động máy chủ FastAPI và mở giao diện xem 3D."""
+    url = f"http://{host}:{port}{path}"
     if HAS_RICH:
-        console.print(f"[bold cyan]▶ Khởi động Web Server tại [link={url}]{url}[/link][/bold cyan]")
+        console.print(f"[bold cyan]> Khởi động Web Server tại [link={url}]{url}[/link][/bold cyan]")
         console.print("  [dim]Nhấn Ctrl+C để dừng server.[/dim]")
 
     if open_browser:
@@ -306,18 +311,22 @@ def interactive_menu(detected_backends: dict[str, dict[str, Any]]) -> None:
             console.print("\n[bold cyan]Vui lòng chọn chế độ hoạt động:[/bold cyan]")
             console.print("  [bold green]1.[/bold green] 🎮 Chạy ván mô phỏng nhanh (Terminal UI)")
             console.print("  [bold green]2.[/bold green] 🌐 Khởi động Web Server & Xem 3D Spectator (Trình duyệt)")
-            console.print("  [bold green]3.[/bold green] 🤖 Chạy Thử Nghiệm Toàn Tuyến (Mock LLM Demo + Chấm Điểm)")
-            console.print("  [bold green]4.[/bold green] 🩺 Kiểm Tra & Tự Động Sửa Lỗi Hệ Thống (Preflight Diagnostics)")
-            console.print("  [bold green]5.[/bold green] 🚪 Thoát")
-            choice = console.input("\n[bold yellow]Nhập lựa chọn [1-5] (mặc định: 1): [/bold yellow]").strip()
+            console.print("  [bold green]3.[/bold green] 🗺️ Xem Bản đồ 3D Diorama Map (Three.js Viewer)")
+            console.print("  [bold green]4.[/bold green] 🐾 Xem 3D Creature Studio (Trình diễn Sinh vật)")
+            console.print("  [bold green]5.[/bold green] 🤖 Chạy Thử Nghiệm Toàn Tuyến (Mock LLM Demo + Chấm Điểm)")
+            console.print("  [bold green]6.[/bold green] 🩺 Kiểm Tra & Tự Động Sửa Lỗi Hệ Thống (Preflight Diagnostics)")
+            console.print("  [bold green]7.[/bold green] 🚪 Thoát")
+            choice = console.input("\n[bold yellow]Nhập lựa chọn [1-7] (mặc định: 1): [/bold yellow]").strip()
         else:
             print("\nChon che do:")
             print("  1. Chay mo phong nhanh (Terminal)")
-            print("  2. Khoi dong Web Server 3D (Trinh duyet)")
-            print("  3. Chay Demo (Mock LLM + Cham diem)")
-            print("  4. Kiem tra He thong (Preflight)")
-            print("  5. Thoat")
-            choice = input("Nhap lua chon [1-5]: ").strip()
+            print("  2. Khoi dong Web Server 3D Spectator (Trinh duyet)")
+            print("  3. Xem 3D Diorama Map (Three.js Viewer)")
+            print("  4. Xem 3D Creature Studio (Trinh dien Sinh vat)")
+            print("  5. Chay Demo (Mock LLM + Cham diem)")
+            print("  6. Kiem tra He thong (Preflight)")
+            print("  7. Thoat")
+            choice = input("Nhap lua chon [1-7]: ").strip()
 
         if choice in ("", "1"):
             # Chạy mô phỏng
@@ -330,21 +339,27 @@ def interactive_menu(detected_backends: dict[str, dict[str, Any]]) -> None:
                 run_simulation(seed=42, ticks=200, controller="reflex")
             break
         elif choice == "2":
-            run_web_server(open_browser=True)
+            run_web_server(open_browser=True, path="/watch/watch3d.html")
             break
         elif choice == "3":
-            run_demo_pipeline(seed=9, ticks=200)
+            run_web_server(open_browser=True, path="/assets/blender_map/viewer.html")
             break
         elif choice == "4":
-            run_preflight_diagnostics(fix=True)
+            run_web_server(open_browser=True, path="/watch/creature_viewer.html")
             break
         elif choice == "5":
+            run_demo_pipeline(seed=9, ticks=200)
+            break
+        elif choice == "6":
+            run_preflight_diagnostics(fix=True)
+            break
+        elif choice == "7":
             if HAS_RICH:
                 console.print("[dim]Tạm biệt![/dim]")
             break
         else:
             if HAS_RICH:
-                console.print("[red]Lựa chọn không hợp lệ. Vui lòng nhập từ 1 đến 5.[/red]")
+                console.print("[red]Lựa chọn không hợp lệ. Vui lòng nhập từ 1 đến 7.[/red]")
 
 
 def main() -> int:
@@ -358,7 +373,9 @@ def main() -> int:
     parser.add_argument("--ticks", type=int, default=200, help="Số lượng tick mô phỏng")
     parser.add_argument("--seed", type=int, default=42, help="Seed ngẫu nhiên cho thế giới")
     parser.add_argument("--map", default="standard", help="Kích thước bản đồ (standard, compact)")
-    parser.add_argument("--web", action="store_true", help="Khởi động FastAPI server và mở trình duyệt xem 3D")
+    parser.add_argument("--web", action="store_true", help="Khởi động FastAPI server và mở trình duyệt xem 3D Spectator")
+    parser.add_argument("--diorama", action="store_true", help="Khởi động server và mở xem 3D Diorama Map (/assets/blender_map/viewer.html)")
+    parser.add_argument("--creature", "--creatures", action="store_true", help="Khởi động server và mở xem 3D Creature Studio (/watch/creature_viewer.html)")
     parser.add_argument("--preflight", action="store_true", help="Chạy kiểm tra môi trường tiền khởi chạy")
     parser.add_argument("--fix", action="store_true", help="Tự động khắc phục lỗi môi trường")
     parser.add_argument("--demo", action="store_true", help="Chạy pipeline demo chuẩn với fake model server")
@@ -381,7 +398,16 @@ def main() -> int:
 
     if args.web:
         show_banner(detected_backends)
-        return run_web_server(host=args.host, port=args.port, open_browser=True)
+        return run_web_server(host=args.host, port=args.port, open_browser=True, path="/watch/watch3d.html")
+
+    if args.diorama:
+        show_banner(detected_backends)
+        return run_web_server(host=args.host, port=args.port, open_browser=True, path="/assets/blender_map/viewer.html")
+
+    if getattr(args, "creature", False):
+        show_banner(detected_backends)
+        return run_web_server(host=args.host, port=args.port, open_browser=True, path="/watch/creature_viewer.html")
+
 
     # Nếu chạy tương tác hoàn toàn (không truyền bất kỳ cờ hành động nào và có TTY)
     is_interactive = sys.stdin.isatty() and len(sys.argv) == 1

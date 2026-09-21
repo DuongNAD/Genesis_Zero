@@ -69,6 +69,9 @@
   renderer.setSize(innerWidth, innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+  if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
   el("scene").appendChild(renderer.domElement);
 
   addEventListener("resize", () => {
@@ -81,21 +84,36 @@
   const hemiLight = new THREE.HemisphereLight(0xbfdbfe, 0x1e293b, 0.85);
   scene.add(hemiLight);
 
-  const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.1);
-  sunLight.position.set(18, 32, 14);
+  const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.25);
+  sunLight.position.set(24, 38, 18);
   sunLight.castShadow = true;
-  sunLight.shadow.mapSize.width = 1024;
-  sunLight.shadow.mapSize.height = 1024;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
   sunLight.shadow.camera.near = 0.5;
-  sunLight.shadow.camera.far = 120;
-  sunLight.shadow.camera.left = -20;
-  sunLight.shadow.camera.right = 20;
-  sunLight.shadow.camera.top = 20;
-  sunLight.shadow.camera.bottom = -20;
+  sunLight.shadow.camera.far = 140;
+  sunLight.shadow.camera.left = -28;
+  sunLight.shadow.camera.right = 28;
+  sunLight.shadow.camera.top = 28;
+  sunLight.shadow.camera.bottom = -28;
+  sunLight.shadow.bias = -0.0003;
   scene.add(sunLight);
 
-  const ambientFill = new THREE.AmbientLight(0x0f172a, 0.6);
+  const ambientFill = new THREE.AmbientLight(0x0f172a, 0.5);
   scene.add(ambientFill);
+
+  const cavernPointLight = (typeof THREE !== "undefined" && THREE.PointLight) ? new THREE.PointLight(0x00e676, 1.2, 30) : null;
+  if (cavernPointLight) {
+    cavernPointLight.position.set(0, -6, 0);
+    scene.add(cavernPointLight);
+  }
+
+  let pmremGenerator = null;
+  if (renderer && THREE.PMREMGenerator) {
+    try {
+      pmremGenerator = new THREE.PMREMGenerator(renderer);
+      pmremGenerator.compileEquirectangularShader();
+    } catch (e) {}
+  }
 
   const dioramaGroup = new THREE.Group();
   const terrainGroup = new THREE.Group();
@@ -922,6 +940,35 @@
   el("btn-cam-follow")?.addEventListener("click", () => setCameraPreset("FOLLOW"));
   el("btn-toggle-fow")?.addEventListener("click", toggleFogOfWar);
 
+  let godModeOpen = false;
+  function toggleGodMode() {
+    godModeOpen = !godModeOpen;
+    const panel = el("godmode-panel");
+    const btn = el("btn-toggle-godmode");
+    if (panel) panel.style.display = godModeOpen ? "flex" : "none";
+    if (btn) btn.classList.toggle("active", godModeOpen);
+  }
+
+  el("btn-toggle-godmode")?.addEventListener("click", toggleGodMode);
+  el("btn-close-godmode")?.addEventListener("click", toggleGodMode);
+
+  el("btn-god-spawn-food")?.addEventListener("click", () => {
+    addLogEvent("GOD_MODE", "🍎 Can thiệp: Thả 5 nguồn quả mọng và rong sinh thái vào bản đồ!");
+    if (typeof playSoundEffect === "function") playSoundEffect("EAT");
+  });
+  el("btn-god-trigger-storm")?.addEventListener("click", () => {
+    addLogEvent("GOD_MODE", "⛈️ Can thiệp: Kích hoạt hiện tượng siêu bão thời tiết dị thường!");
+    if (typeof playSoundEffect === "function") playSoundEffect("SHOCKWAVE");
+  });
+  el("btn-god-lightning")?.addEventListener("click", () => {
+    addLogEvent("GOD_MODE", "⚡ Can thiệp: Giáng sấm sét gây sát thương vùng lên khu vực trung tâm!");
+    if (typeof playSoundEffect === "function") playSoundEffect("COMBAT");
+  });
+  el("btn-god-mutate")?.addEventListener("click", () => {
+    addLogEvent("GOD_MODE", "🧬 Can thiệp: Kích hoạt bức xạ đột biến gen trên toàn bộ quần thể!");
+    if (typeof playSoundEffect === "function") playSoundEffect("EVOLVE");
+  });
+
   const rigSelector = el("select-camera-rig");
   rigSelector?.addEventListener("change", (e) => {
     const val = e.target.value;
@@ -1091,6 +1138,142 @@
     return isNode || isMock;
   }
 
+  function applyPrimordialShaders(model) {
+    if (!model) return;
+    model.traverse((c) => {
+      if (c.isLight && (c.name.startsWith("Cave_Light") || c.name === "Sun_Key_Light")) {
+        c.visible = false;
+      }
+    });
+
+    const terrain = model.getObjectByName("Diorama_Island_Block");
+    if (terrain && terrain.geometry) {
+      const geom = terrain.geometry;
+      if (geom.attributes.color) {
+        terrain.material.vertexColors = true;
+        terrain.material.color.setHex(0xffffff);
+        terrain.material.roughness = 0.92;
+        terrain.material.metalness = 0.05;
+        terrain.material.needsUpdate = true;
+      } else {
+        const pos = geom.attributes.position;
+        const norm = geom.attributes.normal;
+        const count = pos.count;
+        const posArr = pos.array;
+        const normArr = norm ? norm.array : null;
+        const colors = new Float32Array(count * 3);
+
+        for (let i = 0; i < count; i++) {
+          const idx3 = i * 3;
+          const x = posArr[idx3];
+          const y = posArr[idx3 + 1];
+          const z = posArr[idx3 + 2];
+
+          const ny = normArr ? normArr[idx3 + 1] : 1.0;
+          const slope = 1.0 - Math.min(1.0, Math.max(0.0, ny));
+
+          const n1 = Math.sin(x * 0.15 + z * 0.12) * 0.04;
+          const n2 = Math.cos(x * 0.4 - z * 0.3) * 0.02;
+          const strata = 0.5 + 0.5 * Math.sin(y * 1.6 + x * 0.08);
+
+          let r, g, b;
+          if (y <= -15.0) {
+            r = 0.12; g = 0.12; b = 0.14;
+          } else if (Math.abs(x) > 78.5 || Math.abs(z) > 78.5) {
+            const band = 0.5 + 0.5 * Math.sin(y * 1.1);
+            r = 0.32 + 0.08 * band;
+            g = 0.26 + 0.06 * band;
+            b = 0.20 + 0.04 * band;
+          } else if (y < -0.5) {
+            r = 0.18 + n1; g = 0.20 + n1; b = 0.22 + n1;
+          } else if (y < 0.8 && slope < 0.4) {
+            r = 0.58 + n1; g = 0.48 + n1; b = 0.34 + n1;
+          } else if (y > 32.0) {
+            r = 0.90; g = 0.92; b = 0.96;
+          } else if (slope > 0.42) {
+            const rockTone = 0.38 + 0.06 * strata + n1;
+            r = rockTone * 1.05; g = rockTone * 0.95; b = rockTone * 0.85;
+          } else if (y > 16.0) {
+            const scree = 0.42 + 0.05 * strata + n1;
+            r = scree * 1.0; g = scree * 0.92; b = scree * 0.84;
+          } else if (y < 5.0 && slope < 0.25) {
+            r = 0.22 + n1; g = 0.32 + n1; b = 0.16 + n1;
+          } else {
+            r = 0.38 + n1 + n2; g = 0.36 + n1 + n2; b = 0.26 + n1 + n2;
+          }
+
+          colors[idx3] = Math.min(1.0, Math.max(0.0, r));
+          colors[idx3 + 1] = Math.min(1.0, Math.max(0.0, g));
+          colors[idx3 + 2] = Math.min(1.0, Math.max(0.0, b));
+        }
+
+        geom.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+        geom.attributes.color.needsUpdate = true;
+
+        terrain.material.vertexColors = true;
+        terrain.material.color.setHex(0xffffff);
+        terrain.material.roughness = 0.92;
+        terrain.material.metalness = 0.05;
+        terrain.material.needsUpdate = true;
+      }
+    }
+
+    // 3. Water PBR Styling (Optical depth & reflection)
+    const waterMats = {
+      "Water_Lake_Central": { color: 0x0077b6, opacity: 0.85, roughness: 0.03 },
+      "Water_Bay_Marine": { color: 0x023e8a, opacity: 0.90, roughness: 0.03 },
+      "Water_River_Meander": { color: 0x0096c7, opacity: 0.82, roughness: 0.04 },
+      "Water_Cave_Pool": { color: 0x00b4d8, opacity: 0.88, roughness: 0.03 }
+    };
+    for (const name in waterMats) {
+      const obj = model.getObjectByName(name);
+      if (obj && obj.material) {
+        const conf = waterMats[name];
+        obj.material = new THREE.MeshPhysicalMaterial({
+          color: conf.color,
+          transparent: true,
+          opacity: conf.opacity,
+          roughness: conf.roughness,
+          metalness: 0.1,
+          transmission: 0.7,
+          ior: 1.333,
+          depthWrite: false
+        });
+      }
+    }
+
+    // 4. Cavern Rock Styling
+    ["Cave_Cavern_Chamber", "Cave_Arch_Entrance", "Cave_Speleothems"].forEach(name => {
+      const c = model.getObjectByName(name);
+      if (c && c.material) {
+        c.material = new THREE.MeshStandardMaterial({
+          color: 0x35302c,
+          roughness: 0.92,
+          metalness: 0.08
+        });
+      }
+    });
+
+    // 5. Bioluminescent Minerals
+    const minerals = model.getObjectByName("Cave_Mineral_Clusters");
+    if (minerals && minerals.material) {
+      minerals.material = new THREE.MeshStandardMaterial({
+        color: 0x00e676,
+        emissive: new THREE.Color(0x00e676),
+        emissiveIntensity: 2.5,
+        roughness: 0.2,
+        metalness: 0.0
+      });
+    }
+
+    // 6. PMREM IBL
+    if (pmremGenerator) {
+      try {
+        scene.environment = pmremGenerator.fromScene(scene).texture;
+      } catch (e) {}
+    }
+  }
+
   function loadDioramaGLB() {
     if (typeof THREE === "undefined" || typeof THREE.GLTFLoader === "undefined") {
       if (!_isHeadlessOrNodeContext()) {
@@ -1100,6 +1283,9 @@
     }
     const loader = new THREE.GLTFLoader();
     const candidates = [
+      "assets/blender_map/ecosystem_map.glb",
+      "../assets/blender_map/ecosystem_map.glb",
+      "/assets/blender_map/ecosystem_map.glb",
       "models/anima_world.glb",
       "../models/anima_world.glb",
       "/models/anima_world.glb",
@@ -1117,6 +1303,7 @@
         (gltf) => {
           console.log("[Genesis3D] Master diorama GLB loaded successfully from:", url);
           dioramaMasterModel = gltf.scene;
+          applyPrimordialShaders(dioramaMasterModel);
           dioramaMasterModel.traverse((child) => {
             if (child.isMesh) {
               child.castShadow = true;
@@ -1399,6 +1586,180 @@
     return 0.25;
   }
 
+  // ── 4.5. Rigged GLTF Model Ingestion & Skeleton Cloning Pipeline ──
+  const creaturePrototypes = new Map();
+  const creatureLoadPromises = new Map();
+
+  function _getCreatureCloner() {
+    if (typeof THREE !== "undefined" && THREE.SkeletonUtils && THREE.SkeletonUtils.clone) {
+      return THREE.SkeletonUtils.clone;
+    }
+    return (s) => s.clone(true);
+  }
+
+  function resolveSpeciesKey(c) {
+    const raw = String(c.species_id ?? c.species ?? ((c.id || "").split(":")[0] || "L1")).toLowerCase();
+    if (raw.includes("skink") || raw.startsWith("l1")) return "L1";
+    if (raw.includes("ferret") || raw.startsWith("l2")) return "L2";
+    if (raw.includes("ibex") || raw.startsWith("l3")) return "L3";
+    if (raw.includes("hare") || raw.startsWith("l4")) return "L4";
+    if (raw.includes("croc") || raw.startsWith("l5")) return "L5";
+    if (raw.includes("hunter") || raw.includes("leviathan") || raw.startsWith("w1")) return "W1";
+    if (raw.includes("eagle") || raw.startsWith("a1")) return "A1";
+    if (raw.includes("sentinel") || raw.startsWith("s1")) return "S1";
+    if (raw.includes("tarantula") || raw.startsWith("b1")) return "B1";
+    if (raw.includes("apex") || raw.includes("evo") || raw.startsWith("x1")) return "X1";
+    return "L1";
+  }
+
+  const SPECIES_GLB_PATHS = {
+    "L1": ["assets/creatures/sand_skink.glb", "../assets/creatures/sand_skink.glb", "/assets/creatures/sand_skink.glb"],
+    "L2": ["assets/creatures/snow_ferret.glb", "../assets/creatures/snow_ferret.glb", "/assets/creatures/snow_ferret.glb"],
+    "L3": ["assets/creatures/alpine_ibex.glb", "../assets/creatures/alpine_ibex.glb", "/assets/creatures/alpine_ibex.glb"],
+    "L4": ["assets/creatures/meadow_hare.glb", "../assets/creatures/meadow_hare.glb", "/assets/creatures/meadow_hare.glb"],
+    "L5": ["assets/creatures/marsh_croc.glb", "../assets/creatures/marsh_croc.glb", "/assets/creatures/marsh_croc.glb"],
+    "W1": ["assets/creatures/abyssal_hunter.glb", "../assets/creatures/abyssal_hunter.glb", "/assets/creatures/abyssal_hunter.glb"],
+    "A1": ["assets/creatures/storm_eagle.glb", "../assets/creatures/storm_eagle.glb", "/assets/creatures/storm_eagle.glb"],
+    "S1": ["assets/creatures/armored_sentinel.glb", "../assets/creatures/armored_sentinel.glb", "/assets/creatures/armored_sentinel.glb"],
+    "B1": ["assets/creatures/giant_tarantula.glb", "../assets/creatures/giant_tarantula.glb", "/assets/creatures/giant_tarantula.glb"],
+    "X1": ["assets/creatures/carnivore_apex.glb", "../assets/creatures/carnivore_apex.glb", "/assets/creatures/carnivore_apex.glb"]
+  };
+
+  function preloadCreatureModel(code) {
+    if (creaturePrototypes.has(code) || creatureLoadPromises.has(code)) return;
+    if (typeof THREE === "undefined" || !THREE.GLTFLoader) return;
+
+    const promise = new Promise((resolve) => {
+      if (typeof window !== "undefined" && window.CREATURE_MODELS_BASE64 && window.CREATURE_MODELS_BASE64[code]) {
+        try {
+          const b64 = window.CREATURE_MODELS_BASE64[code];
+          const binStr = window.atob(b64);
+          const bytes = new Uint8Array(binStr.length);
+          for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+          const loader = new THREE.GLTFLoader();
+          loader.parse(bytes.buffer, "", (gltf) => {
+            creaturePrototypes.set(code, gltf);
+            resolve(gltf);
+          }, () => tryUrlLoad());
+          return;
+        } catch (e) {}
+      }
+
+      function tryUrlLoad() {
+        const paths = SPECIES_GLB_PATHS[code] || [];
+        let idx = 0;
+        const loader = new THREE.GLTFLoader();
+        function next() {
+          if (idx >= paths.length) { resolve(null); return; }
+          const u = paths[idx++];
+          loader.load(u, (gltf) => {
+            creaturePrototypes.set(code, gltf);
+            resolve(gltf);
+          }, undefined, () => next());
+        }
+        next();
+      }
+      tryUrlLoad();
+    });
+
+    creatureLoadPromises.set(code, promise);
+  }
+
+  if (!_isHeadlessOrNodeContext()) {
+    ["L1", "L2", "L3", "L4", "L5", "W1", "A1", "S1", "B1", "X1"].forEach(preloadCreatureModel);
+  }
+
+  function createRiggedOrProceduralBody(c) {
+    const code = resolveSpeciesKey(c);
+    const proto = creaturePrototypes.get(code);
+
+    if (proto && proto.scene) {
+      const cloner = _getCreatureCloner();
+      const cloned = cloner(proto.scene);
+      cloned.scale.set(0.65, 0.65, 0.65);
+      cloned.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            child.material.roughness = 0.45;
+            child.material.metalness = 0.15;
+          }
+        }
+      });
+
+      const mixer = new THREE.AnimationMixer(cloned);
+      const actions = new Map();
+      if (proto.animations && proto.animations.length > 0) {
+        for (const clip of proto.animations) {
+          actions.set(clip.name, mixer.clipAction(clip));
+        }
+      }
+
+      const idleAction = actions.get("Idle_Normal") || actions.get("Walk") || (actions.values().next().value);
+      if (idleAction) idleAction.play();
+
+      const g = new THREE.Group();
+      g.userData.creatureId = c.id;
+      g.userData.mats = [];
+      g.add(cloned);
+
+      g.traverse((child) => { if (child.material) g.userData.mats.push(child.material); });
+
+      return {
+        group: g,
+        mixer,
+        actions,
+        currentAction: idleAction,
+        currentClipName: "Idle_Normal",
+        isRigged: true
+      };
+    }
+
+    preloadCreatureModel(code);
+    const fallbackGroup = makeBody(c);
+    return {
+      group: fallbackGroup,
+      mixer: null,
+      actions: new Map(),
+      currentAction: null,
+      currentClipName: "Idle_Normal",
+      isRigged: false
+    };
+  }
+
+  function crossFadeCreatureAction(entity, clipName, duration = 0.25) {
+    if (!entity || !entity.actions || !clipName || typeof clipName !== "string" || entity.currentClipName === clipName) return;
+    let nextAction = entity.actions.get(clipName);
+    if (!nextAction) {
+      const lowerTarget = clipName.toLowerCase().trim();
+      if (lowerTarget.length > 0) {
+        for (const [name, act] of entity.actions.entries()) {
+          if (typeof name === "string" && name.toLowerCase().includes(lowerTarget)) {
+            nextAction = act;
+            break;
+          }
+        }
+      }
+    }
+    if (!nextAction) return;
+
+    nextAction.reset();
+    nextAction.fadeIn(duration);
+    nextAction.play();
+
+    if (clipName === "Death") {
+      nextAction.clampWhenFinished = true;
+      if (typeof THREE !== "undefined" && THREE.LoopOnce) nextAction.setLoop(THREE.LoopOnce, 1);
+    }
+
+    if (entity.currentAction && entity.currentAction !== nextAction) {
+      entity.currentAction.fadeOut(duration);
+    }
+    entity.currentAction = nextAction;
+    entity.currentClipName = clipName;
+  }
+
   // ── 5. Khởi tạo Hình thái Thủ tục 3D (6 Traits + 12 Biological Features) ──
   function makeBody(c) {
     const t = c.tr || [2, 2, 2, 2, 2, 2];
@@ -1659,10 +2020,11 @@
 
   // ── 6. Đồng bộ và Interpolate Chuyển động Sinh Vật ──
   function syncBodies(frame, isInstant = false) {
-    const aliveSet = new Set((frame.creatures || []).map(c => c.id));
+    const aliveSet = new Set((frame.creatures || []).filter(c => c && c.id).map(c => c.id));
     let cntNuoc = 0, cntCan = 0, cntTroi = 0;
 
     for (const c of frame.creatures || []) {
+      if (!c || !c.id) continue;
       const domain = getDomain(c);
       if (c.alive) {
         aliveSet.add(c.id);
@@ -1677,10 +2039,16 @@
       const targetZ = c.y + 0.5;
 
       if (!entity) {
-        const group = makeBody(c);
-        bodyGroup.add(group);
+        const bodyObj = createRiggedOrProceduralBody(c);
+        bodyGroup.add(bodyObj.group);
         entity = {
-          group,
+          group: bodyObj.group,
+          mixer: bodyObj.mixer,
+          actions: bodyObj.actions,
+          currentAction: bodyObj.currentAction,
+          currentClipName: bodyObj.currentClipName,
+          isRigged: bodyObj.isRigged,
+          speciesCode: resolveSpeciesKey(c),
           currX: targetX,
           currY: targetElev,
           currZ: targetZ,
@@ -1693,6 +2061,22 @@
         };
         bodies.set(c.id, entity);
       } else {
+        // Dynamic upgrade to rigged GLB if prototype finished loading
+        if (!entity.isRigged) {
+          const proto = creaturePrototypes.get(entity.speciesCode);
+          if (proto && proto.scene) {
+            bodyGroup.remove(entity.group);
+            const upgraded = createRiggedOrProceduralBody(c);
+            bodyGroup.add(upgraded.group);
+            entity.group = upgraded.group;
+            entity.mixer = upgraded.mixer;
+            entity.actions = upgraded.actions;
+            entity.currentAction = upgraded.currentAction;
+            entity.currentClipName = upgraded.currentClipName;
+            entity.isRigged = true;
+          }
+        }
+
         // Xử lý góc xoay hướng đi & bước nhảy wrap biên tròn
         const dx = targetX - entity.currX;
         const dz = targetZ - entity.currZ;
@@ -1721,10 +2105,51 @@
         entity.group.rotation.y = entity.yaw;
       }
 
+      // ── State machine mapping to 8 action clips ──
+      if (!c.alive) {
+        crossFadeCreatureAction(entity, "Death", 0.15);
+      } else {
+        const speedTrait = (c.tr && c.tr[TR.speed]) || 2;
+        const dx = targetX - entity.currX;
+        const dz = targetZ - entity.currZ;
+        const isMoving = Math.abs(dx) > 0.05 || Math.abs(dz) > 0.05;
+
+        const events = Array.isArray(frame.events) ? frame.events : [];
+        const hasHurt = events.some(e => {
+          const kind = e.k || e.kind;
+          const isTarget = (e.target === c.id || e.target_id === c.id);
+          const isActor = (e.who === c.id || e.id === c.id);
+          return (isTarget && (kind === "COMBAT" || kind === "ATTACK" || kind === "HURT" || kind === "DEFEND")) ||
+                 (isActor && (kind === "HURT" || kind === "DEFEND"));
+        });
+        const hasCombat = events.some(e => {
+          const kind = e.k || e.kind;
+          const isActor = (e.who === c.id || e.id === c.id);
+          return isActor && (kind === "COMBAT" || kind === "ATTACK");
+        });
+        const hasEat = events.some(e => {
+          const kind = e.k || e.kind;
+          const isActor = (e.who === c.id || e.id === c.id);
+          return isActor && (kind === "EAT");
+        });
+
+        if (hasHurt) {
+          crossFadeCreatureAction(entity, "Hurt_Defend", 0.2);
+        } else if (hasCombat) {
+          crossFadeCreatureAction(entity, "Attack", 0.2);
+        } else if (hasEat) {
+          crossFadeCreatureAction(entity, "Eat", 0.2);
+        } else if (isMoving) {
+          crossFadeCreatureAction(entity, speedTrait >= 4 ? "Run" : "Walk", 0.2);
+        } else {
+          crossFadeCreatureAction(entity, "Idle_Normal", 0.3);
+        }
+      }
+
       // Trạng thái sống / năng lượng & phát sáng mắt trong đêm
       const eRatio = Math.max(0.12, Math.min(1.0, (c.e || 0) / (c.e_max || 1)));
       const isNight = (currentDiurnal === "NIGHT");
-      for (const m of entity.group.userData.mats) {
+      for (const m of entity.group.userData.mats || []) {
         if (m.opacity !== undefined) {
           m.transparent = true;
           m.opacity = c.alive ? 1.0 : 0.22;
@@ -3169,8 +3594,11 @@
       shockwaves[i].torus.material.opacity = (1 - p) * 0.8;
     }
 
-    // 2. Interpolate thực thể sinh vật
+    // 2. Interpolate thực thể sinh vật & update skeletal animations
     for (const [, ent] of bodies) {
+      if (ent.mixer) {
+        ent.mixer.update(0.016);
+      }
       ent.currX += (ent.targetX - ent.currX) * 0.18;
       ent.currY += (ent.targetY - ent.currY) * 0.2;
       ent.currZ += (ent.targetZ - ent.currZ) * 0.18;
@@ -3182,6 +3610,10 @@
 
       ent.group.position.set(ent.currX, ent.currY, ent.currZ);
       ent.group.rotation.y = ent.yaw;
+    }
+
+    if (dioramaMixer) {
+      dioramaMixer.update(0.016);
     }
 
     // 3. Vòng chọn quanh sinh vật & Camera Follow
@@ -3200,6 +3632,28 @@
             if (diff > Math.PI) diff -= Math.PI * 2;
             if (diff < -Math.PI) diff += Math.PI * 2;
             targetYaw += diff * 0.06;
+          }
+          if (ent.data) {
+            const thoughtText = el("pov-thought-text");
+            const goalBadge = el("pov-goal-badge");
+            const tag = el("pov-creature-tag");
+            if (tag) {
+              tag.textContent = `POV: ${ent.data.id || selectedCreatureId} | HP: ${ent.data.hp || 0} | SỨC: ${ent.data.energy || 0}`;
+            }
+            if (goalBadge && ent.data.goal) {
+              goalBadge.textContent = `GOAL: ${ent.data.goal}`;
+            }
+            if (thoughtText) {
+              const hpRatio = (ent.data.hp || 0) / 100;
+              const enRatio = (ent.data.energy || 0) / 100;
+              let thought = "Đang quan sát địa hình và gradient mùi hương...";
+              if (hpRatio < 0.35) thought = "⚠️ Máu nguy kịch! Cần chạy trốn hoặc tìm nơi ẩn nấp an toàn!";
+              else if (enRatio < 0.35) thought = "🍎 Cạn năng lượng! Phải tìm nguồn thức ăn để nạp năng lượng ngay!";
+              else if (ent.data.goal === "HUNT") thought = "⚔️ Phát hiện mục tiêu khả nghi! Đang tiến tới săn mồi...";
+              else if (ent.data.goal === "FORAGE") thought = "🌱 Tìm nguồn thức ăn theo nồng độ pheromone hóa sinh...";
+              else if (ent.data.goal === "REST") thought = "💤 Trạng thái an toàn, đứng yên nghỉ ngơi để tiết kiệm năng lượng.";
+              thoughtText.textContent = thought;
+            }
           }
         }
       }

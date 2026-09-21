@@ -63,8 +63,19 @@ genesis = "genesis.run:cli"
 # `net` và `client` cũng phải vào gói: thiếu chúng thì `pip install .` cho ra
 # bộ mô phỏng mà KHÔNG có server lẫn client — tức không có chế độ mở, thứ cả dự
 # án sinh ra để làm.
-packages = ["genesis", "net", "client"]
 py-modules = ["net_config"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["genesis*", "net*", "client*", "web*", "assets*"]
+exclude = ["*.__pycache__", "*.__pycache__.*", "tests*"]
+namespaces = true
+
+
+[tool.setuptools.package-data]
+"*" = ["web/**/*", "assets/**/*", "*", "**/*"]
+
+
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

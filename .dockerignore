@@ -42,8 +42,7 @@ renders/
 assets/blender_map/render_*.png
 assets/blender_map/*.blend
 assets/blender_map/*.blend1
-web/creature_images/
-web/flora_images/
+
 
 # Exclude local editor and OS files
 .vscode/

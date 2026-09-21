@@ -311,6 +311,7 @@
     <button id="btn-cam-free" class="btn-tool" title="Góc nhìn Tự do (Phím 3)">🔍 Tự do</button>
     <button id="btn-cam-follow" class="btn-tool" title="Góc nhìn Thứ 3 bám theo Sinh vật (Phím 4)">🤾‍♂️ Góc nhìn thứ 3</button>
     <button id="btn-toggle-fow" class="btn-tool" title="Bật/Tắt Sương mù Tầm nhìn Sinh vật (Phím F)">👁️ Fog of War</button>
+    <button id="btn-toggle-godmode" class="btn-tool" style="border-color: #f59e0b; color: #f59e0b; font-weight: 700;" title="Phòng Thí Nghiệm Chúa Trời (Can thiệp thời gian thực)">⚡ God Mode</button>
     <button id="btn-toggle-hear" class="btn-tool active" title="Bật/Tắt Đồ thị Nghe (Phím G)">📡 Nghe</button>
     <button id="btn-toggle-journal" class="btn-tool active" title="Bật/Tắt Sổ Luật (Phím J)">📜 Sổ Luật</button>
     <button id="btn-toggle-minimap" class="btn-tool active" title="Bật/Tắt Minimap (Phím M)">🗺️ Minimap</button>
@@ -325,6 +326,25 @@
   <div id="pov-creature-tag" style="position: absolute; top: calc(50% + 22px); left: 50%; transform: translateX(-50%); font-size: .68rem; font-weight: 700; color: #38bdf8; background: rgba(11, 17, 32, 0.88); padding: 2px 10px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.3); font-family: ui-monospace, Menlo, monospace; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
     POV: —
   </div>
+  <div id="pov-thought-box" style="position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%); width: 420px; max-width: 90vw; background: rgba(6, 12, 28, 0.92); border: 1.5px solid #38bdf8; border-radius: 8px; padding: 10px 14px; box-shadow: 0 4px 20px rgba(56, 189, 248, 0.3); backdrop-filter: blur(8px); text-align: left;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <span style="font-size: .72rem; font-weight: 800; color: #38bdf8; text-transform: uppercase;">🧠 Luồng Tư Duy LLM (Live Thought)</span>
+      <span id="pov-goal-badge" style="font-size: .65rem; padding: 2px 6px; border-radius: 3px; background: #0284c7; color: #fff; font-weight: 700;">GOAL: —</span>
+    </div>
+    <div id="pov-thought-text" style="font-family: ui-monospace, Menlo, monospace; font-size: .72rem; color: #f1f5f9; line-height: 1.4;">Đang phân tích tín hiệu môi trường...</div>
+  </div>
+</div>
+
+<!-- Interactive God-Mode Palette -->
+<div id="godmode-panel" style="position: absolute; right: 16px; bottom: 60px; z-index: 15; background: rgba(11, 17, 32, 0.94); border: 1.5px solid #f59e0b; border-radius: 8px; padding: 12px; box-shadow: 0 8px 32px rgba(245, 158, 11, 0.25); display: none; flex-direction: column; gap: 8px; width: 220px; backdrop-filter: blur(12px);">
+  <div style="font-size: .78rem; font-weight: 800; color: #fbbf24; border-bottom: 1px solid #334155; padding-bottom: 4px; display: flex; justify-content: space-between; align-items: center;">
+    <span>⚡ CAN THIỆP GOD-MODE</span>
+    <button id="btn-close-godmode" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: .8rem;">✕</button>
+  </div>
+  <button id="btn-god-spawn-food" class="btn-tool" style="width: 100%; justify-content: flex-start;">🍎 Thả Thức Ăn (Fruit)</button>
+  <button id="btn-god-trigger-storm" class="btn-tool" style="width: 100%; justify-content: flex-start;">⛈️ Kích Hoạt Giông Bão</button>
+  <button id="btn-god-lightning" class="btn-tool" style="width: 100%; justify-content: flex-start;">⚡ Sấm Sét Tác Động</button>
+  <button id="btn-god-mutate" class="btn-tool" style="width: 100%; justify-content: flex-start;">🧬 Đột Biến Di Truyền</button>
 </div>
 
 <!-- Left Panel: Law Journal HUD -->
@@ -810,6 +830,8 @@
 
 <script src="vendor/three.min.js"></script>
 <script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/SkeletonUtils.js"></script>
+<script src="creature_models_data.js"></script>
 <script src="frame_history.js"></script>
 <script src="watch3d.js"></script>
 </body>
