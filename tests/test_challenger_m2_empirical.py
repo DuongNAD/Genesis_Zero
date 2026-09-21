@@ -33,6 +33,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, r"E:\tool\mcp\terra_forge")
 
+pytest.importorskip("terra_forge")
+
 from terra_forge.core.erosion import ErosionSimulator
 from terra_forge.core.heightfield import Heightfield2D
 from terra_forge.schema.map_config import ErosionConfig

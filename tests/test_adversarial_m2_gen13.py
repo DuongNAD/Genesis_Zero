@@ -25,6 +25,9 @@ TERRA_FORGE_PATH = Path(r"E:\tool\mcp\terra_forge")
 if str(TERRA_FORGE_PATH) not in sys.path:
     sys.path.insert(0, str(TERRA_FORGE_PATH))
 
+# Skip the entire module if terra_forge is not available (e.g., in CI)
+pytest.importorskip("terra_forge")
+
 from terra_forge.core.erosion import ErosionConfig, ErosionSimulator
 from terra_forge.core.heightfield import Heightfield2D
 from terra_forge.core.open_mesh import OpenWorldMesh
