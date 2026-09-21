@@ -19,17 +19,15 @@ Empirical verification of:
 
 from __future__ import annotations
 
-import json
 import os
-import shutil
 import stat
 import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
-import pytest
 
+import pytest
 from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parent.parent

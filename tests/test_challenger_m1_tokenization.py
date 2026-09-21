@@ -14,9 +14,10 @@ Verifies:
 from __future__ import annotations
 
 import subprocess
-import time
 import sys
+import time
 from pathlib import Path
+
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
