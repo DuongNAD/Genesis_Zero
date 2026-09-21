@@ -75,6 +75,9 @@ namespaces = true
 [tool.setuptools.package-data]
 "*" = ["web/**/*", "assets/**/*", "*", "**/*"]
 
+[tool.setuptools.exclude-package-data]
+"*" = ["**/__pycache__/*", "**/*.pyc", "**/.pytest_cache/*", "**/.git/*"]
+
 
 
 [tool.pytest.ini_options]

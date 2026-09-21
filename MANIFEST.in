@@ -3,3 +3,5 @@ graft web
 graft assets
 recursive-include web *
 recursive-include assets *
+global-exclude __pycache__
+global-exclude *.py[cod]
